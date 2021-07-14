@@ -1,0 +1,3 @@
+<div class="px-4 py-1 first:border-l border-r border-gray-300">
+  <a href="<%= @href %>"><%= @children %></a>
+</div>
