@@ -6,6 +6,7 @@ use axum::{
     routing::get,
     Router,
 };
+use sea_orm::{Database, DatabaseConnection};
 use tera::Tera;
 
 use crate::{config::AppConfig, routes};
@@ -13,6 +14,8 @@ use crate::{config::AppConfig, routes};
 #[derive(Clone)]
 pub struct AppState {
     tera: Arc<Tera>,
+    // This is
+    db: DatabaseConnection,
 }
 
 impl AppState {
@@ -37,8 +40,8 @@ impl IntoResponse for TemplateError {
     }
 }
 
-pub fn mkapp(_conf: AppConfig) -> Result<Router, String> {
-    let state = init_state()?;
+pub async fn mkapp(conf: AppConfig) -> Result<Router, String> {
+    let state = init_state(conf).await?;
 
     let router = Router::new()
         .route("/", get(routes::home))
@@ -46,12 +49,22 @@ pub fn mkapp(_conf: AppConfig) -> Result<Router, String> {
     Ok(router)
 }
 
-fn init_state() -> Result<AppState, String> {
+async fn init_state(conf: AppConfig) -> Result<AppState, String> {
     let tera = init_tera()?;
+    let db = init_db(conf).await?;
     let state = AppState {
         tera: Arc::new(tera),
+        db,
     };
     Ok(state)
+}
+
+async fn init_db(conf: AppConfig) -> Result<DatabaseConnection, String> {
+    let db_url = format!("sqlite://{}?mode=rwc", conf.database_file);
+    let db = Database::connect(db_url)
+        .await
+        .map_err(|err| format!("Failed to connect to database: {err}"));
+    db
 }
 
 fn init_tera() -> Result<Tera, String> {

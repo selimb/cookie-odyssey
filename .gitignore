@@ -1,2 +1,10 @@
+# Temporary stuff
+/temp
+/tmp
+/sand
+
+# Data
+/data
+
 # Rust output
 /target

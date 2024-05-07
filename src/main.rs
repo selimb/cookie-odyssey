@@ -13,7 +13,7 @@ async fn run() -> Result<(), String> {
     init_tracing()?;
     load_env()?;
     let conf = AppConfig::from_env()?;
-    let app = crate::server::mkapp(conf)?;
+    let app = crate::server::mkapp(conf).await?;
 
     let port = 3000;
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{port}"))
