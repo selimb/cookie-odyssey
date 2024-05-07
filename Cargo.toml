@@ -2,16 +2,24 @@
 name = "cookie-odyssey"
 version = "0.1.0"
 edition = "2021"
+publish = false
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 axum = { version = "0.7.5" }
-config = { version = "0.14.0", features = [] }
-dotenv = { version = "0.15.0" }
+app-config = { path = "config" }
+migration = { path = "migration"}
 sea-orm = { version = "0.12.15", features = ["sqlx-sqlite", "runtime-tokio-native-tls", "macros", "with-uuid"] }
-serde = { version = "1.0.200", features = ["derive"] }
+serde = { workspace = true }
 tera = { version = "1.19.1" }
 tokio = { version = "1.37.0", features = ["full"] }
-tracing = { version = "0.1.40" }
+tracing = { workspace = true }
 tracing-subscriber = { version = "0.3.18" }
+
+[workspace]
+members = ["config", "migration"]
+
+[workspace.dependencies]
+serde = { version = "1.0.200", features = ["derive"] }
+tracing = { version = "0.1.40" }

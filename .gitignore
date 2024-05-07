@@ -3,6 +3,10 @@
 /tmp
 /sand
 
+# .env
+.env*
+!.env*.template
+
 # Data
 /data
 

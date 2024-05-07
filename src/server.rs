@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use app_config::AppConfig;
 use axum::{
     http::StatusCode,
     response::{Html, IntoResponse},
@@ -9,7 +10,7 @@ use axum::{
 use sea_orm::{Database, DatabaseConnection};
 use tera::Tera;
 
-use crate::{config::AppConfig, routes};
+use crate::routes;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -60,7 +61,7 @@ async fn init_state(conf: AppConfig) -> Result<AppState, String> {
 }
 
 async fn init_db(conf: AppConfig) -> Result<DatabaseConnection, String> {
-    let db_url = format!("sqlite://{}?mode=rwc", conf.database_file);
+    let db_url = conf.database_url();
     let db = Database::connect(db_url)
         .await
         .map_err(|err| format!("Failed to connect to database: {err}"));

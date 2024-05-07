@@ -1,10 +1,8 @@
-use std::{env::current_dir, process::ExitCode};
+use std::process::ExitCode;
 
-use tracing::{info, warn};
+use app_config::{load_env, AppConfig};
+use tracing::info;
 
-use crate::config::AppConfig;
-
-mod config;
 mod routes;
 mod server;
 
@@ -24,26 +22,6 @@ async fn run() -> Result<(), String> {
     axum::serve(listener, app)
         .await
         .map_err(|err| err.to_string())
-}
-
-fn load_env() -> Result<(), String> {
-    let cwd = current_dir().map_err(|err| format!("Failed to access current directory: {err}"))?;
-    let dotenv_path = cwd.join("config").join(".env");
-    if dotenv_path.exists() {
-        match dotenv::from_path(&dotenv_path) {
-            Ok(_) => {
-                let p = dotenv_path.to_string_lossy();
-                info!("Loaded environment from: {p}");
-            }
-            Err(x) => {
-                return Err(x.to_string());
-            }
-        }
-    } else {
-        let p = dotenv_path.to_string_lossy();
-        warn!("No environment file found at: {p}");
-    }
-    Ok(())
 }
 
 fn init_tracing() -> Result<(), String> {
