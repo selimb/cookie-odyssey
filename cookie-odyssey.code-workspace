@@ -1,0 +1,17 @@
+{
+  "folders": [
+    {
+      "path": ".",
+      "name": "root"
+    },
+    {
+      "path": "migration"
+    }
+  ],
+  "settings": {
+    "files.exclude": {
+      "**/.git": true,
+      "migration": true
+    }
+  }
+}
