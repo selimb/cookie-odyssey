@@ -1,10 +1,31 @@
 {% extends "base.html" %}
+{% import "common/macros.html" as common %}
 
 {% block content %}
 <section class="section">
   <div class="container">
-    <h1 class="title">Hello World</h1>
-    <p class="subtitle">My first website with <strong>Bulma</strong>!</p>
+    {% for journal in journals %}
+    <div class="card">
+      <div class="card-image">
+        {# FIXME #}
+        <figure class="image is-4by3">
+          <img src="https://bulma.io/assets/images/placeholders/1280x960.png" alt="Placeholder image" />
+        </figure>
+      </div>
+      <div class="card-content">
+        <div class="title">
+          {{ journal.name }}
+        </div>
+        <div class="content">
+          {{ common::date(date=journal.start_date) }}
+        </div>
+      </div>
+    </div>
+    {% else %}
+    <div class="notification">
+      No journals yet. <span class="has-text-weight-bold">What are you waiting for?</span>
+    </div>
+    {% endfor %}
   </div>
 </section>
 {% endblock content %}

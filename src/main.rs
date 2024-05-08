@@ -5,8 +5,10 @@ use tracing::info;
 
 mod auth;
 mod journal;
+mod route_utils;
 mod router;
 mod server;
+mod template_engine;
 
 #[tokio::main]
 async fn run() -> Result<(), String> {
