@@ -10,8 +10,6 @@ use axum::{
 use sea_orm::{Database, DatabaseConnection};
 use tera::Tera;
 
-use crate::routes;
-
 #[derive(Clone)]
 pub struct AppState {
     tera: Arc<Tera>,
@@ -44,9 +42,7 @@ impl IntoResponse for TemplateError {
 pub async fn mkapp(conf: AppConfig) -> Result<Router, String> {
     let state = init_state(conf).await?;
 
-    let router = Router::new()
-        .route("/", get(routes::home))
-        .with_state(state);
+    let router = crate::router::router(state);
     Ok(router)
 }
 
@@ -69,5 +65,8 @@ async fn init_db(conf: AppConfig) -> Result<DatabaseConnection, String> {
 }
 
 fn init_tera() -> Result<Tera, String> {
-    Tera::new("templates/**/*.html").map_err(|err| format!("Failed to initialize tera: {err}"))
+    let tera = Tera::new("templates/**/*.html")
+        .map_err(|err| format!("Failed to initialize tera: {err}"))?;
+    Ok(tera)
+    // tera.register_function("", function)
 }

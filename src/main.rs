@@ -3,7 +3,9 @@ use std::process::ExitCode;
 use app_config::{load_env, AppConfig};
 use tracing::info;
 
-mod routes;
+mod auth;
+mod journal;
+mod router;
 mod server;
 
 #[tokio::main]

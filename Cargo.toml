@@ -9,8 +9,9 @@ publish = false
 [dependencies]
 axum = { version = "0.7.5" }
 app-config = { path = "config" }
+entities = { path = "entities" }
 migration = { path = "migration"}
-sea-orm = { version = "0.12.15", features = ["sqlx-sqlite", "runtime-tokio-native-tls", "macros", "with-uuid"] }
+sea-orm = { workspace = true }
 serde = { workspace = true }
 tera = { version = "1.19.1" }
 tokio = { version = "1.37.0", features = ["full"] }
@@ -18,8 +19,9 @@ tracing = { workspace = true }
 tracing-subscriber = { version = "0.3.18" }
 
 [workspace]
-members = ["config", "migration"]
+members = ["config", "entities", "migration"]
 
 [workspace.dependencies]
+sea-orm = { version = "0.12.15", features = ["sqlx-sqlite", "runtime-tokio-native-tls", "macros", "with-uuid"] }
 serde = { version = "1.0.200", features = ["derive"] }
 tracing = { version = "0.1.40" }
