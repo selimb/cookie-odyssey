@@ -9,6 +9,7 @@ mod route_utils;
 mod router;
 mod server;
 mod template_engine;
+mod utils;
 
 #[tokio::main]
 async fn run() -> Result<(), String> {

@@ -12,9 +12,25 @@ pub struct Model {
     pub slug: String,
     pub start_date: String,
     pub end_date: Option<String>,
+    pub cover_id: i32,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {}
+pub enum Relation {
+    #[sea_orm(
+        belongs_to = "super::file::Entity",
+        from = "Column::CoverId",
+        to = "super::file::Column::Id",
+        on_update = "NoAction",
+        on_delete = "NoAction"
+    )]
+    File,
+}
+
+impl Related<super::file::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::File.def()
+    }
+}
 
 impl ActiveModelBehavior for ActiveModel {}

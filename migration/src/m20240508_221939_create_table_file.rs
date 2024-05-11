@@ -9,18 +9,16 @@ impl MigrationTrait for Migration {
         manager
             .create_table(
                 Table::create()
-                    .table(Journal::Table)
+                    .table(File::Table)
+                    .if_not_exists()
                     .col(
-                        ColumnDef::new(Journal::Id)
+                        ColumnDef::new(File::Id)
                             .integer()
                             .not_null()
                             .auto_increment()
                             .primary_key(),
                     )
-                    .col(ColumnDef::new(Journal::Name).string().not_null())
-                    .col(ColumnDef::new(Journal::Slug).string().not_null())
-                    .col(ColumnDef::new(Journal::StartDate).date().not_null())
-                    .col(ColumnDef::new(Journal::EndDate).date().null())
+                    .col(ColumnDef::new(File::Url).string().not_null())
                     .to_owned(),
             )
             .await
@@ -28,17 +26,14 @@ impl MigrationTrait for Migration {
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         manager
-            .drop_table(Table::drop().table(Journal::Table).to_owned())
+            .drop_table(Table::drop().table(File::Table).to_owned())
             .await
     }
 }
 
 #[derive(DeriveIden)]
-enum Journal {
+pub enum File {
     Table,
     Id,
-    Name,
-    Slug,
-    StartDate,
-    EndDate,
+    Url,
 }

@@ -8,6 +8,7 @@ use entities::{prelude::*, *};
 // FIXME auth
 pub async fn journal_list(State(state): State<AppState>) -> HtmlResult {
     let journals = Journal::find()
+        .find_also_related(File)
         .order_by_desc(journal::Column::StartDate)
         .all(&state.db)
         .await?;
