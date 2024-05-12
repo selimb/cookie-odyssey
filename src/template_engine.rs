@@ -1,12 +1,12 @@
 use std::collections::HashMap;
 
+use anyhow::Context;
 use tera::{Tera, Value};
 
 use crate::utils::date_utils::date_from_sqlite;
 
-pub fn init_templates() -> Result<Tera, String> {
-    let mut tera = Tera::new("templates/**/*.html")
-        .map_err(|err| format!("Failed to initialize tera: {err}"))?;
+pub fn init_templates() -> Result<Tera, anyhow::Error> {
+    let mut tera = Tera::new("templates/**/*.html").context("Failed to initialize tera: {err}")?;
     tera.register_filter("date", date);
     Ok(tera)
 }

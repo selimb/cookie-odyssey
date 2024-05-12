@@ -6,6 +6,8 @@ This is a collection of complaints regarding Rust and/or its ecosystem.
 
 1. Parsing stops at first error.
 2. config-rs error messages don't/can't refer to the environment variable name.
+3. Defining defaults is awkward.
+   Either through `set_default` on the `ConfigBuilder`, or through `#[serde(default="default_fn")]` which [doesn't support string literals](https://github.com/serde-rs/serde/issues/368).
 
 ## Frontend
 

@@ -4,7 +4,7 @@ use app_config::{load_env, AppConfig};
 use sea_orm_migration::prelude::*;
 
 #[tokio::main]
-async fn main() -> Result<(), String> {
+async fn main() -> Result<(), anyhow::Error> {
     // CUSTOM: Load our own .env file and parse our config so that we can set
     //   DATABASE_URL, instead of being forced to use DATABASE_URL in our config.
     load_env()?;
