@@ -1,4 +1,4 @@
-# config
+# app_config
 
 A minimal crate that defines the application configuration, along with functions
 to load it.
