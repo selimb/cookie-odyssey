@@ -1,3 +1,11 @@
 {% macro date(date) %}
 <time datetime="{{ date }}">{{ date | date}}</time>
 {% endmacro %}
+
+{% macro form_error(error, id) %}
+<div id="{{ id }}" class="notification is-danger {% if not error %}is-hidden{% endif %}">
+  {% if error %}
+  {{ error }}
+  {% endif %}
+</div>
+{% endmacro %}

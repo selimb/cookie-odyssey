@@ -14,10 +14,18 @@
       </div>
       <div class="card-content">
         <div class="title">
-          {{ journal.name }}
+          <a href="{{ journal.href }}">
+            {{ journal.name }}
+          </a>
         </div>
         <div class="content">
           {{ common::date(date=journal.start_date) }}
+          -
+          {% if journal.end_date %}
+          {{ common::date(date=journal.end_date) }}
+          {% else %}
+          -
+          {% endif %}
         </div>
       </div>
     </div>

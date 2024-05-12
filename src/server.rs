@@ -13,7 +13,7 @@ use crate::{
 
 #[derive(Clone)]
 pub struct AppState {
-    tera: Arc<Tera>,
+    pub tera: Arc<Tera>,
     pub db: DatabaseConnection,
     pub storage: Arc<FileStore>,
 }

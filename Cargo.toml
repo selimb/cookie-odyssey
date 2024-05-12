@@ -8,7 +8,7 @@ publish = false
 
 [dependencies]
 anyhow = { workspace = true }
-app-config = { path = "config" }
+app-config = { path = "app_config" }
 axum = "0.7.5"
 chrono = { workspace = true }
 entities = { path = "entities" }
@@ -21,10 +21,10 @@ thiserror = { workspace = true }
 tokio = { version = "1.37.0", features = ["full"] }
 tracing = { workspace = true }
 tracing-subscriber = { version = "0.3.18" }
-url = { workspace = true }
+url.workspace = true
 
 [workspace]
-members = ["config", "entities", "migration"]
+members = ["app_config", "entities", "migration"]
 
 [workspace.dependencies]
 anyhow = "1.0.83"
@@ -33,4 +33,4 @@ sea-orm = { version = "0.12.15", features = ["sqlx-sqlite", "runtime-tokio-nativ
 serde = { version = "1.0.200", features = ["derive"] }
 thiserror = { version = "1.0.60" }
 tracing = { version = "0.1.40" }
-url = "2.5.0"
+url = { version = "2.5.0", features = ["serde"] }

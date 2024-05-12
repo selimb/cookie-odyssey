@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% import "common/macros.html" as common %}
+
+{% block content %}
+<section class="section">
+  {% if journal %}
+  <div class="container">
+    {{ journal.name }}
+  </div>
+  {% else %}
+  <div class="notification is-danger">
+    Oops! Could not find this journal.
+  </div>
+  {% endif %}
+</section>
+{% endblock content %}

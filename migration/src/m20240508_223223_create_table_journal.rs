@@ -19,11 +19,21 @@ impl MigrationTrait for Migration {
                             .auto_increment()
                             .primary_key(),
                     )
-                    .col(ColumnDef::new(Journal::Name).string().not_null())
-                    .col(ColumnDef::new(Journal::Slug).string().not_null())
+                    .col(
+                        ColumnDef::new(Journal::Name)
+                            .string()
+                            .unique_key()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(Journal::Slug)
+                            .string()
+                            .unique_key()
+                            .not_null(),
+                    )
                     .col(ColumnDef::new(Journal::StartDate).date().not_null())
                     .col(ColumnDef::new(Journal::EndDate).date().null())
-                    .col(ColumnDef::new(Journal::CoverId).integer().not_null())
+                    .col(ColumnDef::new(Journal::CoverId).integer().null())
                     .foreign_key(
                         ForeignKey::create()
                             .from(Journal::Table, Journal::CoverId)

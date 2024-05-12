@@ -14,5 +14,11 @@ orm-gen:
 		--with-serde serialize \
 		--lib
 
+local-s3:
+	docker run \
+	--rm \
+	-p 4566:4566 \
+	localstack/localstack:s3-latest
+
 dev:
 	cargo watch --quiet --watch src --watch templates --exec "run"

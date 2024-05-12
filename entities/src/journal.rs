@@ -8,11 +8,13 @@ use serde::Serialize;
 pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
+    #[sea_orm(unique)]
     pub name: String,
+    #[sea_orm(unique)]
     pub slug: String,
     pub start_date: String,
     pub end_date: Option<String>,
-    pub cover_id: i32,
+    pub cover_id: Option<i32>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

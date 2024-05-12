@@ -10,7 +10,7 @@ path = "src/lib.rs"
 
 [dependencies]
 anyhow = { workspace = true }
-app-config = { path = "../config" }
+app-config = { path = "../app_config" }
 dotenv = "0.15.0"
 sea-orm-migration = { version =  "0.12.0", features = [ "sqlx-sqlite", "runtime-tokio-native-tls" ] }
 tokio = { version = "1.37.0", features = ["full"] }

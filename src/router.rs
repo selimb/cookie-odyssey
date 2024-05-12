@@ -1,39 +1,48 @@
-use crate::{journal::routes as journal, server::AppState, storage::routes as storage};
 use app_config::AppConfig;
 use axum::{
-    http::Method,
     routing::{get, on, post, MethodFilter},
     Router,
 };
 
+use crate::journal::routes as journal;
+use crate::server::AppState;
+
 // Idea stolen from https://github.com/jdevries3133/calcount/blob/main/src/routes.rs
 // Type-safe routes!
-pub enum Route {
-    JournalList,
-    JournalNew,
+pub enum Route<'a> {
+    JournalListGet,
+    JournalNewGet,
+    JournalNewPost,
+    JournalDetailGet { slug: Option<&'a str> },
 }
 
-impl Route {
+impl<'a> Route<'a> {
     pub fn as_path(&self) -> String {
         match self {
-            Route::JournalList => "/".into(),
-            Route::JournalNew => "/journals/new".into(),
+            Route::JournalListGet => "/".into(),
+            Route::JournalNewGet => "/new-journal".into(),
+            Route::JournalNewPost => "/new-journal".into(),
+            Route::JournalDetailGet { slug } => match slug {
+                Some(slug) => format!("/journals/{slug}"),
+                None => "/journals/:slug".to_string(),
+            },
         }
     }
 }
 
 pub fn init_router(conf: &AppConfig) -> Router<AppState> {
-    let mut router = Router::new()
-        .route(&Route::JournalList.as_path(), get(journal::journal_list))
+    Router::new()
+        .route(&Route::JournalListGet.as_path(), get(journal::journal_list))
         .route(
-            &Route::JournalNew.as_path(),
-            on(
-                MethodFilter::GET.or(MethodFilter::POST),
-                journal::journal_new,
-            ),
-        );
-    if let app_config::StorageConfig::Local(c) = conf.storage {
-        router = router.nest_service(&c.root_url.0, storage::LocalFileStoreRoute::new(c.root_dir))
-    };
-    router
+            &Route::JournalNewGet.as_path(),
+            get(journal::journal_new_get),
+        )
+        .route(
+            &Route::JournalNewPost.as_path(),
+            post(journal::journal_new_post),
+        )
+        .route(
+            &Route::JournalDetailGet { slug: None }.as_path(),
+            get(journal::journal_detail_get),
+        )
 }
