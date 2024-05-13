@@ -10,15 +10,20 @@ publish = false
 anyhow = { workspace = true }
 app-config = { path = "app_config" }
 axum = "0.7.5"
+axum-login = "0.15.1"
 chrono = { workspace = true }
 entities = { path = "entities" }
 migration = { path = "migration"}
 object_store = { version = "0.10.0", features = ["aws"] }
+password-auth = "1.0.0"
 sea-orm = { workspace = true }
 serde = { workspace = true }
+sqlx = { version = "0.7.4", features = ["runtime-tokio", "tls-native-tls", "sqlite"] }
 tera = { version = "1.19.1" }
 thiserror = { workspace = true }
 tokio = { version = "1.37.0", features = ["full"] }
+tower-sessions = { version = "0.12.2", default-features = false }
+tower-sessions-sqlx-store = { version = "0.12.0", features = ["sqlite"] }
 tracing = { workspace = true }
 tracing-subscriber = { version = "0.3.18" }
 url.workspace = true

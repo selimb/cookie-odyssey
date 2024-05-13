@@ -2,6 +2,9 @@
   "[html]": {
     "editor.defaultFormatter": "vscode.html-language-features",
     "editor.tabSize": 2
-  }
-  // "rust-analyzer.linkedProjects": ["./Cargo.toml", "migration/Cargo.toml"]
+  },
+  "[rust]": {
+    "editor.rulers": [80]
+  },
+  "vim.textwidth": 80
 }

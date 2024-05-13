@@ -22,9 +22,19 @@ impl MigrationTrait for Migration {
                     .col(ColumnDef::new(User::Password).string().not_null())
                     .col(ColumnDef::new(User::FirstName).string().not_null())
                     .col(ColumnDef::new(User::LastName).string().not_null())
-                    .col(ColumnDef::new(User::Approved).boolean().not_null())
-                    .col(ColumnDef::new(User::Admin).boolean().not_null())
-                    .col(ColumnDef::new(User::LastLogin).integer().not_null())
+                    .col(
+                        ColumnDef::new(User::Approved)
+                            .boolean()
+                            .not_null()
+                            .default(Value::Bool(Some(false))),
+                    )
+                    .col(
+                        ColumnDef::new(User::Admin)
+                            .boolean()
+                            .not_null()
+                            .default(Value::Bool(Some(false))),
+                    )
+                    .col(ColumnDef::new(User::LastLogin).integer().null())
                     .to_owned(),
             )
             .await

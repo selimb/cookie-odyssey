@@ -1,6 +1,6 @@
-use app_config::AppConfig;
+
 use axum::{
-    routing::{get, on, post, MethodFilter},
+    routing::{get, post},
     Router,
 };
 
@@ -30,7 +30,7 @@ impl<'a> Route<'a> {
     }
 }
 
-pub fn init_router(conf: &AppConfig) -> Router<AppState> {
+pub fn init_router() -> Router<AppState> {
     Router::new()
         .route(&Route::JournalListGet.as_path(), get(journal::journal_list))
         .route(

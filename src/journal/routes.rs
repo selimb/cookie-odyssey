@@ -1,6 +1,6 @@
 use axum::{
-    extract::{rejection::FormRejection, FromRequest, Path, Request, State},
-    http::{Method, StatusCode},
+    extract::{rejection::FormRejection, Path, State},
+    http::{StatusCode},
     response::{Html, IntoResponse, Redirect, Response},
     Form,
 };
@@ -38,7 +38,7 @@ pub async fn journal_list(State(state): State<AppState>) -> HtmlResult {
         .await?;
     let journals = journals
         .into_iter()
-        .map(|(journal, cover)| JournalListItem {
+        .map(|(journal, _cover)| JournalListItem {
             id: journal.id,
             name: journal.name,
             start_date: journal.start_date,
