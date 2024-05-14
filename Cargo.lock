@@ -624,6 +624,7 @@ dependencies = [
  "axum",
  "axum-login",
  "chrono",
+ "clap",
  "entities",
  "migration",
  "object_store",

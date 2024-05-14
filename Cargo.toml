@@ -12,8 +12,9 @@ app-config = { path = "app_config" }
 axum = "0.7.5"
 axum-login = "0.15.1"
 chrono = { workspace = true }
+clap = { workspace = true }
 entities = { path = "entities" }
-migration = { path = "migration"}
+migration = { path = "migration" }
 object_store = { version = "0.10.0", features = ["aws"] }
 password-auth = "1.0.0"
 sea-orm = { workspace = true }
@@ -21,12 +22,12 @@ serde = { workspace = true }
 sqlx = { version = "0.7.4", features = ["runtime-tokio", "tls-native-tls", "sqlite"] }
 tera = { version = "1.19.1" }
 thiserror = { workspace = true }
-tokio = { version = "1.37.0", features = ["full"] }
+tokio = { workspace = true }
 tower-sessions = { version = "0.12.2", default-features = false }
 tower-sessions-sqlx-store = { version = "0.12.0", features = ["sqlite"] }
 tracing = { workspace = true }
-tracing-subscriber = { version = "0.3.18" }
-url.workspace = true
+tracing-subscriber = { workspace = true }
+url = { workspace = true }
 
 [workspace]
 members = ["app_config", "entities", "migration"]
@@ -34,8 +35,11 @@ members = ["app_config", "entities", "migration"]
 [workspace.dependencies]
 anyhow = "1.0.83"
 chrono = { version = "0.4.38", features = ["std", "clock"] }
+clap = { version = "4.5.4", features = ["derive"] }
 sea-orm = { version = "0.12.15", features = ["sqlx-sqlite", "runtime-tokio-native-tls", "macros", "with-uuid"] }
 serde = { version = "1.0.200", features = ["derive"] }
 thiserror = { version = "1.0.60" }
+tokio = { version = "1.37.0", features = ["full"] }
 tracing = { version = "0.1.40" }
+tracing-subscriber = { version = "0.3.18" }
 url = { version = "2.5.0", features = ["serde"] }

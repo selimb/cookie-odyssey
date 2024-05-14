@@ -1,6 +1,6 @@
 use axum::{
     extract::{rejection::FormRejection, Path, State},
-    http::{StatusCode},
+    http::StatusCode,
     response::{Html, IntoResponse, Redirect, Response},
     Form,
 };

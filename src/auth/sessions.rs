@@ -5,8 +5,6 @@ use axum_login::tower_sessions::ExpiredDeletion;
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 use serde::Deserialize;
 
-
-
 const DELETE_EXPIRED_INTERVAL: chrono::Duration = chrono::Duration::hours(1);
 const COOKIE_MAX_AGE: tower_sessions::cookie::time::Duration =
     tower_sessions::cookie::time::Duration::days(365);
@@ -15,10 +13,7 @@ pub async fn init_session(
     sqlite_pool: &sqlx::SqlitePool,
     db: &sea_orm::DatabaseConnection,
 ) -> Result<
-    (
-        axum_login::AuthManagerLayer<AuthBackend, tower_sessions_sqlx_store::SqliteStore>,
-        tokio::task::JoinHandle<Result<(), tower_sessions::session_store::Error>>,
-    ),
+    axum_login::AuthManagerLayer<AuthBackend, tower_sessions_sqlx_store::SqliteStore>,
     anyhow::Error,
 > {
     let session_store = tower_sessions_sqlx_store::SqliteStore::new(sqlite_pool.clone());
@@ -27,7 +22,8 @@ pub async fn init_session(
         .await
         .context("Failed to apply migrations for session store")?;
 
-    let deletion_task = tokio::task::spawn(
+    // TODO: Do we need to track and/or clean this up?
+    let _deletion_task = tokio::task::spawn(
         session_store
             .clone()
             .continuously_delete_expired(DELETE_EXPIRED_INTERVAL.to_std().unwrap()),
@@ -44,7 +40,7 @@ pub async fn init_session(
     let auth_backend = AuthBackend { db: db.clone() };
     let auth_layer = axum_login::AuthManagerLayerBuilder::new(auth_backend, session_layer).build();
 
-    Ok((auth_layer, deletion_task))
+    Ok(auth_layer)
 }
 
 #[derive(Clone, Debug)]
@@ -85,6 +81,12 @@ pub enum AuthError {
 #[derive(Debug, Clone)]
 pub struct AuthBackend {
     db: sea_orm::DatabaseConnection,
+}
+
+impl AuthBackend {
+    pub fn hash_password(password: String) -> String {
+        password_auth::generate_hash(&password)
+    }
 }
 
 #[async_trait]

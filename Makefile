@@ -24,4 +24,4 @@ local-s3:
 	localstack/localstack:s3-latest
 
 dev:
-	cargo watch --quiet --watch src --watch templates --exec "run"
+	cargo watch --quiet --watch src --watch templates --exec "run server"

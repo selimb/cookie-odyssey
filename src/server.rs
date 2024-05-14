@@ -32,7 +32,7 @@ impl AppState {
 pub async fn mkapp(conf: &AppConfig) -> Result<Router, anyhow::Error> {
     // FIXME customize 404
     let (state, pool) = init_state(conf).await?;
-    let (auth_layer, _deletion_task) = init_session(&pool, &state.db)
+    let auth_layer = init_session(&pool, &state.db)
         .await
         .context("Failed to initialize session store")?;
 
@@ -54,7 +54,7 @@ async fn init_state(conf: &AppConfig) -> Result<(AppState, sqlx::SqlitePool), an
     Ok((state, pool))
 }
 
-async fn init_db(
+pub async fn init_db(
     conf: &AppConfig,
 ) -> Result<(sqlx::SqlitePool, sea_orm::DatabaseConnection), anyhow::Error> {
     let db_url = conf.database_url();
