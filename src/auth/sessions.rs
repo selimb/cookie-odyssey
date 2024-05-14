@@ -76,6 +76,9 @@ pub enum AuthError {
 
     #[error(transparent)]
     TaskJoin(#[from] tokio::task::JoinError),
+
+    #[error("approval is still pending")]
+    PendingApproval,
 }
 
 #[derive(Debug, Clone)]

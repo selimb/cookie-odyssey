@@ -11,40 +11,43 @@ use crate::server::AppState;
 // Idea stolen from https://github.com/jdevries3133/calcount/blob/main/src/routes.rs
 // Type-safe routes!
 pub enum Route<'a> {
-    LoginGet,
-    LoginPost,
-    RegisterGet,
-    RegisterPost,
     ForgotPasswordGet,
     ForgotPasswordPost,
+    JournalDetailGet { slug: Option<&'a str> },
     JournalListGet,
     JournalNewGet,
     JournalNewPost,
-    JournalDetailGet { slug: Option<&'a str> },
+    LoginGet,
+    LoginPost,
+    LogoutPost,
+    RegisterGet,
+    RegisterPost,
 }
 
 impl<'a> Route<'a> {
     pub fn as_path(&self) -> String {
         match self {
-            Route::LoginGet => "/login".into(),
-            Route::LoginPost => "/login".into(),
-            Route::RegisterGet => "/register".into(),
-            Route::RegisterPost => "/register".into(),
             Route::ForgotPasswordGet => "/forgot-password".into(),
             Route::ForgotPasswordPost => "/forgot-password".into(),
-            Route::JournalListGet => "/".into(),
-            Route::JournalNewGet => "/new-journal".into(),
-            Route::JournalNewPost => "/new-journal".into(),
             Route::JournalDetailGet { slug } => match slug {
                 Some(slug) => format!("/journals/{slug}"),
                 None => "/journals/:slug".to_string(),
             },
+            Route::JournalListGet => "/".into(),
+            Route::JournalNewGet => "/new-journal".into(),
+            Route::JournalNewPost => "/new-journal".into(),
+            Route::LoginGet => "/login".into(),
+            Route::LoginPost => "/login".into(),
+            Route::LogoutPost => "/logout".into(),
+            Route::RegisterGet => "/register".into(),
+            Route::RegisterPost => "/register".into(),
         }
     }
 }
 
 fn get_protected_routes() -> Router<AppState> {
     Router::new()
+        .route(&Route::LogoutPost.as_path(), get(auth::logout_post))
         .route(&Route::JournalListGet.as_path(), get(journal::journal_list))
         .route(
             &Route::JournalNewGet.as_path(),

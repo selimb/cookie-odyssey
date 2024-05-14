@@ -1,7 +1,6 @@
 use axum::{
     extract::{rejection::FormRejection, Path, State},
-    http::StatusCode,
-    response::{Html, IntoResponse, Redirect, Response},
+    response::{IntoResponse, Redirect, Response},
     Form,
 };
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder};
@@ -14,7 +13,7 @@ use crate::{
     server::AppState,
     utils::{
         date_utils::date_to_sqlite,
-        route_utils::{HtmlResult, RouteError},
+        route_utils::{FormError, HtmlResult, RouteError},
     },
 };
 use entities::{prelude::*, *};
@@ -74,13 +73,10 @@ pub async fn journal_new_post(
     state: State<AppState>,
     form: Result<Form<JournalNew>, FormRejection>,
 ) -> Result<Response, RouteError> {
-    let mut context = Context::new();
     match form {
         Err(err) => {
-            context.insert("error", &err.body_text());
-            let body = state.tera.render("common/form_error.html", &context)?;
-            let resp = (StatusCode::UNPROCESSABLE_ENTITY, Html(body)).into_response();
-            Ok(resp)
+            let resp = FormError::from(err).render(&state)?;
+            Ok(resp.into_response())
         }
         Ok(form) => {
             let data = journal::ActiveModel {

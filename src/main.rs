@@ -1,7 +1,8 @@
 use anyhow::Context;
 use clap::{Parser, Subcommand};
 use cookie_odyssey::{auth::sessions::AuthBackend, server::init_db};
-use sea_orm::EntityTrait;
+use entities::user;
+use sea_orm::{sea_query::OnConflict, EntityTrait};
 use tracing::info;
 
 use app_config::{load_env, AppConfig};
@@ -74,7 +75,7 @@ impl Cli {
         let app = cookie_odyssey::server::mkapp(&self.conf).await?;
 
         // FIXME Run migrations
-        let port = 3000;
+        let port = 4444;
         let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{port}"))
             .await
             .context("Failed to bind TCP listener")?;
@@ -102,7 +103,9 @@ impl Cli {
             first_name: sea_orm::ActiveValue::Set(first_name.to_string()),
             last_name: sea_orm::ActiveValue::Set(last_name.to_string()),
             password: sea_orm::ActiveValue::Set(password_hash),
-            ..Default::default()
+            approved: sea_orm::ActiveValue::Set(true),
+            first_login: sea_orm::ActiveValue::NotSet,
+            id: sea_orm::ActiveValue::NotSet,
         };
         entities::user::Entity::insert(user_data)
             .exec(&db)

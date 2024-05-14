@@ -5,8 +5,8 @@
 <section class="section">
   <div class="container">
     <h1 class="title">New Journal</h1>
-    <form hx-post="" hx-target-422="#errors" hx-swap="outerHTML">
-      {{ common::form_error(error="", id="errors") }}
+    <form hx-post="">
+      {{ common::form_error(error="") }}
       <div class="field">
         <label class="label">Name</label>
         <div class="control">

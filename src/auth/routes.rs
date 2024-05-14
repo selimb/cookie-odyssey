@@ -1,21 +1,20 @@
-use anyhow::Context as _;
+use anyhow::{anyhow, Context as _};
 use axum::{
     extract::{rejection::FormRejection, Query, State},
-    http::{HeaderMap, StatusCode},
     response::{Html, IntoResponse, Redirect, Response},
     Form,
 };
 use axum_login::tower_sessions::Session;
-use sea_orm::EntityTrait;
+use sea_orm::{sea_query::OnConflict, ColumnTrait, EntityTrait, QueryFilter};
 use serde::Deserialize;
 use tera::Context;
 
-use super::sessions::{AuthSession, Credentials};
+use super::sessions::{AuthBackend, AuthError, AuthSession, Credentials};
 use crate::{
     auth::sessions::AuthUser,
     router::Route,
     server::AppState,
-    utils::route_utils::{HtmlResult, RouteError},
+    utils::route_utils::{FormError, HtmlResult, RouteError},
 };
 use entities::{prelude::*, *};
 
@@ -42,44 +41,27 @@ pub async fn login_post(
     state: State<AppState>,
     form: Result<Form<Credentials>, FormRejection>,
 ) -> Result<Response, RouteError> {
-    let mut context = Context::new();
     let creds = match form {
         Ok(form) => form.0,
         Err(err) => {
-            context.insert("error", &err.body_text());
-            let body = state.tera.render("common/form_error.html", &context)?;
-            let resp = (
-                StatusCode::UNPROCESSABLE_ENTITY,
-                [
-                    ("HX-Reswap", &"outerHTML".to_string()),
-                    ("HX-Retarget", &"#errors".to_string()),
-                ],
-                Html(body),
-            )
-                .into_response();
-            return Ok(resp);
+            let resp = FormError::from(err).render(&state)?;
+            return Ok(resp.into_response());
         }
     };
     let next = creds.next.clone();
-    let user: AuthUser = match auth_session
-        .authenticate(creds)
-        .await
-        .context("auth error")?
-    {
-        Some(user) => user,
-        None => {
-            context.insert("error", "Invalid credentials");
-            let body = state.tera.render("common/form_error.html", &context)?;
-            let resp = (
-                StatusCode::UNAUTHORIZED,
-                [
-                    ("HX-Reswap", &"outerHTML".to_string()),
-                    ("HX-Retarget", &"#errors".to_string()),
-                ],
-                Html(body),
-            )
-                .into_response();
-            return Ok(resp);
+    let user: AuthUser = match auth_session.authenticate(creds).await {
+        Ok(Some(user)) => user,
+        Ok(None) => {
+            let resp = FormError::new("Invalid credentials").render(&state)?;
+            return Ok(resp.into_response());
+        }
+        Err(axum_login::Error::Backend(AuthError::PendingApproval)) => {
+            let resp =
+                FormError::new("Calm down, your approval is still pending").render(&state)?;
+            return Ok(resp.into_response());
+        }
+        Err(err) => {
+            return Err(anyhow!(err).context("Failed to authenticate").into());
         }
     };
 
@@ -88,7 +70,7 @@ pub async fn login_post(
         .await
         .context("Failed to log into the session")?;
 
-    // xxx confetti
+    // FIXME confetti
     if user.0.first_login {
         let data = user::ActiveModel {
             id: sea_orm::ActiveValue::Set(user.0.id),
@@ -103,19 +85,104 @@ pub async fn login_post(
             .context("Failed to update the session")?;
     }
 
-    // let resp = ([("HX-Redirect", &next)], Redirect::to(&next)).into_response();
     let resp = [("HX-Redirect", &next)].into_response();
     Ok(resp)
 }
 
 pub async fn register_get(state: State<AppState>) -> HtmlResult {
-    let mut context = Context::new();
+    let context = Context::new();
     let resp = state.render("register.html", &context)?;
     Ok(resp)
 }
 
-pub async fn register_post(state: State<AppState>) -> HtmlResult {
-    todo!()
+#[derive(Deserialize, Clone, Debug)]
+pub struct Register {
+    email: String,
+    first_name: String,
+    last_name: String,
+    password: String,
+}
+
+pub async fn register_post(
+    state: State<AppState>,
+    form: Result<Form<Register>, FormRejection>,
+) -> Result<Response, RouteError> {
+    let form = match form {
+        Ok(form) => form.0,
+        Err(err) => {
+            let resp = FormError::from(err).render(&state)?;
+            return Ok(resp.into_response());
+        }
+    };
+
+    let email = AuthBackend::normalize_email(form.email);
+    let data = user::ActiveModel {
+        admin: sea_orm::ActiveValue::Set(false),
+        email: sea_orm::ActiveValue::Set(email.clone()),
+        password: sea_orm::ActiveValue::Set(AuthBackend::hash_password(form.password)),
+        first_name: sea_orm::ActiveValue::Set(form.first_name),
+        last_name: sea_orm::ActiveValue::Set(form.last_name),
+        approved: sea_orm::ActiveValue::Set(false),
+        first_login: sea_orm::ActiveValue::NotSet,
+        id: sea_orm::ActiveValue::NotSet,
+    };
+    let result = User::insert(data)
+        .on_conflict(
+            OnConflict::column(user::Column::Email)
+                .do_nothing()
+                .to_owned(),
+        )
+        .do_nothing()
+        .exec(&state.db)
+        .await?;
+    match result {
+        sea_orm::TryInsertResult::Conflicted => {
+            let user = User::find()
+                .filter(user::Column::Email.eq(email))
+                .one(&state.db)
+                .await?;
+            match user {
+                Some(u) => {
+                    if u.approved {
+                        let resp = FormError::new("You're already registered!").render(&state);
+                        return Ok(resp.into_response());
+                    } else {
+                        let resp = FormError::new(
+                            "You're already registered, but haven't been approved yet.",
+                        )
+                        .render(&state);
+                        return Ok(resp.into_response());
+                    }
+                }
+                None => {
+                    return Err(RouteError::Other(
+                        "Expected to find user since there is a conflict".to_string(),
+                    ));
+                }
+            }
+        }
+        sea_orm::TryInsertResult::Empty => {}
+        sea_orm::TryInsertResult::Inserted(_) => {}
+    };
+
+    let body = r#"
+    <div class="notification is-success">
+        You have been been registered!
+        <br />
+        You will be able to login once you have been approved.
+    </div>
+    "#;
+    let resp = (
+        [("HX-Swap", "outerHTML"), ("HX-Target", "this")],
+        Html(body),
+    );
+    Ok(resp.into_response())
+}
+
+pub async fn logout_post(mut auth_session: AuthSession) -> Result<Response, RouteError> {
+    auth_session.logout().await.context("Failed to logout")?;
+
+    Ok(Redirect::to("/").into_response())
 }
 
 pub async fn forgot_password_get(state: State<AppState>) -> HtmlResult {
