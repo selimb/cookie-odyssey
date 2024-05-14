@@ -34,7 +34,12 @@ impl MigrationTrait for Migration {
                             .not_null()
                             .default(Value::Bool(Some(false))),
                     )
-                    .col(ColumnDef::new(User::LastLogin).integer().null())
+                    .col(
+                        ColumnDef::new(User::FirstLogin)
+                            .boolean()
+                            .not_null()
+                            .default(Value::Bool(Some(true))),
+                    )
                     .to_owned(),
             )
             .await
@@ -59,5 +64,5 @@ enum User {
     // Would use a Role enum, but SQLite doesn't have enums, and the sea-orm
     // docs on enums is confusing.
     Admin,
-    LastLogin,
+    FirstLogin,
 }

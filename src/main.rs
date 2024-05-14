@@ -91,14 +91,14 @@ impl Cli {
         let name = std::process::Command::new("git")
             .args(["config", "user.name"])
             .check_output()?;
-        let (first_name, last_name) = name.split_once(" ").context("Weird name")?;
+        let (first_name, last_name) = name.trim().split_once(" ").context("Weird name")?;
         let password = "pass";
 
         let (_, db) = init_db(&self.conf).await?;
         let password_hash = AuthBackend::hash_password(password.to_string());
         let user_data = entities::user::ActiveModel {
             admin: sea_orm::ActiveValue::Set(true),
-            email: sea_orm::ActiveValue::Set(email.clone()),
+            email: sea_orm::ActiveValue::Set(AuthBackend::normalize_email(&email)),
             first_name: sea_orm::ActiveValue::Set(first_name.to_string()),
             last_name: sea_orm::ActiveValue::Set(last_name.to_string()),
             password: sea_orm::ActiveValue::Set(password_hash),
@@ -109,7 +109,7 @@ impl Cli {
             .await
             .context("Failed to insert user")?;
 
-        info!("Created user: {}", email);
+        info!("Created user: '{}'", email);
         Ok(())
     }
 }

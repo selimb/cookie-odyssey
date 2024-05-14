@@ -66,7 +66,7 @@ impl axum_login::AuthUser for AuthUser {
 pub struct Credentials {
     pub email: String,
     pub password: String,
-    pub next: Option<String>,
+    pub next: String,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -87,6 +87,10 @@ impl AuthBackend {
     pub fn hash_password(password: String) -> String {
         password_auth::generate_hash(&password)
     }
+
+    pub fn normalize_email(email: impl AsRef<str>) -> String {
+        email.as_ref().trim().to_lowercase()
+    }
 }
 
 #[async_trait]
@@ -100,7 +104,7 @@ impl axum_login::AuthnBackend for AuthBackend {
         creds: Self::Credentials,
     ) -> Result<Option<Self::User>, Self::Error> {
         let user = entities::user::Entity::find()
-            .filter(entities::user::Column::Email.eq(creds.email))
+            .filter(entities::user::Column::Email.eq(Self::normalize_email(&creds.email)))
             .one(&self.db)
             .await?;
 
@@ -111,8 +115,8 @@ impl axum_login::AuthnBackend for AuthBackend {
             Some(user) => AuthUser(user),
         };
 
-        tokio::task::spawn_blocking(|| {
-            match password_auth::verify_password(creds.password, &user.0.password) {
+        tokio::task::spawn_blocking(move || {
+            match password_auth::verify_password(creds.password.trim(), &user.0.password) {
                 Ok(_) => Ok(Some(user)),
                 Err(_) => Ok(None),
             }

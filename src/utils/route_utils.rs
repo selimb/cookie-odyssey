@@ -1,3 +1,4 @@
+use app_config::AppEnv;
 use axum::{
     http::StatusCode,
     response::{Html, IntoResponse},
@@ -14,16 +15,20 @@ pub enum RouteError {
     DbError(#[from] sea_orm::DbErr),
     #[error("axum error: {0:?}")]
     AxumError(#[from] axum::http::Error),
-    #[error("something went wrong: {0:?}")]
+    #[error("anyhow error: {0:?}")]
     Anyhow(#[from] anyhow::Error),
+    #[error("other: {0:?}")]
+    Other(String),
 }
 
 impl IntoResponse for RouteError {
     fn into_response(self) -> axum::response::Response {
         error!("Unhandled error: {self:#?}");
-        // FIXME test
-        // FIXME improve
-        (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()).into_response()
+        let body = match AppEnv::is_dev() {
+            true => "Something went wrong".to_string(),
+            false => self.to_string(),
+        };
+        (StatusCode::INTERNAL_SERVER_ERROR, body).into_response()
     }
 }
 

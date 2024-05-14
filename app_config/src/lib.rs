@@ -2,6 +2,7 @@ use anyhow::Context;
 use config::{Config, Environment};
 use serde::Deserialize;
 use std::env::current_dir;
+use strum::EnumString;
 use thiserror::Error;
 use tracing::{info, warn};
 
@@ -19,13 +20,38 @@ pub fn load_env() -> Result<(), anyhow::Error> {
     Ok(())
 }
 
+#[derive(Clone, Debug, Deserialize, EnumString, PartialEq)]
+pub enum AppEnv {
+    Dev,
+    Prod,
+}
+
+impl Default for AppEnv {
+    fn default() -> Self {
+        AppEnv::Prod
+    }
+}
+
+impl AppEnv {
+    pub fn get() -> &'static Self {
+        APP_ENV.get_or_init(|| AppEnv::default())
+    }
+
+    pub fn is_dev() -> bool {
+        AppEnv::get() == &AppEnv::Dev
+    }
+}
+
+static APP_ENV: std::sync::OnceLock<AppEnv> = std::sync::OnceLock::new();
+
 #[derive(Clone, Debug, Deserialize)]
 pub struct AppConfig {
     pub database_file: String,
     pub storage: StorageConfig,
+    #[serde(default)]
+    pub env: AppEnv,
 }
 
-/// S3/R2 config
 #[derive(Clone, Debug, Deserialize)]
 pub struct StorageConfig {
     pub access_key_id: String,
@@ -47,6 +73,9 @@ impl AppConfig {
             .expect("Failed to setup config builder.");
 
         let conf = conf_builder.try_deserialize::<AppConfig>()?;
+        APP_ENV
+            .set(conf.env.clone())
+            .expect("Failed to set APP_ENV");
         Ok(conf)
     }
 

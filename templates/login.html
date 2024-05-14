@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% import "common/macros.html" as common %}
+
+{# No navbar here #}
+{% block navbar %}
+{% endblock navbar %}
+
+{% block content %}
+<section class="section">
+  <div class="container">
+    <div class="columns is-centered">
+      <div class="column is-half">
+        <h1 class="title">Login</h1>
+        <form hx-post="">
+          {{ common::form_error(error="", id="errors") }}
+          <div class="field">
+            <label class="label">Email</label>
+            <div class="control">
+              <input name="email" class="input" type="email" required>
+            </div>
+          </div>
+          <div class="field">
+            <label class="label">Password</label>
+            <div class="control">
+              <input name="password" class="input" type="password" required>
+            </div>
+          </div>
+          <input type="hidden" name="next" value="{{ next }}">
+          <div class="control">
+            <button class="button is-primary">Login</button>
+          </div>
+        </form>
+        <div class="has-text-centered m-3">
+          <a href="{{ href_forgot_password }}">Forgot Password?</a>
+        </div>
+        <div class="has-text-centered m-3">
+          <a href="{{ href_register }}">Register</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock content %}

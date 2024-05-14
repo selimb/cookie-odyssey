@@ -15,6 +15,8 @@ orm-gen:
 		--output-dir entities/src \
 		--database-url sqlite://data/db.sqlite \
 		--with-serde serialize \
+		--ignore-tables seaql_migrations \
+		--ignore-tables tower_sessions \
 		--lib
 
 local-s3:

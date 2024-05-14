@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Context;
-use app_config::AppConfig;
+use app_config::{AppConfig, AppEnv};
 use axum::{response::Html, Router};
 use tera::Tera;
 
@@ -16,6 +16,7 @@ pub struct AppState {
     pub tera: Arc<Tera>,
     pub db: sea_orm::DatabaseConnection,
     pub storage: Arc<FileStore>,
+    pub dev: bool,
 }
 
 impl AppState {
@@ -50,6 +51,7 @@ async fn init_state(conf: &AppConfig) -> Result<(AppState, sqlx::SqlitePool), an
         tera: Arc::new(tera),
         db,
         storage,
+        dev: conf.env == AppEnv::Dev,
     };
     Ok((state, pool))
 }

@@ -1,0 +1,62 @@
+<div class="navbar" role="navigation" aria-label="main navigation">
+  <div class="navbar-brand">
+    <a href="/" class="navbar-item is-uppercase has-text-weight-bold">
+      Cookie Odyssey
+    </a>
+    <a class="navbar-item"></a>
+    <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="navbar">
+      <span aria-hidden="true"></span>
+      <span aria-hidden="true"></span>
+      <span aria-hidden="true"></span>
+      <span aria-hidden="true"></span>
+    </a>
+  </div>
+  <div class="navbar-menu" id="navbar">
+
+    <div class="navbar-start">
+      <a class="navbar-item" href="/">
+        Home
+      </a>
+
+      {# FIXME protect #}
+      <a class="navbar-item" href="/new-journal">
+        New
+      </a>
+
+      {# FIXME link #}
+      <a class="navbar-item">
+        Notifications
+      </a>
+    </div>
+    <div class="navbar-end">
+      <div class="navbar-item">
+        {{ theme::theme_toggle() }}
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+  // FIXME: Bundle
+  // Copied from https://bulma.io/documentation/components/navbar/
+  document.addEventListener('DOMContentLoaded', () => {
+
+    // Get all "navbar-burger" elements
+    const $navbarBurgers = Array.prototype.slice.call(document.querySelectorAll('.navbar-burger'), 0);
+
+    // Add a click event on each of them
+    $navbarBurgers.forEach(el => {
+      el.addEventListener('click', () => {
+
+        // Get the target from the "data-target" attribute
+        const target = el.dataset.target;
+        const $target = document.getElementById(target);
+
+        // Toggle the "is-active" class on both the "navbar-burger" and the "navbar-menu"
+        el.classList.toggle('is-active');
+        $target.classList.toggle('is-active');
+
+      });
+    });
+
+  });
+</script>

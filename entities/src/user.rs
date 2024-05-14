@@ -15,7 +15,7 @@ pub struct Model {
     pub last_name: String,
     pub approved: bool,
     pub admin: bool,
-    pub last_login: Option<i32>,
+    pub first_login: bool,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

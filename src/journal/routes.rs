@@ -52,7 +52,6 @@ pub async fn journal_list(State(state): State<AppState>) -> HtmlResult {
         .collect::<Vec<_>>();
     let mut context = Context::new();
     context.insert("journals", &journals);
-    println!("context: {context:#?}");
     let resp = state.render("journal_list.html", &context)?;
     Ok(resp)
 }
