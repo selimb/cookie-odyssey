@@ -1,13 +1,12 @@
 use app_config::AppEnv;
 use axum::{
-    extract::rejection::FormRejection,
     http::StatusCode,
     response::{Html, IntoResponse},
 };
 use thiserror::Error;
 use tracing::error;
 
-use crate::server::AppState;
+use crate::AppState;
 
 // Inspired by https://users.rust-lang.org/t/need-help-with-askama-axum-error-handling/108791/7
 #[derive(Error, Debug)]
@@ -74,5 +73,22 @@ impl FormError {
 impl From<axum::extract::rejection::FormRejection> for FormError {
     fn from(value: axum::extract::rejection::FormRejection) -> Self {
         FormError::new(&value.body_text())
+    }
+}
+
+pub struct PermissionDenied {
+    msg: String,
+}
+
+impl PermissionDenied {
+    pub fn new(msg: impl Into<String>) -> Self {
+        Self { msg: msg.into() }
+    }
+
+    pub fn render(&self, state: &AppState) -> Result<impl IntoResponse, RouteError> {
+        let mut context = tera::Context::new();
+        context.insert("msg", &self.msg);
+        let body = state.tera.render("oops.html", &context)?;
+        Ok(Html(body))
     }
 }

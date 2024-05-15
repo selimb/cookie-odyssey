@@ -11,10 +11,8 @@ use tera::Context;
 
 use super::sessions::{AuthBackend, AuthError, AuthSession, Credentials};
 use crate::{
-    auth::sessions::AuthUser,
-    router::Route,
-    server::AppState,
     utils::route_utils::{FormError, HtmlResult, RouteError},
+    AppState, AuthUser, Route, Templ,
 };
 use entities::{prelude::*, *};
 
@@ -23,15 +21,12 @@ pub struct NextUrl {
     next: Option<String>,
 }
 
-pub async fn login_get(
-    state: State<AppState>,
-    Query(NextUrl { next }): Query<NextUrl>,
-) -> HtmlResult {
+pub async fn login_get(templ: Templ, Query(NextUrl { next }): Query<NextUrl>) -> HtmlResult {
     let mut context = Context::new();
     context.insert("href_register", &Route::RegisterGet.as_path());
     context.insert("href_forgot_password", &Route::ForgotPasswordGet.as_path());
     context.insert("next", &next.unwrap_or("/".to_string()));
-    let resp = state.render("login.html", &context)?;
+    let resp = templ.render_ctx("login.html", context)?;
     Ok(resp)
 }
 
@@ -89,9 +84,8 @@ pub async fn login_post(
     Ok(resp)
 }
 
-pub async fn register_get(state: State<AppState>) -> HtmlResult {
-    let context = Context::new();
-    let resp = state.render("register.html", &context)?;
+pub async fn register_get(templ: Templ) -> HtmlResult {
+    let resp = templ.render("register.html")?;
     Ok(resp)
 }
 
@@ -185,10 +179,10 @@ pub async fn logout_post(mut auth_session: AuthSession) -> Result<Response, Rout
     Ok(Redirect::to("/").into_response())
 }
 
-pub async fn forgot_password_get(state: State<AppState>) -> HtmlResult {
+pub async fn forgot_password_get(_state: State<AppState>) -> HtmlResult {
     todo!()
 }
 
-pub async fn forgot_password_post(state: State<AppState>) -> HtmlResult {
+pub async fn forgot_password_post(_state: State<AppState>) -> HtmlResult {
     todo!()
 }

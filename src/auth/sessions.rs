@@ -3,7 +3,7 @@ use anyhow::Context;
 use axum::async_trait;
 use axum_login::tower_sessions::ExpiredDeletion;
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 const DELETE_EXPIRED_INTERVAL: chrono::Duration = chrono::Duration::hours(1);
 const COOKIE_MAX_AGE: tower_sessions::cookie::time::Duration =
@@ -43,7 +43,7 @@ pub async fn init_session(
     Ok(auth_layer)
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct AuthUser(pub entities::user::Model);
 
 impl axum_login::AuthUser for AuthUser {

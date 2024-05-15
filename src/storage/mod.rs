@@ -22,9 +22,7 @@ pub fn init_storage(conf: &AppConfig) -> Result<Arc<FileStore>, anyhow::Error> {
     Ok(Arc::new(FileStore { client }))
 }
 
-/// Unfortunately can't just have a `dyn object_store::ObjectStore`, because that
-/// doesn't let us use the [object_store::signer::Signer] trait :/, since only some
-/// object stores implement it.
+#[derive(Debug)]
 pub struct FileStore {
     client: object_store::aws::AmazonS3,
 }

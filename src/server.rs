@@ -1,34 +1,18 @@
-use std::sync::Arc;
+use std::{sync::Arc};
 
 use anyhow::Context;
 use app_config::{AppConfig, AppEnv};
-use axum::{response::Html, Router};
-use tera::Tera;
+use axum::{
+    Router,
+};
+
 
 use crate::{
     auth::sessions::init_session,
-    storage::{init_storage, FileStore},
+    state::AppState,
+    storage::{init_storage},
     template_engine::init_templates,
 };
-
-#[derive(Clone)]
-pub struct AppState {
-    pub tera: Arc<Tera>,
-    pub db: sea_orm::DatabaseConnection,
-    pub storage: Arc<FileStore>,
-    pub dev: bool,
-}
-
-impl AppState {
-    pub fn render(
-        &self,
-        template_name: &str,
-        context: &tera::Context,
-    ) -> Result<Html<String>, tera::Error> {
-        let s = self.tera.render(template_name, context)?;
-        Ok(Html(s))
-    }
-}
 
 pub async fn mkapp(conf: &AppConfig) -> Result<Router, anyhow::Error> {
     // FIXME customize 404

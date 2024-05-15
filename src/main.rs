@@ -1,8 +1,7 @@
 use anyhow::Context;
 use clap::{Parser, Subcommand};
 use cookie_odyssey::{auth::sessions::AuthBackend, server::init_db};
-use entities::user;
-use sea_orm::{sea_query::OnConflict, EntityTrait};
+use sea_orm::EntityTrait;
 use tracing::info;
 
 use app_config::{load_env, AppConfig};

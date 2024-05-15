@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% import "common/macros.html" as common %}
+
+{% block content %}
+<section class="section">
+  <div class="container">
+    <div class="notification is-danger">
+      {{ msg }}
+    </div>
+  </div>
+</section>
+{% endblock content %}

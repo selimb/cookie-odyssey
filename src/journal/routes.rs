@@ -9,12 +9,11 @@ use tera::Context;
 use url::Url;
 
 use crate::{
-    router::Route,
-    server::AppState,
     utils::{
         date_utils::date_to_sqlite,
         route_utils::{FormError, HtmlResult, RouteError},
     },
+    AppState, Route, Templ,
 };
 use entities::{prelude::*, *};
 
@@ -29,7 +28,7 @@ struct JournalListItem {
 }
 
 // FIXME auth
-pub async fn journal_list(State(state): State<AppState>) -> HtmlResult {
+pub async fn journal_list(State(state): State<AppState>, templ: Templ) -> HtmlResult {
     let journals = Journal::find()
         .find_also_related(File)
         .order_by_desc(journal::Column::StartDate)
@@ -51,7 +50,7 @@ pub async fn journal_list(State(state): State<AppState>) -> HtmlResult {
         .collect::<Vec<_>>();
     let mut context = Context::new();
     context.insert("journals", &journals);
-    let resp = state.render("journal_list.html", &context)?;
+    let resp = templ.render_ctx("journal_list.html", context)?;
     Ok(resp)
 }
 
@@ -63,9 +62,8 @@ pub struct JournalNew {
     pub end_date: Option<chrono::NaiveDate>,
 }
 
-pub async fn journal_new_get(State(state): State<AppState>) -> HtmlResult {
-    let context = Context::new();
-    let resp = state.render("journal_new.html", &context)?;
+pub async fn journal_new_get(templ: Templ) -> HtmlResult {
+    let resp = templ.render("journal_new.html")?;
     Ok(resp)
 }
 
@@ -93,13 +91,17 @@ pub async fn journal_new_post(
     }
 }
 
-pub async fn journal_detail_get(state: State<AppState>, Path(slug): Path<String>) -> HtmlResult {
+pub async fn journal_detail_get(
+    state: State<AppState>,
+    templ: Templ,
+    Path(slug): Path<String>,
+) -> HtmlResult {
     let mut context = Context::new();
     let journal = Journal::find()
         .filter(journal::Column::Slug.eq(slug))
         .one(&state.db)
         .await?;
     context.insert("journal", &journal);
-    let resp = state.render("journal_detail.html", &context)?;
+    let resp = templ.render_ctx("journal_detail.html", context)?;
     Ok(resp)
 }

@@ -6,7 +6,7 @@ use axum_login::login_required;
 
 use crate::auth::{routes as auth, sessions::AuthBackend};
 use crate::journal::routes as journal;
-use crate::server::AppState;
+use crate::AppState;
 
 // Idea stolen from https://github.com/jdevries3133/calcount/blob/main/src/routes.rs
 // Type-safe routes!
