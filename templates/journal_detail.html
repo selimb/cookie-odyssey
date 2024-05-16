@@ -3,14 +3,35 @@
 
 {% block content %}
 <section class="section">
-  {% if journal %}
   <div class="container">
-    {{ journal.name }}
+    {% if journal %}
+    <h1 class="title">{{ journal.name }}</h1>
+    <div class="level">
+      <div class="level-left is-fullwidth-mobile">
+        {% if user.admin %}
+        <button class="button is-primary is-fullwidth-mobile">New Entry</button>
+        {% endif %}
+      </div>
+      <div class="level-right">
+        <div class="is-flex gap-1">
+          <div>
+            <button class="button">View Map</button>
+          </div>
+          <div>
+            <button class="button">View All</button>
+          </div>
+          <div>
+            {# FIXME #}
+            <button class="button">Export</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% else %}
+    <div class="notification is-danger">
+      Oops! Could not find this journal.
+    </div>
+    {% endif %}
   </div>
-  {% else %}
-  <div class="notification is-danger">
-    Oops! Could not find this journal.
-  </div>
-  {% endif %}
 </section>
 {% endblock content %}
