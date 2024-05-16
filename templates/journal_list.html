@@ -4,14 +4,14 @@
 {% block content %}
 <section class="section">
   <div class="container">
+    <div class="level">
+      <div class="level-left"></div>
+      <div class="level-right is-fullwidth-mobile">
+        <a class="button is-primary is-fullwidth-mobile" href="{{ href_new }}">New</a>
+      </div>
+    </div>
     {% for journal in journals %}
     <div class="card">
-      <div class="card-image">
-        {# FIXME #}
-        <figure class="image is-4by3">
-          <img src="https://bulma.io/assets/images/placeholders/1280x960.png" alt="Placeholder image" />
-        </figure>
-      </div>
       <div class="card-content">
         <div class="title">
           <a href="{{ journal.href }}">

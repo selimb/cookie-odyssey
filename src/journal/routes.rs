@@ -44,7 +44,7 @@ pub async fn journal_list(State(state): State<AppState>, templ: Templ) -> RouteR
             .as_path(),
         })
         .collect::<Vec<_>>();
-    let ctx = context! { journals };
+    let ctx = context! { journals, href_new => Route::JournalNewGet.as_path() };
     let html = templ.render_ctx("journal_list.html", ctx)?;
     Ok(html.into_response())
 }

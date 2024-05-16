@@ -7,10 +7,13 @@
   {% include "common/head.html" %}
 </head>
 
-<body hx-ext="response-targets">
+{# NOTE: We need response-targets, otherwise HTMX completely ignores error responses! #}
+
+<body hx-boost="true" hx-ext="response-targets">
   {% include "common/navbar.html" %}
   {% block content %} {% endblock content %}
   {% include "common/toast.html" %}
+  {% include "common/styles.html" %}
 </body>
 
 </html>

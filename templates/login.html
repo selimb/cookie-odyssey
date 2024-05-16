@@ -7,7 +7,7 @@
     <div class="columns is-centered">
       <div class="column is-half">
         <h1 class="title">Login</h1>
-        <form hx-post="">
+        <form hx-post="" hx-boost="false">
           {{ common.form_error(error="") }}
           <div class="field">
             <label class="label">Email</label>
@@ -23,6 +23,7 @@
           </div>
           <input type="hidden" name="next" value="{{ next }}">
           <div class="control">
+            {# FIXME loading! #}
             <button class="button is-primary">Login</button>
           </div>
         </form>

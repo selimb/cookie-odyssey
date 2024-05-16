@@ -5,7 +5,7 @@
 <section class="section">
   <div class="container">
     <h1 class="title">New Journal</h1>
-    <form hx-post="">
+    <form hx-post="" hx-boost="false">
       {{ common.form_error(error="") }}
       <div class="field">
         <label class="label">Name</label>
@@ -32,6 +32,7 @@
         </div>
       </div>
       <div class="control">
+        {# FIXME loading! #}
         <button class="button is-primary">Create</button>
       </div>
     </form>

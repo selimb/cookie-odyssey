@@ -73,14 +73,12 @@ impl From<AuthUser> for TemplContextUser {
 
 #[derive(Debug, Serialize)]
 pub struct TemplContextLinks {
-    admin_journal_new: String,
     admin_users_list: String,
     logout: String,
     notifications: String,
 }
 
 static TEMPL_CONTEXT_LINKS: Lazy<TemplContextLinks> = Lazy::new(|| TemplContextLinks {
-    admin_journal_new: Route::JournalNewGet.as_path(),
     admin_users_list: Route::UserListGet.as_path(),
     logout: Route::LogoutPost.as_path(),
     notifications: Route::NotificationsListGet.as_path(),
