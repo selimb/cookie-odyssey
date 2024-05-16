@@ -13,8 +13,7 @@ use once_cell::sync::Lazy;
 use serde::Serialize;
 
 use crate::{
-    utils::{date_utils::date_from_sqlite, route_utils::RouteError},
-    AppState, AuthSession, AuthUser, Route,
+    utils::date_utils::date_from_sqlite, AppState, AuthSession, AuthUser, Route, RouteError,
 };
 
 pub type TemplateEngine = minijinja::Environment<'static>;

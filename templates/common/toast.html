@@ -1,7 +1,7 @@
 {#
-Inspired by https://themurph.hashnode.dev/go-beyond-the-basics-mastering-toast-notifications-with-go-and-htmx
-Styling inspired by https://flowbite.com/docs/components/toast/
+Idea inspired by https://themurph.hashnode.dev/go-beyond-the-basics-mastering-toast-notifications-with-go-and-htmx
 #}
+
 <div id="toast-container">
   <template>
     <div class="toast notification" role="alert">
@@ -11,39 +11,48 @@ Styling inspired by https://flowbite.com/docs/components/toast/
   </template>
 </div>
 
-
 <script>
   (() => {
+    // Keep in sync with [toast]
+    const TOAST_EVT = "app.toast";
     /**
-     * @param className {string}
-     * @param message {string}
+     * @typedef Toast
+     * @type {object}
+     * @property {string} message
+     * @property {string} class
+     * @property {boolean} auto_close
      */
-    function makeToast(className, message) {
+
+    /** @param data {Toast} */
+    function makeToast(data) {
       /** @type {DocumentFragment} */
       const clone = $template.content.cloneNode(true);
       const $toast = clone.querySelector("div");
-      $toast.classList.add(className);
-      $toast.querySelector(".toast--text").textContent = message;
+      $toast.classList.add(data.class);
+      $toast.querySelector(".toast--text").textContent = data.message;
       return $toast;
     }
 
     function handleToastEvent(evt) {
-      const { class: className, message } = evt.detail;
-      const $toast = makeToast(className, message);
+      /** @type {Toast} */
+      const detail = evt.detail;
+      const $toast = makeToast(evt.detail);
       $toastContainer.appendChild($toast);
 
       const remove = () => {
         $toast.remove();
       };
 
-      setTimeout(remove, 5000);
+
+      if (detail.auto_close) {
+        setTimeout(remove, 5000);
+      }
       $toast.querySelector("button").addEventListener("click", remove);
     }
 
-    const $toastContainer = document.getElementById("toast-container")
+    const $toastContainer = document.getElementById("toast-container");
     const $template = $toastContainer.getElementsByTagName("template")[0];
-    // [toast]
-    document.body.addEventListener("app.toast", handleToastEvent)
+    document.body.addEventListener("app.toast", handleToastEvent);
   })()
 </script>
 

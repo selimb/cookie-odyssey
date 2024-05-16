@@ -9,11 +9,7 @@ use serde::{Deserialize, Serialize};
 use url::Url;
 
 use crate::{
-    utils::{
-        date_utils::date_to_sqlite,
-        route_utils::{FormError, RouteError},
-    },
-    AppState, Route, RouteResult, Templ,
+    utils::date_utils::date_to_sqlite, AppState, FormError, Route, RouteError, RouteResult, Templ,
 };
 use entities::{prelude::*, *};
 
