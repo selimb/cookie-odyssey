@@ -5,15 +5,14 @@ use axum::{
     Form,
 };
 use axum_login::tower_sessions::Session;
-use sea_orm::{sea_query::OnConflict, ColumnTrait, EntityTrait, QueryFilter};
+use minijinja::context;
+use sea_orm::{
+    sea_query::OnConflict, ActiveValue, ColumnTrait, EntityTrait, QueryFilter, QueryOrder,
+};
 use serde::Deserialize;
-use tera::Context;
 
 use super::sessions::{AuthBackend, AuthError, AuthSession, Credentials};
-use crate::{
-    utils::route_utils::{FormError, HtmlResult, RouteError},
-    AppState, AuthUser, Route, Templ,
-};
+use crate::{AppState, AuthUser, FormError, Route, RouteError, RouteResult, Templ, Toast};
 use entities::{prelude::*, *};
 
 #[derive(Debug, Deserialize)]
@@ -21,13 +20,14 @@ pub struct NextUrl {
     next: Option<String>,
 }
 
-pub async fn login_get(templ: Templ, Query(NextUrl { next }): Query<NextUrl>) -> HtmlResult {
-    let mut context = Context::new();
-    context.insert("href_register", &Route::RegisterGet.as_path());
-    context.insert("href_forgot_password", &Route::ForgotPasswordGet.as_path());
-    context.insert("next", &next.unwrap_or("/".to_string()));
-    let resp = templ.render_ctx("login.html", context)?;
-    Ok(resp)
+pub async fn login_get(templ: Templ, Query(NextUrl { next }): Query<NextUrl>) -> RouteResult {
+    let ctx = context! {
+        href_register => &Route::RegisterGet.as_path(),
+        href_forgot_password => &Route::ForgotPasswordGet.as_path(),
+        next => &next.unwrap_or("/".to_string()),
+    };
+    let html = templ.render_ctx("login.html", ctx)?;
+    Ok(html.into_response())
 }
 
 pub async fn login_post(
@@ -35,7 +35,7 @@ pub async fn login_post(
     session: Session,
     state: State<AppState>,
     form: Result<Form<Credentials>, FormRejection>,
-) -> Result<Response, RouteError> {
+) -> RouteResult {
     let creds = match form {
         Ok(form) => form.0,
         Err(err) => {
@@ -84,9 +84,9 @@ pub async fn login_post(
     Ok(resp)
 }
 
-pub async fn register_get(templ: Templ) -> HtmlResult {
-    let resp = templ.render("register.html")?;
-    Ok(resp)
+pub async fn register_get(templ: Templ) -> RouteResult {
+    let html = templ.render("register.html")?;
+    Ok(html.into_response())
 }
 
 #[derive(Deserialize, Clone, Debug)]
@@ -100,7 +100,7 @@ pub struct Register {
 pub async fn register_post(
     state: State<AppState>,
     form: Result<Form<Register>, FormRejection>,
-) -> Result<Response, RouteError> {
+) -> RouteResult {
     let form = match form {
         Ok(form) => form.0,
         Err(err) => {
@@ -173,16 +173,90 @@ pub async fn register_post(
     Ok(resp.into_response())
 }
 
-pub async fn logout_post(mut auth_session: AuthSession) -> Result<Response, RouteError> {
+pub async fn logout_post(mut auth_session: AuthSession) -> RouteResult {
     auth_session.logout().await.context("Failed to logout")?;
 
     Ok(Redirect::to("/").into_response())
 }
 
-pub async fn forgot_password_get(_state: State<AppState>) -> HtmlResult {
+pub async fn forgot_password_get(_state: State<AppState>) -> RouteResult {
     todo!()
 }
 
-pub async fn forgot_password_post(_state: State<AppState>) -> HtmlResult {
+pub async fn forgot_password_post(_state: State<AppState>) -> RouteResult {
     todo!()
+}
+
+async fn render_user_list(
+    state: &AppState,
+    templ: &Templ,
+    partial: bool,
+) -> Result<Html<String>, RouteError> {
+    let users = User::find()
+        .order_by_asc(user::Column::Email)
+        .all(&state.db)
+        .await?;
+
+    let ctx = context! {
+        users,
+        href_approve => Route::UserListApprovePost.as_path(),
+        href_delete => Route::UserListDeletePost.as_path()
+    };
+    if partial {
+        templ.render_ctx_fragment("user_list.html", ctx, "frag_user_list")
+    } else {
+        templ.render_ctx("user_list.html", ctx)
+    }
+}
+
+pub async fn user_list_get(state: State<AppState>, templ: Templ) -> RouteResult {
+    let html = render_user_list(&state, &templ, false).await?;
+    Ok(html.into_response())
+}
+
+#[derive(Deserialize, Debug)]
+pub struct UserApprovePost {
+    user_id: i32,
+}
+
+pub async fn user_approve_post(
+    state: State<AppState>,
+    templ: Templ,
+    form: Form<UserApprovePost>,
+) -> Result<Response, Toast> {
+    let r: RouteResult = async {
+        let data = user::ActiveModel {
+            id: ActiveValue::Set(form.user_id),
+            approved: ActiveValue::Set(true),
+            ..Default::default()
+        };
+        User::update(data).exec(&state.db).await?;
+        let html = render_user_list(&state, &templ, true).await?;
+        let toast = Toast::success("User has been approved");
+        let resp = (toast.into_headers(), html);
+        Ok(resp.into_response())
+    }
+    .await;
+    r.map_err(Toast::error)
+}
+
+#[derive(Deserialize, Debug)]
+pub struct UserDeletePost {
+    user_id: i32,
+}
+
+pub async fn user_delete_post(
+    state: State<AppState>,
+    templ: Templ,
+    form: Form<UserDeletePost>,
+) -> Result<Response, Toast> {
+    let r: RouteResult = async {
+        User::delete_by_id(form.user_id).exec(&state.db).await?;
+        let html = render_user_list(&state, &templ, true).await?;
+        let toast = Toast::success("User has been deleted");
+        let resp = (toast.into_headers(), html);
+        Ok(resp.into_response())
+    }
+    .await;
+    r.map_err(Toast::error)
 }

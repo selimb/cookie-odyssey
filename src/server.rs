@@ -1,16 +1,11 @@
-use std::{sync::Arc};
+use std::sync::Arc;
 
 use anyhow::Context;
 use app_config::{AppConfig, AppEnv};
-use axum::{
-    Router,
-};
-
+use axum::Router;
 
 use crate::{
-    auth::sessions::init_session,
-    state::AppState,
-    storage::{init_storage},
+    auth::sessions::init_session, state::AppState, storage::init_storage,
     template_engine::init_templates,
 };
 
@@ -28,11 +23,11 @@ pub async fn mkapp(conf: &AppConfig) -> Result<Router, anyhow::Error> {
 }
 
 async fn init_state(conf: &AppConfig) -> Result<(AppState, sqlx::SqlitePool), anyhow::Error> {
-    let tera = init_templates()?;
+    let template_engine = init_templates();
     let (pool, db) = init_db(conf).await?;
     let storage = init_storage(conf).context("Failed to initialize file storage")?;
     let state = AppState {
-        tera: Arc::new(tera),
+        template_engine: Arc::new(template_engine),
         db,
         storage,
         dev: conf.env == AppEnv::Dev,

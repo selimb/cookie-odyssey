@@ -1,8 +1,11 @@
 use app_config::AppEnv;
 use axum::{
     http::StatusCode,
-    response::{Html, IntoResponse},
+    response::{Html, IntoResponse, Response},
 };
+use minijinja::context;
+use serde::Serialize;
+use serde_json::json;
 use thiserror::Error;
 use tracing::error;
 
@@ -12,7 +15,7 @@ use crate::AppState;
 #[derive(Error, Debug)]
 pub enum RouteError {
     #[error("template error: {0:?}")]
-    TemplateError(#[from] tera::Error),
+    TemplateError(#[from] minijinja::Error),
     #[error("db error: {0:?}")]
     DbError(#[from] sea_orm::DbErr),
     #[error("axum error: {0:?}")]
@@ -34,7 +37,7 @@ impl IntoResponse for RouteError {
     }
 }
 
-pub type HtmlResult = Result<Html<String>, RouteError>;
+pub type RouteResult = Result<Response, RouteError>;
 
 pub struct FormError {
     msg: String,
@@ -55,9 +58,12 @@ impl FormError {
     }
 
     pub fn render(&self, state: &AppState) -> Result<impl IntoResponse, RouteError> {
-        let mut context = tera::Context::new();
-        context.insert("error", &self.msg);
-        let body = state.tera.render("common/form_error.html", &context)?;
+        let ctx = context! { error => &self.msg };
+        let body = state
+            .template_engine
+            .get_template("common/form_error.html")?
+            .render(ctx)?;
+
         Ok((
             self.status,
             [
@@ -76,19 +82,51 @@ impl From<axum::extract::rejection::FormRejection> for FormError {
     }
 }
 
-pub struct PermissionDenied {
-    msg: String,
+#[derive(Serialize)]
+pub struct Toast {
+    message: String,
+    class: String,
 }
 
-impl PermissionDenied {
-    pub fn new(msg: impl Into<String>) -> Self {
-        Self { msg: msg.into() }
+impl Toast {
+    pub fn error(err: impl std::error::Error) -> Self {
+        error!("Unhandled error: {err:#?}");
+        let message = if AppEnv::is_dev() {
+            err.to_string()
+        } else {
+            "Something went wrong".to_string()
+        };
+        Self::danger(message)
     }
 
-    pub fn render(&self, state: &AppState) -> Result<impl IntoResponse, RouteError> {
-        let mut context = tera::Context::new();
-        context.insert("msg", &self.msg);
-        let body = state.tera.render("oops.html", &context)?;
-        Ok(Html(body))
+    pub fn danger(message: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+            class: "is-danger".into(),
+        }
+    }
+
+    pub fn success(message: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+            class: "is-success".into(),
+        }
+    }
+
+    pub fn into_headers(&self) -> [(String, String); 1] {
+        // See [toast] for the handler.
+        let trigger = json!({
+            "app.toast": &self,
+        })
+        .to_string();
+
+        [("HX-Trigger".to_string(), trigger)]
+    }
+}
+
+impl IntoResponse for Toast {
+    fn into_response(self) -> Response {
+        let resp = (StatusCode::OK, [("HX-Reswap", "None")], self.into_headers());
+        resp.into_response()
     }
 }

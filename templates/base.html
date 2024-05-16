@@ -8,12 +8,9 @@
 </head>
 
 <body hx-ext="response-targets">
-  {% block navbar %}
   {% include "common/navbar.html" %}
-  {% endblock navbar %}
   {% block content %} {% endblock content %}
-  {% block js %}
-  {% endblock js %}
+  {% include "common/toast.html" %}
 </body>
 
 </html>

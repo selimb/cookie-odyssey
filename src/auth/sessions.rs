@@ -115,7 +115,13 @@ impl axum_login::AuthnBackend for AuthBackend {
             None => {
                 return Ok(None);
             }
-            Some(user) => AuthUser(user),
+            Some(user) => {
+                if user.approved {
+                    AuthUser(user)
+                } else {
+                    return Err(AuthError::PendingApproval);
+                }
+            }
         };
 
         tokio::task::spawn_blocking(move || {

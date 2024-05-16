@@ -1,0 +1,79 @@
+{#
+Inspired by https://themurph.hashnode.dev/go-beyond-the-basics-mastering-toast-notifications-with-go-and-htmx
+Styling inspired by https://flowbite.com/docs/components/toast/
+#}
+<div id="toast-container">
+  <template>
+    <div class="toast notification" role="alert">
+      <div class="toast--text"></div>
+      <button type="button" class="delete">
+    </div>
+  </template>
+</div>
+
+
+<script>
+  (() => {
+    /**
+     * @param className {string}
+     * @param message {string}
+     */
+    function makeToast(className, message) {
+      /** @type {DocumentFragment} */
+      const clone = $template.content.cloneNode(true);
+      const $toast = clone.querySelector("div");
+      $toast.classList.add(className);
+      $toast.querySelector(".toast--text").textContent = message;
+      return $toast;
+    }
+
+    function handleToastEvent(evt) {
+      const { class: className, message } = evt.detail;
+      const $toast = makeToast(className, message);
+      $toastContainer.appendChild($toast);
+
+      const remove = () => {
+        $toast.remove();
+      };
+
+      setTimeout(remove, 5000);
+      $toast.querySelector("button").addEventListener("click", remove);
+    }
+
+    const $toastContainer = document.getElementById("toast-container")
+    const $template = $toastContainer.getElementsByTagName("template")[0];
+    // [toast]
+    document.body.addEventListener("app.toast", handleToastEvent)
+  })()
+</script>
+
+<style>
+  #toast-container {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    margin: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  @media only screen and (max-width: 768px) {
+    #toast-container {
+      bottom: unset;
+      /* Below navbar */
+      top: 48px;
+      left: 0;
+    }
+  }
+
+  #toast-container .toast {
+    /* Override bulma's margin-bottom. */
+    margin-bottom: 0;
+  }
+
+  #toast-container .toast--text {
+    /* Enough space for the X not to be on top of text */
+    padding-right: 24px;
+  }
+</style>

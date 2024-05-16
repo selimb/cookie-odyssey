@@ -1,10 +1,6 @@
 {% extends "base.html" %}
 {% import "common/macros.html" as common %}
 
-{# No navbar here #}
-{% block navbar %}
-{% endblock navbar %}
-
 {% block content %}
 <section class="section">
   <div class="container">
@@ -12,7 +8,7 @@
       <div class="column is-half">
         <h1 class="title">Register</h1>
         <form hx-post="">
-          {{ common::form_error(error="") }}
+          {{ common.form_error(error="") }}
           <div class="field">
             <label class="label">Email</label>
             <div class="control">

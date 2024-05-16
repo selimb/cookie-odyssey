@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="section">
+  <div class="container">
+    <div style="overflow-x: auto;">
+      <table class="table is-bordered is-fullwidth">
+        <thead>
+          <tr>
+            <th>Email</th>
+            <th>First Name</th>
+            <th>Last Name</th>
+            <th>Approved</th>
+            <th>Admin</th>
+            <th></th>
+          </tr>
+        </thead>
+        {% block frag_user_list %}
+        <tbody id="user_list">
+          {% for user in users %}
+          <tr>
+            <td>{{ user.email }}</td>
+            <td>{{ user.first_name }}</td>
+            <td>{{ user.last_name }}</td>
+            <td class="{% if not user.approved %}is-warning{% endif %}">{{ user.approved }}</th>
+            <td class="{% if user.admin %}is-info{% endif %}">{{ user.admin }}</th>
+            <td class="nowrap">
+              {% if not user.approved %}
+              <button type="button" class="button is-success is-small mx-1" hx-post="{{ href_approve }}"
+                hx-swap="outerHTML" hx-target="#user_list" hx-vars="user_id: {{ user.id }}">
+                Approve
+              </button>
+              {% endif %}
+              <button type="button" class="button is-danger is-small mx-1" hx-post="{{ href_delete }}"
+                hx-swap="outerHTML" hx-target="#user_list" hx-vars="user_id: {{ user.id }}"
+                hx-confirm="Are you sure you wish to delete: {{ user.email }} ?">
+                Delete
+              </button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        {% endblock %}
+      </table>
+    </div>
+    <style>
+      #user_list td {
+        vertical-align: middle;
+      }
+
+      #user_list .nowrap {
+        white-space: nowrap;
+      }
+    </style>
+  </div>
+</section>
+{% endblock content %}

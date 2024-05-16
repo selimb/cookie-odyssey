@@ -18,3 +18,9 @@ https://www.youtube.com/watch?v=3GObi93tjZI) has a neat UX, although I don't thi
 anything though.
 
 https://pen.so/2023/07/31/asset-pipeline-for-rust/ looks good.
+
+## HTMX
+
+Is this really supposed to be easier than Next.js + TRPC, or even API + SPA?
+You still need to add routes for every little action, and the routes are now tightly coupled
+with where they're called from...

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::ops::Deref;
 use std::sync::Arc;
 
 use anyhow::{anyhow, Context};
@@ -8,80 +8,131 @@ use axum::{
     response::Html,
     RequestPartsExt,
 };
+use minijinja::context;
+use once_cell::sync::Lazy;
 use serde::Serialize;
-use tera::{Tera, Value};
 
 use crate::{
     utils::{date_utils::date_from_sqlite, route_utils::RouteError},
-    AppState, AuthSession, AuthUser,
+    AppState, AuthSession, AuthUser, Route,
 };
 
-pub fn init_templates() -> Result<Tera, anyhow::Error> {
-    let mut tera = Tera::new("templates/**/*.html").context("Failed to initialize tera: {err}")?;
-    tera.register_filter("date", date);
-    Ok(tera)
+pub type TemplateEngine = minijinja::Environment<'static>;
+
+pub fn init_templates() -> TemplateEngine {
+    let mut env = minijinja::Environment::new();
+    env.set_loader(minijinja::path_loader("templates"));
+    env.set_undefined_behavior(minijinja::UndefinedBehavior::Strict);
+    env.add_filter("date", date);
+    env
 }
 
-type FilterArgs = HashMap<String, Value>;
-type FilterResult = tera::Result<Value>;
-
-fn date(value: &Value, _: &FilterArgs) -> FilterResult {
-    match value {
-        Value::String(s) => {
-            match date_from_sqlite(s) {
-                // [datefmt] Match `Intl.DateTimeFormat("en-US", {dateStyle: "long"}`:
-                // ```
-                // Intl.DateTimeFormat("en-US", {dateStyle: "long"}).format(d)
-                // "December 31, 2022"
-                // ```
-                Ok(date) => Ok(date.format("%B %e, %Y").to_string().into()),
-                // FIXME test
-                Err(_) => Ok("--".into()),
-            }
-        }
-        // FIXME const
-        _ => Ok("--".into()),
-    }
-}
-
-/// Convenient axum extractor for grabbing all common template context variables.
-pub struct Templ {
-    tera: Arc<Tera>,
-    user: Option<AuthUser>,
-}
-
-impl Templ {
-    pub fn render(&self, template_name: impl AsRef<str>) -> Result<Html<String>, RouteError> {
-        self.render_ctx(template_name, Default::default())
-    }
-
-    pub fn render_ctx(
-        &self,
-        template_name: impl AsRef<str>,
-        context: tera::Context,
-    ) -> Result<Html<String>, RouteError> {
-        let mut ctx = self.build_default_ctx()?;
-        ctx.extend(context);
-        let body = self.tera.render(template_name.as_ref(), &ctx)?;
-        Ok(Html(body))
-    }
-
-    fn build_default_ctx(&self) -> Result<tera::Context, tera::Error> {
-        let ctx = TemplContext {
-            user: &self.user,
-            first_login: match &self.user {
-                Some(user) => user.0.first_login,
-                None => false,
-            },
-        };
-        tera::Context::from_serialize(ctx)
+fn date(value: String) -> String {
+    match date_from_sqlite(value) {
+        // [datefmt] Match `Intl.DateTimeFormat("en-US", {dateStyle: "long"}`:
+        // ```
+        // Intl.DateTimeFormat("en-US", {dateStyle: "long"}).format(d)
+        // "December 31, 2022"
+        // ```
+        Ok(date) => date.format("%B %e, %Y").to_string().into(),
+        // FIXME test
+        Err(_) => "--".into(),
     }
 }
 
 #[derive(Debug, Serialize)]
 struct TemplContext<'a> {
-    user: &'a Option<AuthUser>,
+    user: &'a Option<TemplContextUser>,
+    links: &'a TemplContextLinks,
+}
+
+/// Mostly like AuthUser/User, but without `password`, and maybe with some extra
+/// fields eventually (like the profile image URL).
+#[derive(Debug, Serialize)]
+struct TemplContextUser {
+    admin: bool,
+    email: String,
     first_login: bool,
+    first_name: String,
+    id: i32,
+    last_name: String,
+}
+
+impl From<AuthUser> for TemplContextUser {
+    fn from(value: AuthUser) -> Self {
+        let user = value.0;
+        Self {
+            admin: user.admin,
+            email: user.email,
+            first_login: user.first_login,
+            first_name: user.first_name,
+            id: user.id,
+            last_name: user.last_name,
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+pub struct TemplContextLinks {
+    admin_journal_new: String,
+    admin_users_list: String,
+    logout: String,
+    notifications: String,
+}
+
+static TEMPL_CONTEXT_LINKS: Lazy<TemplContextLinks> = Lazy::new(|| TemplContextLinks {
+    admin_journal_new: Route::JournalNewGet.as_path(),
+    admin_users_list: Route::UserListGet.as_path(),
+    logout: Route::LogoutPost.as_path(),
+    notifications: Route::NotificationsListGet.as_path(),
+});
+
+/// Template renderer, which is pre-populated with common context variables (see [TemplContext]).
+/// Implements an axum extractor.
+pub struct Templ {
+    engine: Arc<TemplateEngine>,
+    user: Option<TemplContextUser>,
+}
+
+impl Templ {
+    pub fn render(&self, template_name: impl AsRef<str>) -> Result<Html<String>, RouteError> {
+        self.render_ctx(template_name, context! {})
+    }
+
+    pub fn render_ctx(
+        &self,
+        template_name: impl AsRef<str>,
+        ctx: minijinja::Value,
+    ) -> Result<Html<String>, RouteError> {
+        let context = context! { ..self.build_default_ctx(), ..ctx };
+        let body = self
+            .engine
+            .get_template(template_name.as_ref())?
+            .render(context)?;
+        Ok(Html(body))
+    }
+
+    pub fn render_ctx_fragment(
+        &self,
+        template_name: impl AsRef<str>,
+        ctx: minijinja::Value,
+        block_name: impl AsRef<str>,
+    ) -> Result<Html<String>, RouteError> {
+        let context = context! { ..self.build_default_ctx(), ..ctx };
+        let body = self
+            .engine
+            .get_template(template_name.as_ref())?
+            .eval_to_state(context)?
+            .render_block(block_name.as_ref())?;
+        Ok(Html(body))
+    }
+
+    fn build_default_ctx(&self) -> minijinja::Value {
+        context! {
+            user => self.user,
+            links => TEMPL_CONTEXT_LINKS.deref(),
+        }
+    }
 }
 
 #[async_trait]
@@ -107,8 +158,8 @@ where
         let user = session.user;
 
         Ok(Self {
-            tera: app_state.tera.clone(),
-            user,
+            engine: app_state.template_engine,
+            user: user.map(TemplContextUser::from),
         })
     }
 }

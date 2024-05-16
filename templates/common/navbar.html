@@ -1,3 +1,5 @@
+{% import "common/theme.html" as theme %}
+
 <div class="navbar" role="navigation" aria-label="main navigation">
   <div class="navbar-brand">
     <a href="/" class="navbar-item is-uppercase has-text-weight-bold">
@@ -12,31 +14,40 @@
     </a>
   </div>
   <div class="navbar-menu" id="navbar">
-
     <div class="navbar-start">
+      {% if user %}
       <a class="navbar-item" href="/">
         Home
       </a>
 
-      {# FIXME protect #}
-      <a class="navbar-item" href="/new-journal">
-        New
-      </a>
-
       {# FIXME link #}
-      <a class="navbar-item">
+      <a class="navbar-item" href="{{ links.notifications }}">
         Notifications
       </a>
+
+      {% if user.admin %}
+      <a class="navbar-item" href="{{ links.admin_journal_new }}">
+        New
+      </a>
+      <a class="navbar-item" href="{{ links.admin_users_list }}">
+        Users
+      </a>
+      {% endif %}
+
+      {% endif %}
+
     </div>
     <div class="navbar-end">
       <div class="navbar-item">
-        {{ theme::theme_toggle() }}
+        {{ theme.theme_toggle() }}
       </div>
+      {% if user %}
       <div class="navbar-item">
-        <a class="button is-light" href="/logout">
+        <a class="button is-light" href="{{ links.logout }}">
           Logout
         </a>
       </div>
+      {% endif %}
     </div>
   </div>
 </div>

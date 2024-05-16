@@ -3,13 +3,12 @@ use axum::{
     extract::{FromRef, FromRequestParts},
 };
 use std::{convert::Infallible, sync::Arc};
-use tera::Tera;
 
-use crate::storage::FileStore;
+use crate::{storage::FileStore, template_engine::TemplateEngine};
 
 #[derive(Debug, Clone)]
 pub struct AppState {
-    pub tera: Arc<Tera>,
+    pub template_engine: Arc<TemplateEngine>,
     pub db: sea_orm::DatabaseConnection,
     pub storage: Arc<FileStore>,
     pub dev: bool,

@@ -3,17 +3,17 @@ use axum::{
     response::{IntoResponse, Redirect, Response},
     Form,
 };
+use minijinja::context;
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder};
 use serde::{Deserialize, Serialize};
-use tera::Context;
 use url::Url;
 
 use crate::{
     utils::{
         date_utils::date_to_sqlite,
-        route_utils::{FormError, HtmlResult, RouteError},
+        route_utils::{FormError, RouteError},
     },
-    AppState, Route, Templ,
+    AppState, Route, RouteResult, Templ,
 };
 use entities::{prelude::*, *};
 
@@ -28,7 +28,7 @@ struct JournalListItem {
 }
 
 // FIXME auth
-pub async fn journal_list(State(state): State<AppState>, templ: Templ) -> HtmlResult {
+pub async fn journal_list(State(state): State<AppState>, templ: Templ) -> RouteResult {
     let journals = Journal::find()
         .find_also_related(File)
         .order_by_desc(journal::Column::StartDate)
@@ -48,10 +48,9 @@ pub async fn journal_list(State(state): State<AppState>, templ: Templ) -> HtmlRe
             .as_path(),
         })
         .collect::<Vec<_>>();
-    let mut context = Context::new();
-    context.insert("journals", &journals);
-    let resp = templ.render_ctx("journal_list.html", context)?;
-    Ok(resp)
+    let ctx = context! { journals };
+    let html = templ.render_ctx("journal_list.html", ctx)?;
+    Ok(html.into_response())
 }
 
 #[derive(Deserialize, Debug)]
@@ -62,9 +61,9 @@ pub struct JournalNew {
     pub end_date: Option<chrono::NaiveDate>,
 }
 
-pub async fn journal_new_get(templ: Templ) -> HtmlResult {
-    let resp = templ.render("journal_new.html")?;
-    Ok(resp)
+pub async fn journal_new_get(templ: Templ) -> RouteResult {
+    let html = templ.render("journal_new.html")?;
+    Ok(html.into_response())
 }
 
 pub async fn journal_new_post(
@@ -95,13 +94,12 @@ pub async fn journal_detail_get(
     state: State<AppState>,
     templ: Templ,
     Path(slug): Path<String>,
-) -> HtmlResult {
-    let mut context = Context::new();
+) -> RouteResult {
     let journal = Journal::find()
         .filter(journal::Column::Slug.eq(slug))
         .one(&state.db)
         .await?;
-    context.insert("journal", &journal);
-    let resp = templ.render_ctx("journal_detail.html", context)?;
-    Ok(resp)
+    let ctx = context! { journal };
+    let html = templ.render_ctx("journal_detail.html", ctx)?;
+    Ok(html.into_response())
 }

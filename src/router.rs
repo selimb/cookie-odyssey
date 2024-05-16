@@ -2,9 +2,9 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use axum_login::login_required;
+use axum_login::{login_required, permission_required};
 
-use crate::auth::{routes as auth, sessions::AuthBackend};
+use crate::auth::{perms::Permission, routes as auth, sessions::AuthBackend};
 use crate::journal::routes as journal;
 use crate::AppState;
 
@@ -20,8 +20,13 @@ pub enum Route<'a> {
     LoginGet,
     LoginPost,
     LogoutPost,
+    // FIXME route
+    NotificationsListGet,
     RegisterGet,
     RegisterPost,
+    UserListGet,
+    UserListApprovePost,
+    UserListDeletePost,
 }
 
 impl<'a> Route<'a> {
@@ -39,10 +44,20 @@ impl<'a> Route<'a> {
             Route::LoginGet => "/login".into(),
             Route::LoginPost => "/login".into(),
             Route::LogoutPost => "/logout".into(),
+            Route::NotificationsListGet => "/notifications".into(),
             Route::RegisterGet => "/register".into(),
             Route::RegisterPost => "/register".into(),
+            Route::UserListGet => "/users".into(),
+            Route::UserListApprovePost => "/hx/users/approve".into(),
+            Route::UserListDeletePost => "/hx/users/delete".into(),
         }
     }
+}
+
+macro_rules! admin {
+    ($route:expr) => {
+        $route.route_layer(permission_required!(AuthBackend, Permission::Admin))
+    };
 }
 
 fn get_protected_routes() -> Router<AppState> {
@@ -50,16 +65,28 @@ fn get_protected_routes() -> Router<AppState> {
         .route(&Route::LogoutPost.as_path(), get(auth::logout_post))
         .route(&Route::JournalListGet.as_path(), get(journal::journal_list))
         .route(
+            &Route::JournalDetailGet { slug: None }.as_path(),
+            get(journal::journal_detail_get),
+        )
+        .route(
             &Route::JournalNewGet.as_path(),
-            get(journal::journal_new_get),
+            admin!(get(journal::journal_new_get)),
         )
         .route(
             &Route::JournalNewPost.as_path(),
-            post(journal::journal_new_post),
+            admin!(post(journal::journal_new_post)),
         )
         .route(
-            &Route::JournalDetailGet { slug: None }.as_path(),
-            get(journal::journal_detail_get),
+            &Route::UserListGet.as_path(),
+            admin!(get(auth::user_list_get)),
+        )
+        .route(
+            &Route::UserListApprovePost.as_path(),
+            admin!(post(auth::user_approve_post)),
+        )
+        .route(
+            &Route::UserListDeletePost.as_path(),
+            admin!(post(auth::user_delete_post)),
         )
 }
 
