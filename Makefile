@@ -27,3 +27,9 @@ local-s3:
 
 dev:
 	cargo watch --quiet --watch src --watch templates --exec "run server"
+
+tw:
+	bun run tailwindcss -i ./assets/app.css -o ./assets/dist/app.css
+
+tw-dev:
+	bun run tailwindcss -i ./assets/app.css -o ./assets/dist/app.css --watch

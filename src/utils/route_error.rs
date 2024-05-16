@@ -26,8 +26,8 @@ impl IntoResponse for RouteError {
     fn into_response(self) -> axum::response::Response {
         error!("Unhandled error: {self:#?}");
         let body = match AppEnv::is_dev() {
-            false => self.to_string(),
-            true => "Something went wrong".to_string(),
+            true => self.to_string(),
+            false => "Something went wrong".to_string(),
         };
         (StatusCode::INTERNAL_SERVER_ERROR, body).into_response()
     }
