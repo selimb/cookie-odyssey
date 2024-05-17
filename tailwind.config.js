@@ -1,7 +1,7 @@
 /** @type {import('daisyui').Config} */
 const daisyui = {
   // [daisyui-themes]
-  themes: ["sunset", "pastel"],
+  themes: ["night", "pastel"],
 };
 
 /** @type {import('tailwindcss').Config} */

@@ -1,8 +1,8 @@
 {# https://daisyui.com/components/theme-controller/#theme-controller-using-a-swap #}
 {% macro theme_toggle() %}
-<label class="swap swap-rotate btn btn-ghost btn-circle" title="">
+<label class="swap swap-rotate btn btn-ghost btn-circle" title="" id="theme-toggle">
   <!-- this hidden checkbox controls the state -->
-  <input type="checkbox" class="theme-controller" value="" onClick="onThemeChange()" />
+  <input type="checkbox" onClick="onThemeChange()" />
 
   <!-- sun icon -->
   <svg class="swap-off fill-current w-6 h-6" width="24" height="24" xmlns="http://www.w3.org/2000/svg"
@@ -24,12 +24,11 @@
 <script>
   var onThemeChange = (() => {
     const storageKey = 'theme-preference'
-    const $themeController = document.querySelector(".theme-controller");
-    const $themeControllerLabel = $themeController?.parentElement;
+    const $themeToggle = document.querySelector("#theme-toggle")
     // Matches [daisyui-themes]
     const themeMap = {
       light: "pastel",
-      dark: "sunset",
+      dark: "night",
     };
     const themeTitleMap = {
       light: "Toggle dark mode",
@@ -61,8 +60,9 @@
     }
 
     const reflectPreference = () => {
-      $themeController.value = themeMap[theme.value];
-      $themeControllerLabel.title = themeTitleMap[theme.value];
+      document.documentElement.setAttribute("data-theme", themeMap[theme.value])
+      // $themeController.value = themeMap[theme.value];
+      $themeToggle.title = themeTitleMap[theme.value];
     }
 
     const theme = {
