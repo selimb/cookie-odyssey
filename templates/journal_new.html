@@ -2,40 +2,36 @@
 {% import "common/macros.html" as common %}
 
 {% block content %}
-<section class="section">
-  <div class="container">
-    <h1 class="title">New Journal</h1>
-    <form hx-post="" hx-boost="false">
-      {{ common.form_error(error="") }}
-      <div class="field">
-        <label class="label">Name</label>
-        <div class="control">
-          <input name="name" class="input" type="text" placeholder="" required>
-        </div>
-      </div>
-      <div class="field">
-        <label class="label">Slug</label>
-        <div class="control">
-          <input name="slug" class="input" type="text" required>
-        </div>
-      </div>
-      <div class="field">
-        <label class="label">Start Date</label>
-        <div class="control">
-          <input name="start_date" class="input" type="date" required>
-        </div>
-      </div>
-      <div class="field">
-        <label class="label">End Date</label>
-        <div class="control">
-          <input name="end_date" class="input" type="date">
-        </div>
-      </div>
-      <div class="control">
-        {# FIXME loading! #}
-        <button class="button is-primary">Create</button>
-      </div>
-    </form>
+<h1 class="title">New Journal</h1>
+<form hx-post="" hx-boost="false">
+  {{ common.form_error(error="") }}
+  <div class="field">
+    <label class="label">Name</label>
+    <div class="control">
+      <input name="name" class="input" type="text" placeholder="" required>
+    </div>
   </div>
-</section>
+  <div class="field">
+    <label class="label">Slug</label>
+    <div class="control">
+      <input name="slug" class="input" type="text" required>
+    </div>
+  </div>
+  <div class="field">
+    <label class="label">Start Date</label>
+    <div class="control">
+      <input name="start_date" class="input" type="date" required>
+    </div>
+  </div>
+  <div class="field">
+    <label class="label">End Date</label>
+    <div class="control">
+      <input name="end_date" class="input" type="date">
+    </div>
+  </div>
+  <div class="control">
+    {# FIXME loading! #}
+    <button class="button is-primary">Create</button>
+  </div>
+</form>
 {% endblock content %}

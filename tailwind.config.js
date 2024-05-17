@@ -1,15 +1,17 @@
+const darkMode = "night";
+
 /** @type {import('daisyui').Config} */
 const daisyui = {
   // [daisyui-themes]
-  themes: ["night", "pastel"],
+  // FIXME narrow down
+  themes: [darkMode, "light"],
 };
 
 /** @type {import('tailwindcss').Config} */
 export default {
+  darkMode: ["selector", `[data-theme="${darkMode}"]`],
   content: ["templates/**/*.html", "src/**/*.rs"],
-  theme: {
-    extend: {},
-  },
+  theme: { extend: {} },
   plugins: [require("daisyui")],
   daisyui,
 };

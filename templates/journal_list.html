@@ -2,23 +2,24 @@
 {% import "common/macros.html" as common %}
 
 {% block content %}
-<section class="section">
-  <div class="container">
-    <h1 class="title">Journals</h1>
-    <div class="level">
-      <div class="level-left is-fullwidth mobile">
-        <a class="button is-primary is-fullwidth-mobile" href="{{ href_new }}">New Journal</a>
-      </div>
-    </div>
+<div>
+  <h1 class="title">Journals</h1>
+  <div class="flex justify-between items-center my-4">
+    <div></div>
+    <a href="{{ href_new }}" class="btn btn-primary max-md:flex-1">New Journal</a>
+  </div>
+
+  <div>
+
     {% for journal in journals %}
-    <div class="card">
-      <div class="card-content">
-        <div class="title">
-          <a href="{{ journal.href }}">
+    <div class="card dark:bg-neutral shadow-xl mx-auto max-md:w-full">
+      <div class="card-body">
+        <h2 class="card-title">
+          <a href="{{ journal.href }}" class="link">
             {{ journal.name }}
           </a>
-        </div>
-        <div class="content">
+        </h2>
+        <div>
           {{ common.date(date=journal.start_date) }}
           -
           {% if journal.end_date %}
@@ -34,6 +35,7 @@
       No journals yet. <span class="has-text-weight-bold">What are you waiting for?</span>
     </div>
     {% endfor %}
+
   </div>
-</section>
+</div>
 {% endblock content %}
