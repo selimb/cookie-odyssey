@@ -2,7 +2,7 @@
 {% import "common/form.html" as form %}
 
 {% block content %}
-  <div class="mx-auto md:w-1/2 md:p-8 dark:md:bg-neutral md:card md:shadow-xl">
+  <div class="mx-auto md:card md:w-1/2 md:p-8 md:shadow-xl dark:md:bg-neutral">
     <h1 class="title">Login</h1>
     <form hx-post="">
       {{ form.form_error(error="") }}
@@ -12,14 +12,14 @@
       {% set forgot_password %}
         <a
           href="{{ href_forgot_password }}"
-          class="label-text-alt link link-primary"
+          class="link label-text-alt link-primary"
           >Forgot password?</a
         >
       {% endset %}
       {{ form.input("password", label="Password", type="password", label_right=forgot_password ) }}
 
       <input type="hidden" name="next" value="{{ next }}" />
-      <button type="submit" class="btn btn-primary w-full my-8">Login</button>
+      <button type="submit" class="btn btn-primary my-8 w-full">Login</button>
     </form>
     <div class="text-center">
       <a href="{{ href_register }}" class="link link-primary">Register</a>

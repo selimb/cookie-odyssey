@@ -7,7 +7,7 @@
 
       <!-- Header -->
       {% if user.admin %}
-        <div class="flex justify-between items-center my-4">
+        <div class="my-4 flex items-center justify-between">
           <div></div>
           <button class="btn btn-primary max-md:flex-1">New Entry</button>
         </div>
@@ -20,13 +20,13 @@
         <div></div>
         <div class="join max-md:grow max-md:justify-between">
           {# FIXME links #}
-          <button class="btn join-item max-md:flex-grow border-neutral">
+          <button class="btn join-item border-neutral max-md:flex-grow">
             View Map
           </button>
-          <button class="btn join-item max-md:flex-grow border-neutral">
+          <button class="btn join-item border-neutral max-md:flex-grow">
             View All
           </button>
-          <button class="btn join-item max-md:flex-grow border-neutral">
+          <button class="btn join-item border-neutral max-md:flex-grow">
             Export
           </button>
         </div>

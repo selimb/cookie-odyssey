@@ -5,7 +5,7 @@ Inspired by https://flowbite.com/docs/components/navbar/
 and https://daisyui.com/components/navbar/
 #}
 <nav class="mb-4">
-  <div class="flex flex-wrap items-center justify-between mx-auto">
+  <div class="mx-auto flex flex-wrap items-center justify-between">
     <div class="flex items-center">
       <a href="{{ links.home }}" class="text-xl font-semibold uppercase">
         Cookie Odyssey
@@ -17,11 +17,11 @@ and https://daisyui.com/components/navbar/
         <a
           title="Manage Users"
           href="{{ links.admin_users_list }}"
-          class="btn btn-ghost btn-circle"
+          class="btn btn-circle btn-ghost"
         >
           <!-- https://flowbite.com/icons/ user-settings -->
           <svg
-            class="w-6 h-6"
+            class="h-6 w-6"
             width="24"
             height="24"
             aria-hidden="true"
@@ -42,11 +42,11 @@ and https://daisyui.com/components/navbar/
         <a
           title="Notifications"
           href="{{ links.notifications }}"
-          class="btn btn-ghost btn-circle"
+          class="btn btn-circle btn-ghost"
         >
           <!-- https://flowbite.com/icons/ bell -->
           <svg
-            class="w-6 h-6"
+            class="h-6 w-6"
             width="24"
             height="24"
             aria-hidden="true"
@@ -68,10 +68,10 @@ and https://daisyui.com/components/navbar/
           <div
             tabindex="0"
             role="button"
-            class="btn btn-ghost btn-circle avatar"
+            class="avatar btn btn-circle btn-ghost"
           >
             <svg
-              class="w-6 h-6"
+              class="h-6 w-6"
               width="24"
               height="24"
               aria-hidden="true"
@@ -88,7 +88,7 @@ and https://daisyui.com/components/navbar/
           </div>
           <ul
             tabindex="0"
-            class="mt-3 z-[1] p-2 shadow menu menu-sm dropdown-content bg-neutral rounded-box w-52"
+            class="menu dropdown-content menu-sm z-[1] mt-3 w-52 rounded-box bg-neutral p-2 shadow"
           >
             {# FIXME #}
             <li><a>Profile</a></li>

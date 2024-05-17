@@ -18,7 +18,7 @@
   <div
     id="{{ id }}"
     role="alert"
-    class="alert alert-error {% if not error %}hidden{% endif %}"
+    class="{% if not error %}hidden{% endif %} alert alert-error"
   >
     {% if error %}
       {{ error }}

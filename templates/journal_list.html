@@ -4,7 +4,7 @@
 {% block content %}
   <div>
     <h1 class="title">Journals</h1>
-    <div class="flex justify-between items-center my-4">
+    <div class="my-4 flex items-center justify-between">
       <div></div>
       <a href="{{ href_new }}" class="btn btn-primary max-md:flex-1"
         >New Journal</a
@@ -13,7 +13,7 @@
 
     <div>
       {% for journal in journals %}
-        <div class="card dark:bg-neutral shadow-xl mx-auto max-md:w-full">
+        <div class="card mx-auto shadow-xl max-md:w-full dark:bg-neutral">
           <div class="card-body">
             <h2 class="card-title">
               <a href="{{ journal.href }}" class="link"> {{ journal.name }} </a>

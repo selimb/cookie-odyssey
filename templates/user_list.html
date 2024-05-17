@@ -17,7 +17,7 @@
       {% block frag_user_list %}
         <tbody id="user_list">
           {% for user in users %}
-            <tr class="border-t-2 {% if loop.last %}border-b-2{% endif %}">
+            <tr class="{% if loop.last %}border-b-2{% endif %} border-t-2">
               <td>{{ user.email }}</td>
               <td>{{ user.first_name }}</td>
               <td>{{ user.last_name }}</td>
