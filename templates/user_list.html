@@ -21,8 +21,8 @@
         <td>{{ user.email }}</td>
         <td>{{ user.first_name }}</td>
         <td>{{ user.last_name }}</td>
-        <td class="{% if not user.approved %}bg-warning text-warning-content{% endif %}">{{ user.approved }}</th>
-        <td class="{% if user.admin %}bg-info text-info-content{% endif %}">{{ user.admin }}</th>
+        <td class="{% if not user.approved %}bg-warning text-warning-content{% endif %}">{{ user.approved }}</td>
+        <td class="{% if user.admin %}bg-info text-info-content{% endif %}">{{ user.admin }}</td>
         <td class="whitespace-nowrap">
           {% if not user.approved %}
           <button type="button" class="btn btn-success btn-sm mx-1" hx-post="{{ href_approve }}" hx-swap="outerHTML"
@@ -39,7 +39,7 @@
       </tr>
       {% endfor %}
     </tbody>
-    {% endblock %}
+    {% endblock frag_user_list %}
   </table>
 </div>
 {% endblock content %}
