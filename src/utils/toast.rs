@@ -13,7 +13,7 @@ static TOAST_EVT: &'static str = "app.toast";
 #[derive(Serialize)]
 pub struct Toast {
     message: String,
-    class: String,
+    variant: String,
     error: bool,
     auto_close: bool,
 }
@@ -28,7 +28,7 @@ impl Toast {
         error!("Unhandled error: {err:#?}\n{message:#?}");
         Self {
             message: message.into(),
-            class: "is-danger".into(),
+            variant: "error".into(),
             auto_close: false,
             error: true,
         }
@@ -37,7 +37,7 @@ impl Toast {
     pub fn danger(message: impl Into<String>) -> Self {
         Self {
             message: message.into(),
-            class: "is-danger".into(),
+            variant: "error".into(),
             auto_close: false,
             error: false,
         }
@@ -46,7 +46,7 @@ impl Toast {
     pub fn success(message: impl Into<String>) -> Self {
         Self {
             message: message.into(),
-            class: "is-success".into(),
+            variant: "success".into(),
             auto_close: true,
             error: false,
         }

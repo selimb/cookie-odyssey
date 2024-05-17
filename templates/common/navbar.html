@@ -4,7 +4,7 @@
 Inspired by https://flowbite.com/docs/components/navbar/
 and https://daisyui.com/components/navbar/
 #}
-<nav class="m-2 mt-4">
+<nav class="mb-4">
   <div class="flex flex-wrap items-center justify-between mx-auto">
     <div class="flex items-center">
       <a href="/" class="text-xl font-semibold uppercase">
@@ -13,7 +13,7 @@ and https://daisyui.com/components/navbar/
     </div>
 
     <div class="flex items-center">
-      {% if user.admin %}
+      {% if user and user.admin %}
       <a title="Manage Users" href="{{ links.admin_users_list }}" class="btn btn-ghost btn-circle">
         <!-- https://flowbite.com/icons/ user-settings -->
         <svg class="w-6 h-6" width="24" height="24" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"
@@ -53,7 +53,6 @@ and https://daisyui.com/components/navbar/
           <li><a>Profile</a></li>
           <li><a href="{{ links.logout }}">Logout</a></li>
         </ul>
-
       </div>
       {% endif %}
 

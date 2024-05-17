@@ -2,11 +2,18 @@
 Idea inspired by https://themurph.hashnode.dev/go-beyond-the-basics-mastering-toast-notifications-with-go-and-htmx
 #}
 
-<div id="toast-container">
+<div class="toast max-md:toast-top max-md:w-full" id="toast-container">
   <template>
-    <div class="toast notification" role="alert">
-      <div class="toast--text"></div>
-      <button type="button" class="delete">
+    <div class="alert flex justify-between items-center" role="alert">
+      <div data-text=""></div>
+      <!-- https://flowbite.com/docs/components/toast/#default-toast -->
+      <button type="button" class="btn btn-circle btn-outline btn-sm bg-" aria-label="Close">
+        <span class="sr-only">Close</span>
+        <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
+          <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6" />
+        </svg>
+      </button>
     </div>
   </template>
 </div>
@@ -15,21 +22,37 @@ Idea inspired by https://themurph.hashnode.dev/go-beyond-the-basics-mastering-to
   (() => {
     // Keep in sync with [toast]
     const TOAST_EVT = "app.toast";
+
+    /** @type {Record<Toast["variant"], {alert: string[], button: string[]}>} */
+    const variants = {
+      error: {
+        alert: "alert-error".split(" "),
+        button: "border-error-content text-error-content hover:bg-error-content hover:border-error hover:text-error".split(" ")
+      },
+      success: {
+        alert: "alert-success".split(" "),
+        button: "border-success-content text-success-content hover:bg-success-content hover:border-success hover:text-success".split(" ")
+      },
+    };
+
     /**
      * @typedef Toast
      * @type {object}
      * @property {string} message
-     * @property {string} class
+     * @property {"sucess" | "error"} variant
      * @property {boolean} auto_close
      */
 
     /** @param data {Toast} */
     function makeToast(data) {
+      console.info(data);
       /** @type {DocumentFragment} */
       const clone = $template.content.cloneNode(true);
       const $toast = clone.querySelector("div");
-      $toast.classList.add(data.class);
-      $toast.querySelector(".toast--text").textContent = data.message;
+      const classNames = variants[data.variant];
+      $toast.classList.add(...classNames.alert);
+      $toast.querySelector("[data-text]").textContent = data.message;
+      $toast.querySelector("button").classList.add(...classNames.button);
       return $toast;
     }
 
@@ -57,25 +80,6 @@ Idea inspired by https://themurph.hashnode.dev/go-beyond-the-basics-mastering-to
 </script>
 
 <style>
-  #toast-container {
-    position: absolute;
-    bottom: 0;
-    right: 0;
-    margin: 1rem;
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-  }
-
-  @media only screen and (max-width: 768px) {
-    #toast-container {
-      bottom: unset;
-      /* Below navbar */
-      top: 48px;
-      left: 0;
-    }
-  }
-
   #toast-container .toast {
     /* Override bulma's margin-bottom. */
     margin-bottom: 0;
