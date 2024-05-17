@@ -20,21 +20,16 @@ pub fn load_env() -> Result<(), anyhow::Error> {
     Ok(())
 }
 
-#[derive(Clone, Debug, Deserialize, EnumString, PartialEq)]
+#[derive(Clone, Debug, Default, Deserialize, EnumString, PartialEq)]
 pub enum AppEnv {
     Dev,
+    #[default]
     Prod,
-}
-
-impl Default for AppEnv {
-    fn default() -> Self {
-        AppEnv::Prod
-    }
 }
 
 impl AppEnv {
     pub fn get() -> &'static Self {
-        APP_ENV.get_or_init(|| AppEnv::default())
+        APP_ENV.get_or_init(AppEnv::default)
     }
 
     pub fn is_dev() -> bool {

@@ -6,7 +6,7 @@ use url::Url;
 
 use app_config::AppConfig;
 
-const BUCKET: &'static str = "media";
+const BUCKET: &str = "media";
 
 pub fn init_storage(conf: &AppConfig) -> Result<Arc<FileStore>, anyhow::Error> {
     let sc = &conf.storage;

@@ -45,6 +45,6 @@ impl FormError {
 
 impl From<axum::extract::rejection::FormRejection> for FormError {
     fn from(value: axum::extract::rejection::FormRejection) -> Self {
-        FormError::new(&value.body_text())
+        FormError::new(value.body_text())
     }
 }

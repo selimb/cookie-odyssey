@@ -91,7 +91,7 @@ impl Cli {
         let name = std::process::Command::new("git")
             .args(["config", "user.name"])
             .check_output()?;
-        let (first_name, last_name) = name.trim().split_once(" ").context("Weird name")?;
+        let (first_name, last_name) = name.trim().split_once(' ').context("Weird name")?;
         let password = "pass";
 
         let (_, db) = init_db(&self.conf).await?;

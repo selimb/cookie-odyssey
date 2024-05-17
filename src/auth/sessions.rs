@@ -88,7 +88,7 @@ pub struct AuthBackend {
 
 impl AuthBackend {
     pub fn hash_password(password: String) -> String {
-        password_auth::generate_hash(&password)
+        password_auth::generate_hash(password)
     }
 
     pub fn normalize_email(email: impl AsRef<str>) -> String {
@@ -141,7 +141,7 @@ impl axum_login::AuthnBackend for AuthBackend {
             .one(&self.db)
             .await?;
 
-        Ok(user.map(|user| AuthUser(user)))
+        Ok(user.map(AuthUser))
     }
 }
 

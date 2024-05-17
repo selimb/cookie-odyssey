@@ -1,4 +1,4 @@
-const DATE_FMT: &'static str = "%Y-%m-%d";
+const DATE_FMT: &str = "%Y-%m-%d";
 
 pub fn date_to_sqlite(d: chrono::NaiveDate) -> String {
     d.format(DATE_FMT).to_string()

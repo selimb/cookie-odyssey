@@ -33,7 +33,7 @@ fn date(value: String) -> String {
         // Intl.DateTimeFormat("en-US", {dateStyle: "long"}).format(d)
         // "December 31, 2022"
         // ```
-        Ok(date) => date.format("%B %e, %Y").to_string().into(),
+        Ok(date) => date.format("%B %e, %Y").to_string(),
         // FIXME test
         Err(_) => "--".into(),
     }

@@ -8,7 +8,7 @@ use serde_json::json;
 use tracing::error;
 
 // [toast]
-static TOAST_EVT: &'static str = "app.toast";
+static TOAST_EVT: &str = "app.toast";
 
 #[derive(Serialize)]
 pub struct Toast {
@@ -27,7 +27,7 @@ impl Toast {
         };
         error!("Unhandled error: {err:#?}\n{message:#?}");
         Self {
-            message: message.into(),
+            message,
             variant: "error".into(),
             auto_close: false,
             error: true,
