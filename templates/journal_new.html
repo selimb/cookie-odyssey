@@ -2,39 +2,44 @@
 {% import "common/form.html" as form %}
 
 {% block content %}
-<div class="mx-auto md:w-1/2 md:p-8 dark:md:bg-neutral md:card md:shadow-xl">
-  <h1 class="title">New Journal</h1>
-  <form hx-post="">
-    {{ form.form_error(error="") }}
-    {# FIXME form.input #}
-    <label class="form-control w-full">
-      <div class="label">
-        <span class="label-text">Name</span>
+  <div class="mx-auto md:w-1/2 md:p-8 dark:md:bg-neutral md:card md:shadow-xl">
+    <h1 class="title">New Journal</h1>
+    <form hx-post="">
+      {{ form.form_error(error="") }}
+      {# FIXME form.input #}
+      <label class="form-control w-full">
+        <div class="label">
+          <span class="label-text">Name</span>
+        </div>
+        <input
+          name="name"
+          type="text"
+          required=""
+          class="input input-bordered w-full"
+        />
+      </label>
+      <div class="field">
+        <label class="label">Slug</label>
+        <div class="control">
+          <input name="slug" class="input" type="text" required />
+        </div>
       </div>
-      <input name="name" type="text" required="" class="input input-bordered w-full">
-    </label>
-    <div class="field">
-      <label class="label">Slug</label>
+      <div class="field">
+        <label class="label">Start Date</label>
+        <div class="control">
+          <input name="start_date" class="input" type="date" required />
+        </div>
+      </div>
+      <div class="field">
+        <label class="label">End Date</label>
+        <div class="control">
+          <input name="end_date" class="input" type="date" />
+        </div>
+      </div>
       <div class="control">
-        <input name="slug" class="input" type="text" required>
+        {# FIXME loading! #}
+        <button class="button is-primary">Create</button>
       </div>
-    </div>
-    <div class="field">
-      <label class="label">Start Date</label>
-      <div class="control">
-        <input name="start_date" class="input" type="date" required>
-      </div>
-    </div>
-    <div class="field">
-      <label class="label">End Date</label>
-      <div class="control">
-        <input name="end_date" class="input" type="date">
-      </div>
-    </div>
-    <div class="control">
-      {# FIXME loading! #}
-      <button class="button is-primary">Create</button>
-    </div>
-  </form>
-</div>
+    </form>
+  </div>
 {% endblock content %}

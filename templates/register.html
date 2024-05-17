@@ -2,17 +2,19 @@
 {% import "common/form.html" as form %}
 
 {% block content %}
-<div class="mx-auto md:w-1/2 md:p-8 dark:md:bg-neutral md:card md:shadow-xl">
-  <h1 class="title">Register</h1>
-  <form hx-post="">
-    {{ form.form_error(error="") }}
+  <div class="mx-auto md:w-1/2 md:p-8 dark:md:bg-neutral md:card md:shadow-xl">
+    <h1 class="title">Register</h1>
+    <form hx-post="">
+      {{ form.form_error(error="") }}
 
-    {{ form.input("email", label="Email", type="email") }}
-    {{ form.input("password", label="Password", type="password") }}
-    {{ form.input("first_name", label="First Name") }}
-    {{ form.input("last_name", label="Last Name") }}
+      {{ form.input("email", label="Email", type="email") }}
+      {{ form.input("password", label="Password", type="password") }}
+      {{ form.input("first_name", label="First Name") }}
+      {{ form.input("last_name", label="Last Name") }}
 
-    <button type="submit" class="btn btn-primary w-full my-8">Register</button>
-  </form>
-</div>
+      <button type="submit" class="btn btn-primary w-full my-8">
+        Register
+      </button>
+    </form>
+  </div>
 {% endblock content %}

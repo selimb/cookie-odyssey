@@ -1,45 +1,65 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1 class="title">Users</h1>
-<div class="overflow-x-auto">
-  <table class="table md:table-lg">
-    <thead>
-      <tr>
-        <th>Email</th>
-        <th>First Name</th>
-        <th>Last Name</th>
-        <th>Approved</th>
-        <th>Admin</th>
-        <th></th>
-      </tr>
-    </thead>
-    {% block frag_user_list %}
-    <tbody id="user_list">
-      {% for user in users %}
-      <tr class="border-t-2 {% if loop.last %}border-b-2{% endif %}">
-        <td>{{ user.email }}</td>
-        <td>{{ user.first_name }}</td>
-        <td>{{ user.last_name }}</td>
-        <td class="{% if not user.approved %}bg-warning text-warning-content{% endif %}">{{ user.approved }}</td>
-        <td class="{% if user.admin %}bg-info text-info-content{% endif %}">{{ user.admin }}</td>
-        <td class="whitespace-nowrap">
-          {% if not user.approved %}
-          <button type="button" class="btn btn-success btn-sm mx-1" hx-post="{{ href_approve }}" hx-swap="outerHTML"
-            hx-target="#user_list" hx-vars="user_id: {{ user.id }}">
-            Approve
-          </button>
-          {% endif %}
-          <button type="button" class="btn btn-error btn-sm mx-1" hx-post="{{ href_delete }}" hx-swap="outerHTML"
-            hx-target="#user_list" hx-vars="user_id: {{ user.id }}"
-            hx-confirm="Are you sure you wish to delete: {{ user.email }} ?">
-            Delete
-          </button>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-    {% endblock frag_user_list %}
-  </table>
-</div>
+  <h1 class="title">Users</h1>
+  <div class="overflow-x-auto">
+    <table class="table md:table-lg">
+      <thead>
+        <tr>
+          <th>Email</th>
+          <th>First Name</th>
+          <th>Last Name</th>
+          <th>Approved</th>
+          <th>Admin</th>
+          <th></th>
+        </tr>
+      </thead>
+      {% block frag_user_list %}
+        <tbody id="user_list">
+          {% for user in users %}
+            <tr class="border-t-2 {% if loop.last %}border-b-2{% endif %}">
+              <td>{{ user.email }}</td>
+              <td>{{ user.first_name }}</td>
+              <td>{{ user.last_name }}</td>
+              <td
+                class="{% if not user.approved %}bg-warning text-warning-content{% endif %}"
+              >
+                {{ user.approved }}
+              </td>
+              <td
+                class="{% if user.admin %}bg-info text-info-content{% endif %}"
+              >
+                {{ user.admin }}
+              </td>
+              <td class="whitespace-nowrap">
+                {% if not user.approved %}
+                  <button
+                    type="button"
+                    class="btn btn-success btn-sm mx-1"
+                    hx-post="{{ href_approve }}"
+                    hx-swap="outerHTML"
+                    hx-target="#user_list"
+                    hx-vars="user_id: {{ user.id }}"
+                  >
+                    Approve
+                  </button>
+                {% endif %}
+                <button
+                  type="button"
+                  class="btn btn-error btn-sm mx-1"
+                  hx-post="{{ href_delete }}"
+                  hx-swap="outerHTML"
+                  hx-target="#user_list"
+                  hx-vars="user_id: {{ user.id }}"
+                  hx-confirm="Are you sure you wish to delete: {{ user.email }} ?"
+                >
+                  Delete
+                </button>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      {% endblock frag_user_list %}
+    </table>
+  </div>
 {% endblock content %}

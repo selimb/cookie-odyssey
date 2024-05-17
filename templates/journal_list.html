@@ -2,40 +2,38 @@
 {% import "common/macros.html" as common %}
 
 {% block content %}
-<div>
-  <h1 class="title">Journals</h1>
-  <div class="flex justify-between items-center my-4">
-    <div></div>
-    <a href="{{ href_new }}" class="btn btn-primary max-md:flex-1">New Journal</a>
-  </div>
-
   <div>
+    <h1 class="title">Journals</h1>
+    <div class="flex justify-between items-center my-4">
+      <div></div>
+      <a href="{{ href_new }}" class="btn btn-primary max-md:flex-1"
+        >New Journal</a
+      >
+    </div>
 
-    {% for journal in journals %}
-    <div class="card dark:bg-neutral shadow-xl mx-auto max-md:w-full">
-      <div class="card-body">
-        <h2 class="card-title">
-          <a href="{{ journal.href }}" class="link">
-            {{ journal.name }}
-          </a>
-        </h2>
-        <div>
-          {{ common.date(date=journal.start_date) }}
-          -
-          {% if journal.end_date %}
-          {{ common.date(date=journal.end_date) }}
-          {% else %}
-          -
-          {% endif %}
+    <div>
+      {% for journal in journals %}
+        <div class="card dark:bg-neutral shadow-xl mx-auto max-md:w-full">
+          <div class="card-body">
+            <h2 class="card-title">
+              <a href="{{ journal.href }}" class="link"> {{ journal.name }} </a>
+            </h2>
+            <div>
+              {{ common.date(date=journal.start_date) }} -
+              {% if journal.end_date %}
+                {{ common.date(date=journal.end_date) }}
+              {% else %}
+                -
+              {% endif %}
+            </div>
+          </div>
         </div>
-      </div>
+      {% else %}
+        <div class="alert alert-info">
+          No journals yet.
+          <span class="has-text-weight-bold">What are you waiting for?</span>
+        </div>
+      {% endfor %}
     </div>
-    {% else %}
-    <div class="alert alert-info">
-      No journals yet. <span class="has-text-weight-bold">What are you waiting for?</span>
-    </div>
-    {% endfor %}
-
   </div>
-</div>
 {% endblock content %}
