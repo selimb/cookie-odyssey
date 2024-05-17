@@ -1,7 +1,6 @@
 {
   "[html]": {
-    "editor.defaultFormatter": "vscode.html-language-features",
-    "editor.tabSize": 2
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
   "[rust]": {
     "editor.rulers": [80]
