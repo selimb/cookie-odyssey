@@ -1,16 +1,22 @@
 {% extends "base.html" %}
-{% import "common/macros.html" as common %}
 
 {% block content %}
 <div>
   {% if journal %}
   <h1 class="title">{{ journal.name }}</h1>
+
+  <!-- Header -->
   {% if user.admin %}
   <div class="flex justify-between items-center my-4">
     <div></div>
     <button class="btn btn-primary max-md:flex-1">New Entry</button>
   </div>
   {% endif %}
+
+  <!-- Main -->
+
+
+  <!-- Footer -->
   <div class="flex justify-between">
     <div></div>
     <div class="join max-md:grow max-md:justify-between">

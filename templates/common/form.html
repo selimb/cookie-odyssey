@@ -1,0 +1,18 @@
+{% macro input(name, label, type="text", label_right="", required=true) %}
+<label class="form-control w-full">
+  <div class="label">
+    <span class="label-text">{{ label }}</span>
+    {{ label_right }}
+  </div>
+  <input name="{{ name }}" type="{{ type }}" {% if required %}required{% endif %} class="input input-bordered w-full">
+</label>
+{% endmacro %}
+
+{# [form-errors-id] #}
+{% macro form_error(error, id="form_error") %}
+<div id="{{ id }}" role="alert" class="alert alert-error {% if not error %}hidden{% endif %}">
+  {% if error %}
+  {{ error }}
+  {% endif %}
+</div>
+{% endmacro %}

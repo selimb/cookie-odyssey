@@ -1,24 +1,19 @@
 {% extends "base.html" %}
-{% import "common/macros.html" as common %}
+{% import "common/form.html" as form %}
 
 {% block content %}
 <div class="mx-auto md:w-1/2 md:p-8 dark:md:bg-neutral md:card md:shadow-xl">
   <h1 class="title">Login</h1>
-  <form hx-post="" hx-boost="false">
-    {{ common.form_error(error="") }}
-    <label class="form-control w-full">
-      <div class="label">
-        <span class="label-text">Email</span>
-      </div>
-      <input name="email" type="email" required="" class="input input-bordered w-full">
-    </label>
-    <label class="form-control w-full">
-      <div class="label">
-        <span class="label-text">Password</span>
-        <a href="{{ href_forgot_password }}" class="label-text-alt link link-primary">Forgot password?</a>
-      </div>
-      <input name="password" type="password" required="" class="input input-bordered w-full">
-    </label>
+  <form hx-post="">
+    {{ form.form_error(error="") }}
+
+    {{ form.input("email", label="Email", type="email") }}
+
+    {% set forgot_password %}
+    <a href="{{ href_forgot_password }}" class="label-text-alt link link-primary">Forgot password?</a>
+    {% endset %}
+    {{ form.input("password", label="Password", type="password", label_right=forgot_password ) }}
+
     <input type="hidden" name="next" value="{{ next }}">
     <button type="submit" class="btn btn-primary w-full my-8">Login</button>
   </form>

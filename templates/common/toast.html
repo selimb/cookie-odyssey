@@ -75,7 +75,7 @@ Idea inspired by https://themurph.hashnode.dev/go-beyond-the-basics-mastering-to
 
     const $toastContainer = document.getElementById("toast-container");
     const $template = $toastContainer.getElementsByTagName("template")[0];
-    document.body.addEventListener("app.toast", handleToastEvent);
+    document.body.addEventListener(TOAST_EVT, handleToastEvent);
   })()
 </script>
 

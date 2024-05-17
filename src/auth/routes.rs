@@ -4,7 +4,6 @@ use axum::{
     response::{Html, IntoResponse, Redirect, Response},
     Form,
 };
-use axum_login::tower_sessions::Session;
 use minijinja::context;
 use sea_orm::{
     sea_query::OnConflict, ActiveValue, ColumnTrait, EntityTrait, QueryFilter, QueryOrder,
@@ -32,7 +31,6 @@ pub async fn login_get(templ: Templ, Query(NextUrl { next }): Query<NextUrl>) ->
 
 pub async fn login_post(
     mut auth_session: AuthSession,
-    session: Session,
     state: State<AppState>,
     form: Result<Form<Credentials>, FormRejection>,
 ) -> RouteResult {
@@ -65,7 +63,7 @@ pub async fn login_post(
         .await
         .context("Failed to log into the session")?;
 
-    // FIXME confetti
+    let mut trigger = "";
     if user.0.first_login {
         let data = user::ActiveModel {
             id: sea_orm::ActiveValue::Set(user.0.id),
@@ -73,14 +71,11 @@ pub async fn login_post(
             ..Default::default()
         };
         User::update(data).exec(&state.db).await?;
-        // FIXME handle
-        session
-            .insert("first_login", true)
-            .await
-            .context("Failed to update the session")?;
+        // [confetti-evt]
+        trigger = "app.confetti";
     }
 
-    let resp = [("HX-Redirect", &next)].into_response();
+    let resp = [("HX-Location", next.as_ref()), ("HX-Trigger", trigger)].into_response();
     Ok(resp)
 }
 
@@ -160,8 +155,8 @@ pub async fn register_post(
     };
 
     let body = r#"
-    <div class="notification is-success">
-        You have been been registered!
+    <div class="alert alert-success">
+        You have been registered!
         <br />
         You will be able to login once you have been approved.
     </div>

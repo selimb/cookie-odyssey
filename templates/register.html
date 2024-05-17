@@ -1,35 +1,17 @@
 {% extends "base.html" %}
-{% import "common/macros.html" as common %}
+{% import "common/form.html" as form %}
 
 {% block content %}
 <div class="mx-auto md:w-1/2 md:p-8 dark:md:bg-neutral md:card md:shadow-xl">
   <h1 class="title">Register</h1>
   <form hx-post="">
-    {{ common.form_error(error="") }}
-    <label class="form-control w-full">
-      <div class="label">
-        <span class="label-text">Email</span>
-      </div>
-      <input name="email" type="email" required="" class="input input-bordered w-full">
-    </label>
-    <label class="form-control w-full">
-      <div class="label">
-        <span class="label-text">Password</span>
-      </div>
-      <input name="password" type="password" required="" class="input input-bordered w-full">
-    </label>
-    <label class="form-control w-full">
-      <div class="label">
-        <span class="label-text">First Name</span>
-      </div>
-      <input name="first_name" type="text" required="" class="input input-bordered w-full">
-    </label>
-    <label class="form-control w-full">
-      <div class="label">
-        <span class="label-text">Last Name</span>
-      </div>
-      <input name="last_name" type="text" required="" class="input input-bordered w-full">
-    </label>
+    {{ form.form_error(error="") }}
+
+    {{ form.input("email", label="Email", type="email") }}
+    {{ form.input("password", label="Password", type="password") }}
+    {{ form.input("first_name", label="First Name") }}
+    {{ form.input("last_name", label="Last Name") }}
+
     <button type="submit" class="btn btn-primary w-full my-8">Register</button>
   </form>
 </div>

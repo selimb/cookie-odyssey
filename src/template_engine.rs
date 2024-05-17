@@ -51,7 +51,6 @@ struct TemplContext<'a> {
 struct TemplContextUser {
     admin: bool,
     email: String,
-    first_login: bool,
     first_name: String,
     id: i32,
     last_name: String,
@@ -63,7 +62,6 @@ impl From<AuthUser> for TemplContextUser {
         Self {
             admin: user.admin,
             email: user.email,
-            first_login: user.first_login,
             first_name: user.first_name,
             id: user.id,
             last_name: user.last_name,
