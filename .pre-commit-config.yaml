@@ -1,0 +1,25 @@
+repos:
+  - repo: https://github.com/doublify/pre-commit-rust
+    rev: v1.0
+    hooks:
+      - id: fmt
+      - id: clippy
+        args: [--all-targets, --, -D, "warnings"]
+      - id: cargo-check
+        args: [--all-targets]
+
+  - repo: local
+    hooks:
+      - id: prettier
+        name: prettier
+        entry: bun run prettier . --check
+        pass_filenames: false
+        language: system
+
+  - repo: local
+    hooks:
+      - id: djlint
+        name: djlint
+        entry: env TQDM_DISABLE=1 djlint templates
+        pass_filenames: false
+        language: system

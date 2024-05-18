@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 @layer components {
-    .title {
-        @apply text-4xl font-bold leading-none mb-2
-    }
+  .title {
+    @apply mb-2 text-4xl font-bold leading-none;
+  }
 }
