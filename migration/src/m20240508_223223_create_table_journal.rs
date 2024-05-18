@@ -52,7 +52,7 @@ impl MigrationTrait for Migration {
 }
 
 #[derive(DeriveIden)]
-enum Journal {
+pub enum Journal {
     Table,
     Id,
     Name,

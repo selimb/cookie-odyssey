@@ -5,4 +5,5 @@ pub mod prelude;
 pub mod file;
 pub mod journal;
 pub mod journal_entry;
+pub mod journal_entry_media;
 pub mod user;

@@ -4,30 +4,32 @@ use sea_orm::entity::prelude::*;
 use serde::Serialize;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Serialize)]
-#[sea_orm(table_name = "journal")]
+#[sea_orm(table_name = "journal_entry_media")]
 pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
-    #[sea_orm(unique)]
-    pub name: String,
-    #[sea_orm(unique)]
-    pub slug: String,
-    pub start_date: String,
-    pub end_date: Option<String>,
-    pub cover_id: Option<i32>,
+    pub journal_entry_id: i32,
+    pub order: i32,
+    pub file_id: i32,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
     #[sea_orm(
         belongs_to = "super::file::Entity",
-        from = "Column::CoverId",
+        from = "Column::FileId",
         to = "super::file::Column::Id",
         on_update = "NoAction",
         on_delete = "NoAction"
     )]
     File,
-    #[sea_orm(has_many = "super::journal_entry::Entity")]
+    #[sea_orm(
+        belongs_to = "super::journal_entry::Entity",
+        from = "Column::JournalEntryId",
+        to = "super::journal_entry::Column::Id",
+        on_update = "NoAction",
+        on_delete = "NoAction"
+    )]
     JournalEntry,
 }
 

@@ -1,5 +1,7 @@
 use sea_orm_migration::prelude::*;
 
+use super::m20240508_223223_create_table_journal::Journal;
+
 #[derive(DeriveMigrationName)]
 pub struct Migration;
 
@@ -17,6 +19,12 @@ impl MigrationTrait for Migration {
                             .not_null()
                             .auto_increment()
                             .primary_key(),
+                    )
+                    .col(ColumnDef::new(JournalEntry::JournalId).integer().not_null())
+                    .foreign_key(
+                        ForeignKey::create()
+                            .from(JournalEntry::Table, JournalEntry::JournalId)
+                            .to(Journal::Table, Journal::Id),
                     )
                     .col(ColumnDef::new(JournalEntry::Title).string().not_null())
                     .col(ColumnDef::new(JournalEntry::Text).string().not_null())
@@ -44,9 +52,10 @@ impl MigrationTrait for Migration {
 }
 
 #[derive(DeriveIden)]
-enum JournalEntry {
+pub enum JournalEntry {
     Table,
     Id,
+    JournalId,
     Title,
     Text,
     Address,

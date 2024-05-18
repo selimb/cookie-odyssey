@@ -8,6 +8,7 @@ use serde::Serialize;
 pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
+    pub journal_id: i32,
     pub title: String,
     pub text: String,
     pub address: Option<String>,
@@ -19,6 +20,29 @@ pub struct Model {
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {}
+pub enum Relation {
+    #[sea_orm(
+        belongs_to = "super::journal::Entity",
+        from = "Column::JournalId",
+        to = "super::journal::Column::Id",
+        on_update = "NoAction",
+        on_delete = "NoAction"
+    )]
+    Journal,
+    #[sea_orm(has_many = "super::journal_entry_media::Entity")]
+    JournalEntryMedia,
+}
+
+impl Related<super::journal::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Journal.def()
+    }
+}
+
+impl Related<super::journal_entry_media::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::JournalEntryMedia.def()
+    }
+}
 
 impl ActiveModelBehavior for ActiveModel {}
