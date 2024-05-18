@@ -5,7 +5,7 @@ use axum::{
 use minijinja::context;
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 
-use crate::{AppState, RouteResult, Templ};
+use crate::{AppState, NotFound, Route, RouteResult, Templ};
 use entities::{prelude::*, *};
 
 pub async fn journal_detail_get(
@@ -17,7 +17,24 @@ pub async fn journal_detail_get(
         .filter(journal::Column::Slug.eq(slug))
         .one(&state.db)
         .await?;
-    let ctx = context! { journal };
+    let journal = match journal {
+        Some(journal) => journal,
+        None => {
+            let resp = NotFound::for_entity("journal").render(&templ)?;
+            return Ok(resp.into_response());
+        }
+    };
+
+    let href_journal_entry_new = Route::JournalEntryNewGet {
+        slug: Some(&journal.slug),
+    }
+    .as_path();
+
+    let ctx = context! { journal, href_journal_entry_new };
     let html = templ.render_ctx("journal_detail.html", ctx)?;
     Ok(html.into_response())
+}
+
+async fn group_by_day() {
+    todo!()
 }

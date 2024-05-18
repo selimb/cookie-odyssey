@@ -42,8 +42,10 @@ pub async fn journal_new_post(
                 end_date: sea_orm::ActiveValue::Set(form.end_date.map(date_to_sqlite)),
                 ..Default::default()
             };
+            // TODO: Handle conflict (can't use on_conflict, since we have two unique constraints).
             Journal::insert(data).exec(&state.db).await?;
-            let resp = [("HX-Location", Route::JournalListGet.as_path())];
+            let href = Route::JournalListGet.as_path();
+            let resp = [("HX-Location", href.as_ref())];
             Ok(resp.into_response())
         }
     }

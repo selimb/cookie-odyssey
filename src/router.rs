@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use axum::{
     routing::{get, post},
     Router,
@@ -13,10 +15,22 @@ use crate::AppState;
 pub enum Route<'a> {
     ForgotPasswordGet,
     ForgotPasswordPost,
-    JournalDetailGet { slug: Option<&'a str> },
+    JournalDetailGet {
+        slug: Option<&'a str>,
+    },
     JournalListGet,
     JournalNewGet,
     JournalNewPost,
+    JournalEntryNewGet {
+        slug: Option<&'a str>,
+    },
+    JournalEntryNewPost {
+        slug: Option<&'a str>,
+    },
+    JournalDayGet {
+        slug: Option<&'a str>,
+        date: Option<&'a str>,
+    },
     LoginGet,
     LoginPost,
     LogoutPost,
@@ -30,17 +44,30 @@ pub enum Route<'a> {
 }
 
 impl<'a> Route<'a> {
-    pub fn as_path(&self) -> String {
+    pub fn as_path(&self) -> Cow<'static, str> {
         match self {
             Route::ForgotPasswordGet => "/forgot-password".into(),
             Route::ForgotPasswordPost => "/forgot-password".into(),
             Route::JournalDetailGet { slug } => match slug {
-                Some(slug) => format!("/journals/{slug}"),
-                None => "/journals/:slug".to_string(),
+                Some(slug) => format!("/journal/{slug}").into(),
+                None => "/journal/:slug".into(),
             },
             Route::JournalListGet => "/".into(),
             Route::JournalNewGet => "/new-journal".into(),
             Route::JournalNewPost => "/new-journal".into(),
+            Route::JournalEntryNewGet { slug } => match slug {
+                Some(slug) => format!("/journal/{slug}/new-entry").into(),
+                None => "/journal/:slug/new-entry".into(),
+            },
+            Route::JournalEntryNewPost { slug } => match slug {
+                Some(slug) => format!("/journal/{slug}/new-entry").into(),
+                None => "/journal/:slug/new-entry".into(),
+            },
+            Route::JournalDayGet { slug, date } => match (slug, date) {
+                (None, None) => todo!(),
+                (Some(slug), Some(date)) => todo!(),
+                oops => panic!("Unexpected params: {oops:?}"),
+            },
             Route::LoginGet => "/login".into(),
             Route::LoginPost => "/login".into(),
             Route::LogoutPost => "/logout".into(),
@@ -75,6 +102,14 @@ fn get_protected_routes() -> Router<AppState> {
         .route(
             &Route::JournalNewPost.as_path(),
             admin!(post(journal::journal_new_post)),
+        )
+        .route(
+            &Route::JournalEntryNewGet { slug: None }.as_path(),
+            admin!(get(journal::journal_entry_new_get)),
+        )
+        .route(
+            &Route::JournalEntryNewPost { slug: None }.as_path(),
+            admin!(post(journal::journal_entry_new_post)),
         )
         .route(
             &Route::UserListGet.as_path(),

@@ -1,2 +1,3 @@
 - https://joeymckenzie.tech/blog/templates-with-rust-axum-htmx-askama: basic axum + askama + htmx + tailwind setup.
 - https://pen.so/2023/07/31/asset-pipeline-for-rust/: esbuild + askama
+- https://hypermedia.systems/htmx-in-action/: lot of info on HTMX

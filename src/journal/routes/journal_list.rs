@@ -35,7 +35,8 @@ pub async fn journal_list(State(state): State<AppState>, templ: Templ) -> RouteR
             href: Route::JournalDetailGet {
                 slug: Some(&journal.slug),
             }
-            .as_path(),
+            .as_path()
+            .into_owned(),
         })
         .collect::<Vec<_>>();
     let ctx = context! { journals, href_new => Route::JournalNewGet.as_path() };

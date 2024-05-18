@@ -1,39 +1,35 @@
 {% extends "base.html" %}
 
 {% block content %}
-  <div>
-    {% if journal %}
-      <h1 class="title">{{ journal.name }}</h1>
+  <h1 class="title">{{ journal.name }}</h1>
 
-      <!-- Header -->
-      {% if user.admin %}
-        <div class="my-4 flex items-center justify-between">
-          <div></div>
-          <button class="btn btn-primary max-md:flex-1">New Entry</button>
-        </div>
-      {% endif %}
+  {# Header #}
+  {% if user.admin %}
+    <div class="my-4 flex items-center justify-between">
+      <div></div>
+      <a href="{{ href_new_entry }}" class="btn btn-primary max-md:flex-1"
+        >New Entry</a
+      >
+    </div>
+  {% endif %}
 
-      <!-- Main -->
+  {# FIXME Main #}
 
-      <!-- Footer -->
-      <div class="flex justify-between">
-        <div></div>
-        <div class="join max-md:grow max-md:justify-between">
-          {# FIXME links #}
-          <button class="btn join-item border-neutral max-md:flex-grow">
-            View Map
-          </button>
-          <button class="btn join-item border-neutral max-md:flex-grow">
-            View All
-          </button>
-          <button class="btn join-item border-neutral max-md:flex-grow">
-            Export
-          </button>
-        </div>
-        <div></div>
-      </div>
-    {% else %}
-      <div class="alert alert-error">Oops! Could not find this journal.</div>
-    {% endif %}
+  {# Footer #}
+  <div class="flex justify-between">
+    <div></div>
+    <div class="join max-md:grow max-md:justify-between">
+      {# FIXME links #}
+      <button class="btn join-item border-neutral max-md:flex-grow">
+        View Map
+      </button>
+      <button class="btn join-item border-neutral max-md:flex-grow">
+        View All
+      </button>
+      <button class="btn join-item border-neutral max-md:flex-grow">
+        Export
+      </button>
+    </div>
+    <div></div>
   </div>
 {% endblock content %}

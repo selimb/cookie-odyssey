@@ -1,0 +1,7 @@
+<script>
+  htmx.on("htmx:responseError", (evt) => {
+    // FIXME: Bundle/import [toast]
+    let error = evt.detail.error + "\n" + evt.detail.xhr.responseText;
+    toast({ message: error, variant: "error" });
+  });
+</script>

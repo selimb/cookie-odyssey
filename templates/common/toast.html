@@ -2,10 +2,13 @@
 Idea inspired by https://themurph.hashnode.dev/go-beyond-the-basics-mastering-toast-notifications-with-go-and-htmx
 #}
 
-<div class="toast max-md:toast-top max-md:w-full" id="toast-container">
+<div
+  class="toast max-h-full overflow-y-auto max-md:toast-top max-md:w-full"
+  id="toast-container"
+>
   <template>
     <div class="alert flex items-center justify-between" role="alert">
-      <div data-text=""></div>
+      <div id="message" class="whitespace-pre"></div>
       <!-- https://flowbite.com/docs/components/toast/#default-toast -->
       <button
         type="button"
@@ -34,7 +37,7 @@ Idea inspired by https://themurph.hashnode.dev/go-beyond-the-basics-mastering-to
 </div>
 
 <script>
-  (() => {
+  var toast = (() => {
     // Keep in sync with [toast]
     const TOAST_EVT = "app.toast";
 
@@ -60,34 +63,34 @@ Idea inspired by https://themurph.hashnode.dev/go-beyond-the-basics-mastering-to
      * @typedef Toast
      * @type {object}
      * @property {string} message
+     * @property {string | undefined} detail
      * @property {"sucess" | "error"} variant
-     * @property {boolean} auto_close
+     * @property {boolean | undefined} auto_close
      */
 
     /** @param data {Toast} */
     function makeToast(data) {
-      console.info(data);
       /** @type {DocumentFragment} */
       const clone = $template.content.cloneNode(true);
       const $toast = clone.querySelector("div");
       const classNames = variants[data.variant];
       $toast.classList.add(...classNames.alert);
-      $toast.querySelector("[data-text]").textContent = data.message;
+      $toast.querySelector("#message").textContent = data.message;
       $toast.querySelector("button").classList.add(...classNames.button);
       return $toast;
     }
 
-    function handleToastEvent(evt) {
-      /** @type {Toast} */
-      const detail = evt.detail;
-      const $toast = makeToast(evt.detail);
+    /** @param data {Toast} */
+    function toast(data) {
+      console.debug("toast", data);
+      const $toast = makeToast(data);
       $toastContainer.appendChild($toast);
 
       const remove = () => {
         $toast.remove();
       };
 
-      if (detail.auto_close) {
+      if (data.auto_close) {
         setTimeout(remove, 5000);
       }
       $toast.querySelector("button").addEventListener("click", remove);
@@ -95,7 +98,11 @@ Idea inspired by https://themurph.hashnode.dev/go-beyond-the-basics-mastering-to
 
     const $toastContainer = document.getElementById("toast-container");
     const $template = $toastContainer.getElementsByTagName("template")[0];
-    document.body.addEventListener(TOAST_EVT, handleToastEvent);
+    document.body.addEventListener(TOAST_EVT, (evt) => {
+      toast(evt.detail);
+    });
+
+    return toast;
   })();
 </script>
 
