@@ -6,40 +6,13 @@
     <h1 class="title">New Journal</h1>
     <form hx-post="">
       {{ form.form_error(error="") }}
-      {# FIXME form.input #}
-      <label class="form-control w-full">
-        <div class="label">
-          <span class="label-text">Name</span>
-        </div>
-        <input
-          name="name"
-          type="text"
-          required=""
-          class="input input-bordered w-full"
-        />
-      </label>
-      <div class="field">
-        <label class="label">Slug</label>
-        <div class="control">
-          <input name="slug" class="input" type="text" required />
-        </div>
-      </div>
-      <div class="field">
-        <label class="label">Start Date</label>
-        <div class="control">
-          <input name="start_date" class="input" type="date" required />
-        </div>
-      </div>
-      <div class="field">
-        <label class="label">End Date</label>
-        <div class="control">
-          <input name="end_date" class="input" type="date" />
-        </div>
-      </div>
-      <div class="control">
-        {# FIXME loading! #}
-        <button class="button is-primary">Create</button>
-      </div>
+
+      {{ form.input("name", label="Name") }}
+      {{ form.input("slug", label="Slug") }}
+      {{ form.input("start_date", label="Start Date", type="date") }}
+      {{ form.input("end_date", label="Start Date", type="date") }}
+
+      <button type="submit" class="btn btn-primary my-8 w-full">Create</button>
     </form>
   </div>
 {% endblock content %}

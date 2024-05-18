@@ -1,6 +1,6 @@
 use axum::{
     extract::{rejection::FormRejection, State},
-    response::{IntoResponse, Redirect, Response},
+    response::{IntoResponse, Response},
     Form,
 };
 
@@ -43,8 +43,8 @@ pub async fn journal_new_post(
                 ..Default::default()
             };
             Journal::insert(data).exec(&state.db).await?;
-            let resp = Redirect::to(&Route::JournalListGet.as_path()).into_response();
-            Ok(resp)
+            let resp = [("HX-Location", Route::JournalListGet.as_path())];
+            Ok(resp.into_response())
         }
     }
 }
