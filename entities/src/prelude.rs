@@ -2,4 +2,5 @@
 
 pub use super::file::Entity as File;
 pub use super::journal::Entity as Journal;
+pub use super::journal_entry::Entity as JournalEntry;
 pub use super::user::Entity as User;

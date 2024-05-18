@@ -4,4 +4,5 @@ pub mod prelude;
 
 pub mod file;
 pub mod journal;
+pub mod journal_entry;
 pub mod user;
