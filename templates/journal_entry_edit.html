@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% import "common/form.html" as form %}
+
+{% block content %}
+  <div class="mx-auto md:card md:w-1/2 md:p-8">
+    <h1 class="title">Edit Entry</h1>
+    <form hx-post="" id="journal_entry_new_form">
+      {{ form.form_error(error="") }}
+
+      {{ form.input("", "Journal", disabled=true, value=journal.name, autocomplete="off") }}
+      {{ form.input("title", "Title", value=entry.title) }}
+      <div class="my-4 flex w-full gap-2">
+        <input
+          type="date"
+          name="date"
+          required
+          value="{{ entry.date }}"
+          class="input input-bordered flex-1"
+        />
+        <input
+          type="time"
+          name="time"
+          required
+          value="{{ entry.time }}"
+          class="input input-bordered flex-1"
+        />
+      </div>
+      <textarea
+        name="text"
+        cols="30"
+        rows="10"
+        class="textarea textarea-lg"
+      ></textarea>
+      {# FIXME location #}
+      {# FIXME media #}
+
+      <button type="submit" class="btn btn-primary my-8 w-full">Save</button>
+    </form>
+  </div>
+{% endblock content %}

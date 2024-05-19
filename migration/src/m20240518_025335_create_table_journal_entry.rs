@@ -26,19 +26,34 @@ impl MigrationTrait for Migration {
                             .from(JournalEntry::Table, JournalEntry::JournalId)
                             .to(Journal::Table, Journal::Id),
                     )
+                    .col(ColumnDef::new(JournalEntry::Date).date().not_null())
+                    .col(
+                        // Use a naive time here, since the time is implicitly
+                        // in the timezone of the location, and everyone should
+                        // see the same time regardless of where they are!
+                        ColumnDef::new(JournalEntry::Time).time().not_null(),
+                    )
                     .col(ColumnDef::new(JournalEntry::Title).string().not_null())
-                    .col(ColumnDef::new(JournalEntry::Text).string().not_null())
-                    .col(ColumnDef::new(JournalEntry::Address).string().null())
+                    .col(
+                        ColumnDef::new(JournalEntry::Text)
+                            .string()
+                            .not_null()
+                            .default(Value::String(Some(Box::new("".to_string())))),
+                    )
+                    .col(
+                        ColumnDef::new(JournalEntry::Draft)
+                            .boolean()
+                            .not_null()
+                            .default(Value::Bool(Some(true))),
+                    )
+                    .col(
+                        ColumnDef::new(JournalEntry::Address)
+                            .string()
+                            .not_null()
+                            .default(Value::String(Some(Box::new("".to_string())))),
+                    )
                     .col(ColumnDef::new(JournalEntry::Lat).float().null())
                     .col(ColumnDef::new(JournalEntry::Lng).float().null())
-                    .col(
-                        ColumnDef::new(JournalEntry::DateTime)
-                            // Use a naive datetime here, since the time is implicitly
-                            // in the timezone of the location, and everyone should
-                            // see the same time regardless of where they are!
-                            .date_time()
-                            .not_null(),
-                    )
                     .to_owned(),
             )
             .await
@@ -56,10 +71,12 @@ pub enum JournalEntry {
     Table,
     Id,
     JournalId,
+    Date,
+    Time,
     Title,
     Text,
+    Draft,
     Address,
     Lat,
     Lng,
-    DateTime,
 }

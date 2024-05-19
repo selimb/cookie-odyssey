@@ -23,6 +23,7 @@ impl NotFound {
     pub fn render(&self, templ: &Templ) -> Result<impl IntoResponse, RouteError> {
         let ctx = context! { msg => self.msg };
         let html = templ.render_ctx("oops.html", ctx)?;
-        Ok((StatusCode::NOT_FOUND, html))
+        // TODO NOT_FOUND would be more appropriate, but leads to weird behavior in boosted links
+        Ok((StatusCode::OK, html))
     }
 }

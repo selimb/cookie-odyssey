@@ -1,13 +1,16 @@
-{% macro input(name, label, type="text", label_right="", required=true) %}
+{% macro input(name, label, type="text", label_right="", required=true, value="", disabled=false, autocomplete="") %}
   <label class="form-control w-full">
     <div class="label">
       <span class="label-text">{{ label }}</span>
       {{ label_right }}
     </div>
     <input
-      name="{{ name }}"
+      {% if name %}name="{{ name }}"{% endif %}
       type="{{ type }}"
       {% if required %}required{% endif %}
+      {% if disabled %}disabled{% endif %}
+      {% if autocomplete %}autocomplete="{{ autocomplete }}"{% endif %}
+      {% if value %}value="{{ value }}"{% endif %}
       class="input input-bordered w-full"
     />
   </label>

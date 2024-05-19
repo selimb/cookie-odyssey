@@ -3,7 +3,7 @@ Idea inspired by https://themurph.hashnode.dev/go-beyond-the-basics-mastering-to
 #}
 
 <div
-  class="toast max-h-full overflow-y-auto max-md:toast-top max-md:w-full"
+  class="toast max-h-full max-w-full overflow-x-auto overflow-y-auto max-md:toast-top max-md:w-full"
   id="toast-container"
 >
   <template>
@@ -99,6 +99,7 @@ Idea inspired by https://themurph.hashnode.dev/go-beyond-the-basics-mastering-to
     const $toastContainer = document.getElementById("toast-container");
     const $template = $toastContainer.getElementsByTagName("template")[0];
     document.body.addEventListener(TOAST_EVT, (evt) => {
+      console.info("Got", TOAST_EVT);
       toast(evt.detail);
     });
 

@@ -27,6 +27,12 @@ pub enum Route<'a> {
     JournalEntryNewPost {
         slug: Option<&'a str>,
     },
+    JournalEntryEditGet {
+        entry_id: Option<i32>,
+    },
+    JournalEntryEditPost {
+        entry_id: Option<i32>,
+    },
     JournalDayGet {
         slug: Option<&'a str>,
         date: Option<&'a str>,
@@ -63,9 +69,19 @@ impl<'a> Route<'a> {
                 Some(slug) => format!("/journal/{slug}/new-entry").into(),
                 None => "/journal/:slug/new-entry".into(),
             },
+            Route::JournalEntryEditGet { entry_id } => match entry_id {
+                // Giving up on "pretty URLs"
+                Some(entry_id) => format!("/entry/{entry_id}/edit").into(),
+                None => "/entry/:entry_id/edit".into(),
+            },
+            Route::JournalEntryEditPost { entry_id } => match entry_id {
+                Some(entry_id) => format!("/entry/{entry_id}/edit").into(),
+                None => "/entry/:entry_id/edit".into(),
+            },
             Route::JournalDayGet { slug, date } => match (slug, date) {
+                // FIXME
                 (None, None) => todo!(),
-                (Some(slug), Some(date)) => todo!(),
+                (Some(_slug), Some(_date)) => todo!(),
                 oops => panic!("Unexpected params: {oops:?}"),
             },
             Route::LoginGet => "/login".into(),
@@ -110,6 +126,14 @@ fn get_protected_routes() -> Router<AppState> {
         .route(
             &Route::JournalEntryNewPost { slug: None }.as_path(),
             admin!(post(journal::journal_entry_new_post)),
+        )
+        .route(
+            &Route::JournalEntryEditGet { entry_id: None }.as_path(),
+            admin!(get(journal::journal_entry_edit_get)),
+        )
+        .route(
+            &Route::JournalEntryEditPost { entry_id: None }.as_path(),
+            admin!(post(journal::journal_entry_edit_post)),
         )
         .route(
             &Route::UserListGet.as_path(),

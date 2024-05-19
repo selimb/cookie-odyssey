@@ -3,7 +3,7 @@ use std::sync::Arc;
 use anyhow::Context;
 use app_config::{AppConfig, AppEnv};
 use axum::Router;
-use tower_http::services::ServeDir;
+use tower_http::{catch_panic::CatchPanicLayer, services::ServeDir};
 
 use crate::{
     auth::sessions::init_session, state::AppState, storage::init_storage,
@@ -20,7 +20,9 @@ pub async fn mkapp(conf: &AppConfig) -> Result<Router, anyhow::Error> {
     let router = crate::router::init_router()
         .with_state(state)
         .layer(auth_layer)
-        .nest_service("/_assets", ServeDir::new("assets/dist"));
+        .nest_service("/_assets", ServeDir::new("assets/dist"))
+        // TODO: Propagate error message in AppEnv::Dev
+        .layer(CatchPanicLayer::new());
     Ok(router)
 }
 

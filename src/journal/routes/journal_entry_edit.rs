@@ -3,76 +3,73 @@ use axum::{
     response::{IntoResponse, Response},
     Form,
 };
-
-use minijinja::context;
 use sea_orm::EntityTrait;
 use serde::Deserialize;
 
 use crate::{
-    journal::queries::query_journal_by_slug,
+    journal::queries::query_journal_entry_by_id,
     utils::{
         date_utils::{date_to_sqlite, time_to_sqlite},
         serde_utils::string_trim,
     },
-    AppState, FormError, Route, RouteError, RouteResult, Templ,
+    AppState, FormError, RouteError, RouteResult, Templ, Toast,
 };
 use entities::{prelude::*, *};
 
 #[derive(Deserialize, Debug)]
-pub struct JournalEntryNew {
-    journal_id: i32,
+pub struct JournalEntryEdit {
     #[serde(deserialize_with = "string_trim")]
     title: String,
     date: chrono::NaiveDate,
     time: chrono::NaiveTime,
+    #[serde(deserialize_with = "string_trim")]
+    text: String,
 }
 
-pub async fn journal_entry_new_get(
+pub async fn journal_entry_edit_get(
     state: State<AppState>,
     templ: Templ,
-    Path(slug): Path<String>,
+    Path(entry_id): Path<i32>,
 ) -> RouteResult {
-    let journal = query_journal_by_slug(slug, &state.db).await?;
-    let journal = match journal {
-        Ok(journal) => journal,
+    let result = query_journal_entry_by_id(entry_id, &state.db).await?;
+    let entry_full = match result {
+        Ok(entry_full) => entry_full,
         Err(err) => {
             return Ok(err.render(&templ).into_response());
         }
     };
 
-    let ctx = context! { journal };
-    let html = templ.render_ctx("journal_entry_new.html", ctx)?;
+    let ctx = minijinja::Value::from_serialize(entry_full);
+    let html = templ.render_ctx("journal_entry_edit.html", ctx)?;
     Ok(html.into_response())
 }
 
-pub async fn journal_entry_new_post(
+pub async fn journal_entry_edit_post(
     state: State<AppState>,
-    form: Result<Form<JournalEntryNew>, FormRejection>,
+    Path(entry_id): Path<i32>,
+    form: Result<Form<JournalEntryEdit>, FormRejection>,
 ) -> Result<Response, RouteError> {
     match form {
         Err(err) => {
             let resp = FormError::from(err).render(&state)?;
             Ok(resp.into_response())
         }
-        Ok(Form(JournalEntryNew {
-            journal_id,
+        Ok(Form(JournalEntryEdit {
             title,
             date,
             time,
+            text,
         })) => {
             let data = journal_entry::ActiveModel {
-                journal_id: sea_orm::ActiveValue::Set(journal_id),
+                id: sea_orm::ActiveValue::Set(entry_id),
                 title: sea_orm::ActiveValue::Set(title),
                 date: sea_orm::ActiveValue::Set(date_to_sqlite(date)),
                 time: sea_orm::ActiveValue::Set(time_to_sqlite(time)),
+                text: sea_orm::ActiveValue::Set(text),
                 ..Default::default()
             };
-            let entry = JournalEntry::insert(data).exec(&state.db).await?;
-            let href = Route::JournalEntryEditGet {
-                entry_id: Some(entry.last_insert_id),
-            }
-            .as_path();
-            let resp = [("HX-Location", href.as_ref())];
+            JournalEntry::update(data).exec(&state.db).await?;
+            let resp = Toast::success("Saved");
             Ok(resp.into_response())
         }
     }

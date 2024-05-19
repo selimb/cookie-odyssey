@@ -8,13 +8,16 @@ use sea_orm::EntityTrait;
 use serde::Deserialize;
 
 use crate::{
-    utils::date_utils::date_to_sqlite, AppState, FormError, Route, RouteError, RouteResult, Templ,
+    utils::{date_utils::date_to_sqlite, serde_utils::string_trim},
+    AppState, FormError, Route, RouteError, RouteResult, Templ,
 };
 use entities::{prelude::*, *};
 
 #[derive(Deserialize, Debug)]
 pub struct JournalNew {
+    #[serde(deserialize_with = "string_trim")]
     pub name: String,
+    #[serde(deserialize_with = "string_trim")]
     pub slug: String,
     pub start_date: chrono::NaiveDate,
     pub end_date: Option<chrono::NaiveDate>,

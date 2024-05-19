@@ -19,6 +19,13 @@ orm-gen:
 		--ignore-tables tower_sessions \
 		--lib
 
+admin:
+	cargo run -- create-admin
+
+fix-all:
+	cargo fix
+	cargo clippy --all-targets --fix
+
 local-s3:
 	docker run \
 	--rm \

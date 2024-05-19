@@ -9,14 +9,16 @@ pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
     pub journal_id: i32,
+    pub date: String,
+    pub time: String,
     pub title: String,
     pub text: String,
-    pub address: Option<String>,
+    pub draft: bool,
+    pub address: String,
     #[sea_orm(column_type = "Double", nullable)]
     pub lat: Option<f64>,
     #[sea_orm(column_type = "Double", nullable)]
     pub lng: Option<f64>,
-    pub date_time: String,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

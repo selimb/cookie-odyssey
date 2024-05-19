@@ -2,7 +2,7 @@
 
 ...
 
-# RouteError, FormError, NotFound
+# RouteError, FormError, NotFound, CatchPanicLayer
 
 WIP
 

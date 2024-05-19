@@ -24,3 +24,7 @@ https://pen.so/2023/07/31/asset-pipeline-for-rust/ looks good.
 Is this really supposed to be easier than Next.js + TRPC, or even API + SPA?
 You still need to add routes for every little action, and the routes are now tightly coupled
 with where they're called from...
+
+### Boost + Error Handling
+
+ARGH! If submitting a form that redirects, or clicking on a link, and the response returns an error (e.g. 404), then the redirect does not happen (although the URL is still updated).
