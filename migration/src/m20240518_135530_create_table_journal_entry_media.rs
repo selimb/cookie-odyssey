@@ -37,6 +37,12 @@ impl MigrationTrait for Migration {
                             .not_null(),
                     )
                     .col(
+                        ColumnDef::new(JournalEntryMedia::Caption)
+                            .string()
+                            .not_null()
+                            .default(Value::String(Some(Box::new("".to_string())))),
+                    )
+                    .col(
                         ColumnDef::new(JournalEntryMedia::FileId)
                             .integer()
                             .not_null(),
@@ -64,5 +70,6 @@ enum JournalEntryMedia {
     Id,
     JournalEntryId,
     Order,
+    Caption,
     FileId,
 }

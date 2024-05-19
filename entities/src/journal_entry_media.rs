@@ -10,6 +10,7 @@ pub struct Model {
     pub id: i32,
     pub journal_entry_id: i32,
     pub order: i32,
+    pub caption: String,
     pub file_id: i32,
 }
 

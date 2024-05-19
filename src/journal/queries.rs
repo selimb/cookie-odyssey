@@ -24,14 +24,14 @@ pub struct MediaFull {
     pub id: i32,
     pub order: i32,
     pub file_id: i32,
-    pub file_url: String,
+    pub url: String,
 }
 
 #[derive(Serialize, Debug)]
 pub struct JournalEntryFull {
     pub entry: journal_entry::Model,
     pub journal: journal::Model,
-    pub media: Vec<MediaFull>,
+    pub media_list: Vec<MediaFull>,
 }
 
 pub async fn query_journal_entry_by_id(
@@ -62,7 +62,7 @@ pub async fn query_journal_entry_by_id(
                 id: media.id,
                 order: media.order,
                 file_id: media.file_id,
-                file_url: file.expect("Should never be null").url,
+                url: file.expect("Should never be null").url,
             }
         })
         .collect();
@@ -70,6 +70,6 @@ pub async fn query_journal_entry_by_id(
     Ok(Ok(JournalEntryFull {
         entry,
         journal,
-        media,
+        media_list: media,
     }))
 }

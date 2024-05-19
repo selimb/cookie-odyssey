@@ -1,6 +1,16 @@
 {% extends "base.html" %}
 {% import "common/form.html" as form %}
 
+{% macro media_figure(src, caption) %}
+  {# FIXME Handle video #}
+  <figure class="w-full">
+    <img src="{{ media.url }}" class="h-auto max-w-full" />
+    <figcaption class="mt-2 text-center text-sm">
+      {{ media.caption }}
+    </figcaption>
+  </figure>
+{% endmacro %}
+
 {% block content %}
   <div class="mx-auto md:card md:w-1/2 md:p-8">
     <h1 class="title">Edit Entry</h1>
@@ -29,12 +39,61 @@
         name="text"
         cols="30"
         rows="10"
-        class="textarea textarea-lg"
+        class="textarea textarea-lg w-full"
+        value="{{ entry.text }}"
+        placeholder="Jot it like it's hot..."
       ></textarea>
       {# FIXME location #}
       {# FIXME media #}
 
-      <button type="submit" class="btn btn-primary my-8 w-full">Save</button>
+      <div id="media-container" class="w-ful">
+        {% for media in media_list %}
+          {{ media_figure(src=media.url, caption=media.caption) }}
+        {% endfor %}
+      </div>
+      <button
+        type="button"
+        id="add-media"
+        class="btn btn-secondary my-4 w-full"
+      >
+        Add Photo
+      </button>
+
+      <button id="media-btn" type="submit" class="btn btn-primary my-8 w-full">
+        Save
+      </button>
     </form>
+    <input id="media-input" class="hidden" type="file" accept="image/*" />
   </div>
+
+  <template id="media-figure">
+    {{ media_figure(src="", caption="") }}
+  </template>
+
+  <script>
+    (() => {
+      /** @type {HTMLTemplateElement | undefined} */
+      const $template = document.querySelector("template#media-figure");
+      if (!$template) {
+        console.error("No template found");
+        return;
+      }
+      /** @type {HTMLButtonElement | undefined} */
+      const $mediaBtn = document.querySelector("button#media-btn");
+      if (!$template) {
+        console.error("No button found");
+        return;
+      }
+      /** @type {HTMLInputElement | undefined} */
+      const $mediaInput = document.querySelector("button#media-input");
+      if (!$template) {
+        console.error("No input found");
+        return;
+      }
+
+      $mediaBtn.addEventListener("click", () => {
+        $mediaInput;
+      });
+    })();
+  </script>
 {% endblock content %}
