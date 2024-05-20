@@ -3,7 +3,7 @@ use sea_orm::{ColumnTrait, DatabaseConnection, DbErr, EntityTrait, QueryFilter, 
 use entities::{prelude::*, *};
 use serde::Serialize;
 
-use crate::NotFound;
+use crate::{storage::FileStore, NotFound};
 
 pub async fn query_journal_by_slug(
     slug: String,
@@ -37,7 +37,8 @@ pub struct JournalEntryFull {
 pub async fn query_journal_entry_by_id(
     id: i32,
     db: &DatabaseConnection,
-) -> Result<Result<JournalEntryFull, NotFound>, DbErr> {
+    storage: &FileStore,
+) -> Result<Result<JournalEntryFull, NotFound>, anyhow::Error> {
     let entry = JournalEntry::find_by_id(id)
         .find_also_related(Journal)
         .one(db)
@@ -49,27 +50,28 @@ pub async fn query_journal_entry_by_id(
         }
     };
 
-    let media = JournalEntryMedia::find()
+    let media_db = JournalEntryMedia::find()
         .filter(journal_entry_media::Column::JournalEntryId.eq(entry.id))
         .find_also_related(File)
         .order_by_asc(journal_entry_media::Column::Order)
         .all(db)
         .await?;
-    let media = media
-        .into_iter()
-        .map(|(media, file)| -> MediaFull {
-            MediaFull {
-                id: media.id,
-                order: media.order,
-                file_id: media.file_id,
-                url: file.expect("Should never be null").url,
-            }
-        })
-        .collect();
+    let mut media_list: Vec<MediaFull> = Vec::new();
+    for (media, file) in media_db {
+        let file = file.expect("Should be non-null");
+        let url = storage.sign_url(file.bucket, file.key).await?;
+        let m = MediaFull {
+            id: media.id,
+            order: media.order,
+            file_id: media.file_id,
+            url,
+        };
+        media_list.push(m);
+    }
 
     Ok(Ok(JournalEntryFull {
         entry,
         journal,
-        media_list: media,
+        media_list,
     }))
 }

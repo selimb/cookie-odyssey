@@ -3,6 +3,7 @@ use axum::{
     response::{IntoResponse, Response},
     Form,
 };
+use minijinja::context;
 use sea_orm::EntityTrait;
 use serde::Deserialize;
 
@@ -12,7 +13,7 @@ use crate::{
         date_utils::{date_to_sqlite, time_to_sqlite},
         serde_utils::string_trim,
     },
-    AppState, FormError, RouteError, RouteResult, Templ, Toast,
+    AppState, FormError, Route, RouteError, RouteResult, Templ, Toast,
 };
 use entities::{prelude::*, *};
 
@@ -31,7 +32,7 @@ pub async fn journal_entry_edit_get(
     templ: Templ,
     Path(entry_id): Path<i32>,
 ) -> RouteResult {
-    let result = query_journal_entry_by_id(entry_id, &state.db).await?;
+    let result = query_journal_entry_by_id(entry_id, &state.db, &state.storage).await?;
     let entry_full = match result {
         Ok(entry_full) => entry_full,
         Err(err) => {
@@ -39,7 +40,13 @@ pub async fn journal_entry_edit_get(
         }
     };
 
-    let ctx = minijinja::Value::from_serialize(entry_full);
+    let href_upload = Route::MediaUploadUrlGet.as_path();
+    let ctx = context! {
+        ..minijinja::Value::from_serialize(entry_full),
+        ..context! {
+            href_upload,
+        }
+    };
     let html = templ.render_ctx("journal_entry_edit.html", ctx)?;
     Ok(html.into_response())
 }

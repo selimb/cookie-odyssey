@@ -1,0 +1,13 @@
+version: "3.8"
+
+services:
+  localstack:
+    image: localstack/localstack
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=s3
+      - DEBUG=${DEBUG:-0}
+    volumes:
+      - "./data/s3:/var/lib/localstack"
+      - "/var/run/docker.sock:/var/run/docker.sock"

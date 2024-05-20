@@ -8,6 +8,7 @@ use axum_login::{login_required, permission_required};
 
 use crate::auth::{perms::Permission, routes as auth, sessions::AuthBackend};
 use crate::journal::routes as journal;
+use crate::storage::routes as storage;
 use crate::AppState;
 
 // Idea stolen from https://github.com/jdevries3133/calcount/blob/main/src/routes.rs
@@ -40,6 +41,7 @@ pub enum Route<'a> {
     LoginGet,
     LoginPost,
     LogoutPost,
+    MediaUploadUrlGet,
     // FIXME route
     NotificationsListGet,
     RegisterGet,
@@ -87,6 +89,7 @@ impl<'a> Route<'a> {
             Route::LoginGet => "/login".into(),
             Route::LoginPost => "/login".into(),
             Route::LogoutPost => "/logout".into(),
+            Route::MediaUploadUrlGet => "/api/media-upload-url".into(),
             Route::NotificationsListGet => "/notifications".into(),
             Route::RegisterGet => "/register".into(),
             Route::RegisterPost => "/register".into(),
@@ -134,6 +137,10 @@ fn get_protected_routes() -> Router<AppState> {
         .route(
             &Route::JournalEntryEditPost { entry_id: None }.as_path(),
             admin!(post(journal::journal_entry_edit_post)),
+        )
+        .route(
+            &Route::MediaUploadUrlGet.as_path(),
+            admin!(get(storage::media_upload_url_get)),
         )
         .route(
             &Route::UserListGet.as_path(),

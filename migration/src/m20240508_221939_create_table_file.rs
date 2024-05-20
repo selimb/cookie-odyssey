@@ -18,7 +18,8 @@ impl MigrationTrait for Migration {
                             .auto_increment()
                             .primary_key(),
                     )
-                    .col(ColumnDef::new(File::Url).string().not_null())
+                    .col(ColumnDef::new(File::Bucket).string().not_null())
+                    .col(ColumnDef::new(File::Key).string().not_null())
                     .to_owned(),
             )
             .await
@@ -35,5 +36,6 @@ impl MigrationTrait for Migration {
 pub enum File {
     Table,
     Id,
-    Url,
+    Bucket,
+    Key,
 }

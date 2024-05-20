@@ -30,7 +30,7 @@
     </form>
     <script>
       htmx.onLoad(() => {
-        const $form = document.querySelector("#journal_entry_new_form");
+        const $form = document.getElementById("journal_entry_new_form");
         /** @type {HTMLInputElement | undefined} */
         const $inputDate = $form?.querySelector(`input[name="date"]`);
         if ($inputDate) {

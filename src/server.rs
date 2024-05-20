@@ -29,7 +29,7 @@ pub async fn mkapp(conf: &AppConfig) -> Result<Router, anyhow::Error> {
 async fn init_state(conf: &AppConfig) -> Result<(AppState, sqlx::SqlitePool), anyhow::Error> {
     let template_engine = init_templates();
     let (pool, db) = init_db(conf).await?;
-    let storage = init_storage(conf).context("Failed to initialize file storage")?;
+    let storage = init_storage(conf).await?;
     let state = AppState {
         template_engine: Arc::new(template_engine),
         db,

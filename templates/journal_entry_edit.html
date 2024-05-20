@@ -4,10 +4,8 @@
 {% macro media_figure(src, caption) %}
   {# FIXME Handle video #}
   <figure class="w-full">
-    <img src="{{ media.url }}" class="h-auto max-w-full" />
-    <figcaption class="mt-2 text-center text-sm">
-      {{ media.caption }}
-    </figcaption>
+    <img src="{{ src }}" class="h-auto max-w-full" />
+    <figcaption class="mt-2 text-center text-sm">{{ caption }}</figcaption>
   </figure>
 {% endmacro %}
 
@@ -44,56 +42,143 @@
         placeholder="Jot it like it's hot..."
       ></textarea>
       {# FIXME location #}
-      {# FIXME media #}
 
-      <div id="media-container" class="w-ful">
-        {% for media in media_list %}
-          {{ media_figure(src=media.url, caption=media.caption) }}
-        {% endfor %}
-      </div>
+      {% block fragment_media_container %}
+        <div id="media-container" class="w-full">
+          {% for media in media_list %}
+            {{ media_figure(src=media.url, caption=media.caption) }}
+          {% endfor %}
+        </div>
+      {% endblock fragment_media_container %}
       <button
         type="button"
-        id="add-media"
+        id="media-btn"
         class="btn btn-secondary my-4 w-full"
+        data-next-order="{{ media_list | length }}"
+        data-get-upload-url="{{ href_upload }}"
       >
         Add Photo
       </button>
 
-      <button id="media-btn" type="submit" class="btn btn-primary my-8 w-full">
-        Save
-      </button>
+      <button type="submit" class="btn btn-primary my-8 w-full">Save</button>
     </form>
     <input id="media-input" class="hidden" type="file" accept="image/*" />
   </div>
-
-  <template id="media-figure">
-    {{ media_figure(src="", caption="") }}
-  </template>
-
   <script>
-    (() => {
-      /** @type {HTMLTemplateElement | undefined} */
-      const $template = document.querySelector("template#media-figure");
-      if (!$template) {
-        console.error("No template found");
-        return;
-      }
-      /** @type {HTMLButtonElement | undefined} */
-      const $mediaBtn = document.querySelector("button#media-btn");
-      if (!$template) {
-        console.error("No button found");
-        return;
-      }
-      /** @type {HTMLInputElement | undefined} */
-      const $mediaInput = document.querySelector("button#media-input");
-      if (!$template) {
-        console.error("No input found");
-        return;
+    // @ts-check
+
+    // @ts-ignore
+    htmx.onLoad(() => {
+      function findElems() {
+        const $mediaContainer = document.getElementById("media-container");
+        if (!$mediaContainer) throw new Error("No media-container found");
+
+        const $mediaBtn = /** @type {HTMLButtonElement | null} */ (
+          document.getElementById("media-btn")
+        );
+        if (!$mediaBtn) throw new Error("No media-btn found");
+        const dataNextOrder = $mediaBtn.getAttribute("data-next-order");
+        if (!dataNextOrder) throw new Error("Missing data-next-order");
+        const dataGetUploadUrl = $mediaBtn.getAttribute("data-get-upload-url");
+        if (!dataGetUploadUrl) throw new Error("Missing data-get-upload-url");
+
+        const $mediaInput = /** @type {HTMLInputElement | null} */ (
+          document.getElementById("media-input")
+        );
+        if (!$mediaInput) throw new Error("No media-input found");
+
+        return {
+          $mediaContainer,
+          dataNextOrder,
+          dataGetUploadUrl,
+          $mediaBtn,
+          $mediaInput,
+        };
       }
 
-      $mediaBtn.addEventListener("click", () => {
-        $mediaInput;
+      /**
+       * @typedef MediaUploadUrlResult
+       * @type {object}
+       * @property {number} file_id
+       * @property {string} url
+       * @property {string} method
+       */
+
+      /**
+       * @param {File} file
+       * @param {string} getUploadUrl
+       * @return {Promise<MediaUploadUrlResult>}
+       */
+      async function fetchUploadUrl(file, getUploadUrl) {
+        const reqUrl = `${getUploadUrl}?filename=${file.name}`;
+        const resp = await fetch(reqUrl);
+        if (!resp.ok) {
+          throw new Error(`Request failed with status ${resp.status}`);
+        }
+        const body = await resp?.json();
+        return body;
+      }
+
+      /**
+       * @param {File} file
+       * @param {MediaUploadUrlResult} uploadUrlParams
+       */
+      async function doUpload(file, uploadUrlParams) {
+        // XXX
+        console.debug("uploadUrlParams", uploadUrlParams);
+        const resp = await fetch(uploadUrlParams.url, {
+          method: uploadUrlParams.method,
+          body: file,
+        });
+        if (!resp.ok) {
+          throw new Error(`Request failed with status ${resp.status}`);
+        }
+      }
+
+      const {
+        $mediaBtn,
+        dataNextOrder,
+        dataGetUploadUrl,
+        $mediaContainer,
+        $mediaInput,
+      } = findElems();
+
+      $mediaBtn.addEventListener("click", (evt) => {
+        $mediaInput.click();
+        evt.preventDefault();
       });
-    })();
+      $mediaInput.addEventListener("change", async () => {
+        const files = $mediaInput.files;
+        if (!files || files.length === 0) {
+          return;
+        }
+        const file = files[0];
+
+        try {
+          var uploadUrlParams = await fetchUploadUrl(file, dataGetUploadUrl);
+        } catch (err) {
+          // @ts-ignore
+          toast({
+            message: "Failed to request upload URL",
+            detail: err.message,
+            variant: "error",
+          });
+          return;
+        }
+        console.info("uploadUrl", uploadUrlParams);
+
+        try {
+          await doUpload(file, uploadUrlParams);
+        } catch (err) {
+          // @ts-ignore
+          toast({
+            message: "Failed to upload file",
+            detail: err.message,
+            variant: "error",
+          });
+          return;
+        }
+      });
+    });
   </script>
 {% endblock content %}

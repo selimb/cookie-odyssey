@@ -49,11 +49,7 @@ pub struct AppConfig {
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct StorageConfig {
-    pub access_key_id: String,
-    pub secret_access_key: String,
-    pub region: String,
-    pub endpoint: String,
-    pub allow_http: bool,
+    pub bucket_media: String,
 }
 
 impl AppConfig {
