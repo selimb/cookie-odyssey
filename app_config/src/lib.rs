@@ -49,7 +49,10 @@ pub struct AppConfig {
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct StorageConfig {
-    pub bucket_media: String,
+    pub container_media: String,
+    pub azure_storage_account: String,
+    pub azure_storage_access_key: String,
+    pub emulator: bool,
 }
 
 impl AppConfig {

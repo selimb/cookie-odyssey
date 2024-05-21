@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use axum::{
-    routing::{get, post},
+    routing::{get, post, put},
     Router,
 };
 use axum_login::{login_required, permission_required};
@@ -38,10 +38,13 @@ pub enum Route<'a> {
         slug: Option<&'a str>,
         date: Option<&'a str>,
     },
+    JournalEntryMediaCommitPost(Option<journal::JournalEntryMediaCommitParams>),
+    JournalEntryMediaEditCaptionPost,
     LoginGet,
     LoginPost,
     LogoutPost,
     MediaUploadUrlGet,
+    MediaUploadProxyPut(Option<storage::MediaUploadProxyParams>),
     // FIXME route
     NotificationsListGet,
     RegisterGet,
@@ -90,6 +93,21 @@ impl<'a> Route<'a> {
             Route::LoginPost => "/login".into(),
             Route::LogoutPost => "/logout".into(),
             Route::MediaUploadUrlGet => "/api/media-upload-url".into(),
+            Route::MediaUploadProxyPut(params) => match params {
+                Some(params) => {
+                    let qs = serde_qs::to_string(params).expect("Should be valid");
+                    format!("/api/media-upload?{qs}").into()
+                }
+                None => "/api/media-upload".into(),
+            },
+            Route::JournalEntryMediaCommitPost(params) => match params {
+                Some(params) => {
+                    let qs = serde_qs::to_string(params).expect("Should be valid");
+                    format!("/api/entry-commit?{qs}").into()
+                }
+                None => "/api/entry-commit".into(),
+            },
+            Route::JournalEntryMediaEditCaptionPost => "/api/media-caption-edit".into(),
             Route::NotificationsListGet => "/notifications".into(),
             Route::RegisterGet => "/register".into(),
             Route::RegisterPost => "/register".into(),
@@ -139,8 +157,20 @@ fn get_protected_routes() -> Router<AppState> {
             admin!(post(journal::journal_entry_edit_post)),
         )
         .route(
+            &Route::JournalEntryMediaCommitPost(None).as_path(),
+            admin!(post(journal::journal_entry_media_commit_post)),
+        )
+        .route(
+            &Route::JournalEntryMediaEditCaptionPost.as_path(),
+            admin!(post(journal::journal_entry_media_caption_edit)),
+        )
+        .route(
             &Route::MediaUploadUrlGet.as_path(),
             admin!(get(storage::media_upload_url_get)),
+        )
+        .route(
+            &Route::MediaUploadProxyPut(None).as_path(),
+            admin!(put(storage::media_upload_proxy)),
         )
         .route(
             &Route::UserListGet.as_path(),

@@ -2,8 +2,8 @@
 {% import "common/form.html" as form %}
 
 {% block content %}
-  <div class="mx-auto md:card md:w-1/2 md:p-8">
-    <h1 class="title">New Entry</h1>
+  <div class="app-form mx-auto">
+    <h1 class="app-title">New Entry</h1>
     <form hx-post="" id="journal_entry_new_form">
       {{ form.form_error(error="") }}
 

@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
-  <h1 class="title">Users</h1>
+  <h1 class="app-title">Users</h1>
   <div class="overflow-x-auto">
     <table class="table md:table-lg">
       <thead>
@@ -39,7 +39,7 @@
                     hx-post="{{ href_approve }}"
                     hx-swap="outerHTML"
                     hx-target="#user_list"
-                    hx-vars="user_id: {{ user.id }}"
+                    hx-vals='{ "user_id": "{{ user.id }}" }'
                   >
                     Approve
                   </button>
@@ -50,7 +50,7 @@
                   hx-post="{{ href_delete }}"
                   hx-swap="outerHTML"
                   hx-target="#user_list"
-                  hx-vars="user_id: {{ user.id }}"
+                  hx-vals='{ "user_id": "{{ user.id }}" }'
                   hx-confirm="Are you sure you wish to delete: {{ user.email }} ?"
                 >
                   Delete

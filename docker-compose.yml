@@ -1,13 +1,11 @@
 version: "3.8"
 
 services:
-  localstack:
-    image: localstack/localstack
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite
     ports:
-      - "4566:4566"
-    environment:
-      - SERVICES=s3
-      - DEBUG=${DEBUG:-0}
+      - "10000:10000"
+      - "10001:10001"
+      - "10002:10002"
     volumes:
-      - "./data/s3:/var/lib/localstack"
-      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "./data/azurite:/data mcr.microsoft.com/azure-storage/azurite"

@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
-  <h1 class="title">{{ journal.name }}</h1>
+  <h1 class="app-title">{{ journal.name }}</h1>
 
   {# Header #}
   {% if user.admin %}
@@ -15,7 +15,14 @@
     </div>
   {% endif %}
 
-  {# FIXME Main #}
+  {% for (day, entries) in entries_by_day %}
+    <div class="card">
+      <h2>{{ day | date }}</h2>
+      {% for entry in entries %}
+        <p>{{ entry.title }}</p>
+      {% endfor %}
+    </div>
+  {% endfor %}
 
   {# Footer #}
   <div class="flex justify-between">

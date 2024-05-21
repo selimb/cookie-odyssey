@@ -4,23 +4,29 @@ use axum::{
     Json,
 };
 
-use crate::{storage::store::Bucket, AppState, RouteError};
+use crate::{
+    journal::routes::JournalEntryMediaCommitParams, storage::store::Bucket, AppState, Route,
+    RouteError,
+};
 use entities::{prelude::*, *};
 use nanoid::nanoid;
 use sea_orm::EntityTrait;
 use serde::{Deserialize, Serialize};
 
+// SYNC
 #[derive(Deserialize, Debug)]
 pub struct MediaUploadUrlQuery {
     filename: String,
+    entry_id: i32,
 }
 
+// SYNC
 #[derive(Serialize, Debug)]
 pub struct MediaUploadUrlResult {
-    // TODO Not very secure, but meh.
-    file_id: i32,
-    url: String,
-    method: String,
+    upload_url: String,
+    upload_method: String,
+    commit_url: String,
+    commit_method: String,
 }
 
 pub async fn media_upload_url_get(
@@ -45,11 +51,19 @@ pub async fn media_upload_url_get(
         ..Default::default()
     };
     let file_db = File::insert(file_data).exec(&state.db).await?;
+    let file_id = file_db.last_insert_id;
+
+    let commit_url = Route::JournalEntryMediaCommitPost(Some(JournalEntryMediaCommitParams {
+        file_id,
+        entry_id: query.entry_id,
+    }))
+    .as_path();
 
     let resp_body = MediaUploadUrlResult {
-        file_id: file_db.last_insert_id,
-        method: upload_params.method,
-        url: upload_params.url,
+        upload_method: upload_params.method,
+        upload_url: upload_params.url,
+        commit_url: commit_url.to_string(),
+        commit_method: "POST".to_string(),
     };
     let resp = Json(resp_body).into_response();
     Ok(resp)
