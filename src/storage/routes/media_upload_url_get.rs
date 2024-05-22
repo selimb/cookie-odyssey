@@ -53,7 +53,7 @@ pub async fn media_upload_url_get(
     let file_db = File::insert(file_data).exec(&state.db).await?;
     let file_id = file_db.last_insert_id;
 
-    let commit_url = Route::JournalEntryMediaCommitPost(Some(JournalEntryMediaCommitParams {
+    let commit_url = Route::JournalEntryMediaCommitPost(Some(&JournalEntryMediaCommitParams {
         file_id,
         entry_id: query.entry_id,
     }))

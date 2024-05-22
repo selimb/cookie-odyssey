@@ -69,7 +69,7 @@ impl FileStore {
     ) -> Result<UploadUrl, anyhow::Error> {
         let bucket = bucket.to_name(&self.conf).to_owned();
         if self.conf.emulator {
-            let url = Route::MediaUploadProxyPut(Some(MediaUploadProxyParams {
+            let url = Route::MediaUploadProxyPut(Some(&MediaUploadProxyParams {
                 bucket: bucket.clone(),
                 key: key.clone(),
             }))

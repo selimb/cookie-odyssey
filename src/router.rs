@@ -6,45 +6,35 @@ use axum::{
 };
 use axum_login::{login_required, permission_required};
 
-use crate::auth::{perms::Permission, routes as auth, sessions::AuthBackend};
-use crate::journal::routes as journal;
+use crate::journal::routes::{self as journal, JournalEntryNewQuery};
 use crate::storage::routes as storage;
 use crate::AppState;
+use crate::{
+    auth::{perms::Permission, routes as auth, sessions::AuthBackend},
+    journal::routes::JournalEntryNewPath,
+};
 
 // Idea stolen from https://github.com/jdevries3133/calcount/blob/main/src/routes.rs
 // Type-safe routes!
 pub enum Route<'a> {
     ForgotPasswordGet,
     ForgotPasswordPost,
-    JournalDetailGet {
-        slug: Option<&'a str>,
-    },
+    JournalDetailGet { slug: Option<&'a str> },
     JournalListGet,
     JournalNewGet,
     JournalNewPost,
-    JournalEntryNewGet {
-        slug: Option<&'a str>,
-    },
-    JournalEntryNewPost {
-        slug: Option<&'a str>,
-    },
-    JournalEntryEditGet {
-        entry_id: Option<i32>,
-    },
-    JournalEntryEditPost {
-        entry_id: Option<i32>,
-    },
-    JournalDayGet {
-        slug: Option<&'a str>,
-        date: Option<&'a str>,
-    },
-    JournalEntryMediaCommitPost(Option<journal::JournalEntryMediaCommitParams>),
+    JournalEntryNewGet(Option<(&'a JournalEntryNewPath, &'a JournalEntryNewQuery)>),
+    JournalEntryNewPost { slug: Option<&'a str> },
+    JournalEntryEditGet { entry_id: Option<i32> },
+    JournalEntryEditPost { entry_id: Option<i32> },
+    JournalDayGet(Option<&'a journal::JournalDayGetPath>),
+    JournalEntryMediaCommitPost(Option<&'a journal::JournalEntryMediaCommitParams>),
     JournalEntryMediaEditCaptionPost,
     LoginGet,
     LoginPost,
     LogoutPost,
     MediaUploadUrlGet,
-    MediaUploadProxyPut(Option<storage::MediaUploadProxyParams>),
+    MediaUploadProxyPut(Option<&'a storage::MediaUploadProxyParams>),
     // FIXME route
     NotificationsListGet,
     RegisterGet,
@@ -53,6 +43,8 @@ pub enum Route<'a> {
     UserListApprovePost,
     UserListDeletePost,
 }
+
+const EXPECT_QS: &'static str = "Should be a valid querystring";
 
 impl<'a> Route<'a> {
     pub fn as_path(&self) -> Cow<'static, str> {
@@ -66,9 +58,13 @@ impl<'a> Route<'a> {
             Route::JournalListGet => "/".into(),
             Route::JournalNewGet => "/new-journal".into(),
             Route::JournalNewPost => "/new-journal".into(),
-            Route::JournalEntryNewGet { slug } => match slug {
-                Some(slug) => format!("/journal/{slug}/new-entry").into(),
+            Route::JournalEntryNewGet(params) => match params {
                 None => "/journal/:slug/new-entry".into(),
+                Some((path, query)) => {
+                    let slug = &path.slug;
+                    let qs = serde_qs::to_string(query).expect(EXPECT_QS);
+                    format!("/journal/{slug}/new-entry?{qs}").into()
+                }
             },
             Route::JournalEntryNewPost { slug } => match slug {
                 Some(slug) => format!("/journal/{slug}/new-entry").into(),
@@ -83,11 +79,9 @@ impl<'a> Route<'a> {
                 Some(entry_id) => format!("/entry/{entry_id}/edit").into(),
                 None => "/entry/:entry_id/edit".into(),
             },
-            Route::JournalDayGet { slug, date } => match (slug, date) {
-                // FIXME
-                (None, None) => todo!(),
-                (Some(_slug), Some(_date)) => todo!(),
-                oops => panic!("Unexpected params: {oops:?}"),
+            Route::JournalDayGet(params) => match params {
+                None => "/journal/:slug/entry/:date".into(),
+                Some(params) => format!("/journal/{}/entry/{}", params.slug, params.date).into(),
             },
             Route::LoginGet => "/login".into(),
             Route::LoginPost => "/login".into(),
@@ -95,14 +89,14 @@ impl<'a> Route<'a> {
             Route::MediaUploadUrlGet => "/api/media-upload-url".into(),
             Route::MediaUploadProxyPut(params) => match params {
                 Some(params) => {
-                    let qs = serde_qs::to_string(params).expect("Should be valid");
+                    let qs = serde_qs::to_string(params).expect(EXPECT_QS);
                     format!("/api/media-upload?{qs}").into()
                 }
                 None => "/api/media-upload".into(),
             },
             Route::JournalEntryMediaCommitPost(params) => match params {
                 Some(params) => {
-                    let qs = serde_qs::to_string(params).expect("Should be valid");
+                    let qs = serde_qs::to_string(params).expect(EXPECT_QS);
                     format!("/api/entry-commit?{qs}").into()
                 }
                 None => "/api/entry-commit".into(),
@@ -133,6 +127,10 @@ fn get_protected_routes() -> Router<AppState> {
             get(journal::journal_detail_get),
         )
         .route(
+            &Route::JournalDayGet(None).as_path(),
+            get(journal::journal_day_get),
+        )
+        .route(
             &Route::JournalNewGet.as_path(),
             admin!(get(journal::journal_new_get)),
         )
@@ -141,7 +139,7 @@ fn get_protected_routes() -> Router<AppState> {
             admin!(post(journal::journal_new_post)),
         )
         .route(
-            &Route::JournalEntryNewGet { slug: None }.as_path(),
+            &Route::JournalEntryNewGet(None).as_path(),
             admin!(get(journal::journal_entry_new_get)),
         )
         .route(

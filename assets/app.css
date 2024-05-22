@@ -14,4 +14,8 @@
   .app-form-card {
     @apply md:card md:shadow-xl dark:md:bg-neutral
   }
+
+  .app-card {
+    @apply card shadow-xl max-md:w-full dark:bg-neutral
+  }
 }

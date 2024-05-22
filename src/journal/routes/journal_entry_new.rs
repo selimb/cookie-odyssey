@@ -1,12 +1,12 @@
 use axum::{
-    extract::{rejection::FormRejection, Path, State},
+    extract::{rejection::FormRejection, Path, Query, State},
     response::{IntoResponse, Response},
     Form,
 };
 
 use minijinja::context;
 use sea_orm::EntityTrait;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     journal::queries::query_journal_by_slug,
@@ -17,6 +17,16 @@ use crate::{
     AppState, FormError, Route, RouteError, RouteResult, Templ,
 };
 use entities::{prelude::*, *};
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct JournalEntryNewPath {
+    pub slug: String,
+}
+
+#[derive(Deserialize, Serialize, Debug, Default)]
+pub struct JournalEntryNewQuery {
+    pub date: Option<chrono::NaiveDate>,
+}
 
 #[derive(Deserialize, Debug)]
 pub struct JournalEntryNew {
@@ -31,6 +41,7 @@ pub async fn journal_entry_new_get(
     state: State<AppState>,
     templ: Templ,
     Path(slug): Path<String>,
+    Query(query): Query<JournalEntryNewQuery>,
 ) -> RouteResult {
     let journal = query_journal_by_slug(slug, &state.db).await?;
     let journal = match journal {

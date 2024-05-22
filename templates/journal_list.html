@@ -13,11 +13,9 @@
 
     <div class="space-y-4">
       {% for journal in journals %}
-        <div class="card mx-auto shadow-xl max-md:w-full dark:bg-neutral">
+        <a href="{{ journal.href }}" class="app-card mx-auto">
           <div class="card-body">
-            <h2 class="card-title">
-              <a href="{{ journal.href }}" class="link"> {{ journal.name }} </a>
-            </h2>
+            <h2 class="card-title">{{ journal.name }}</h2>
             <div>
               {{ common.date(date=journal.start_date) }} -
               {% if journal.end_date %}
@@ -27,7 +25,7 @@
               {% endif %}
             </div>
           </div>
-        </div>
+        </a>
       {% else %}
         <div class="alert alert-info">
           <span>

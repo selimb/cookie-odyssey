@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
-  <h1 class="app-title">{{ journal.name }}</h1>
+  <h1 class="app-title">{{ journal.name }} - {{ date | date }}</h1>
 
   {# Header #}
   {% if user.admin %}
@@ -21,7 +21,7 @@
         <div class="card-body">
           <h2 class="card-title">{{ day | date }}</h2>
           {% for entry in entries %}
-            <p {% if entry.draft %}class="italic"{% endif %}>{{ entry.title }}</p>
+            <p>{{ entry.title }}</p>
           {% endfor %}
         </div>
       </a>

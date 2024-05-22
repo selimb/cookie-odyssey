@@ -1,10 +1,10 @@
 use axum::{
     extract::{rejection::FormRejection, Path, Query, State},
-    response::{Html, IntoResponse, Response},
+    response::{Html, IntoResponse},
     Form,
 };
 use minijinja::context;
-use sea_orm::{EntityTrait, QueryFilter};
+use sea_orm::EntityTrait;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -118,6 +118,31 @@ async fn render_media_list(
     let html = templ.render_ctx_fragment("journal_entry_edit.html", ctx, "fragment_media_list")?;
 
     Ok(html)
+}
+
+#[derive(Deserialize, Debug)]
+pub struct JournalEntryMediaDelete {
+    media_id: i32,
+}
+
+pub async fn journal_entry_media_delete(
+    state: State<AppState>,
+    form: Result<Form<JournalEntryMediaDelete>, FormRejection>,
+) -> RouteResult {
+    let form = match form {
+        Ok(form) => form,
+        Err(err) => {
+            let resp = Toast::error(err);
+            return Ok(resp.into_response());
+        }
+    };
+
+    JournalEntryMedia::delete_by_id(form.media_id)
+        .exec(&state.db)
+        .await?;
+
+    let resp = Toast::success("Deleted");
+    Ok(resp.into_response())
 }
 
 #[derive(Deserialize, Debug)]

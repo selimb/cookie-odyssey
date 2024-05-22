@@ -14,7 +14,8 @@ pub struct AppState {
     pub dev: bool,
 }
 
-// Copied from https://github.com/tokio-rs/axum/discussions/1732#discussioncomment-4878401
+// Copied from https://github.com/tokio-rs/axum/discussions/1732#discussioncomment-4878401.
+// This is necessary for using AppState in custom extractors (like [`Templ`]).
 #[async_trait]
 impl<S> FromRequestParts<S> for AppState
 where
