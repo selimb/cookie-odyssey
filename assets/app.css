@@ -8,14 +8,14 @@
   }
 
   .app-form {
-    @apply md:p-8 md:w-1/2 md:min-w-[500px]
+    @apply md:w-1/2 md:min-w-[500px] md:p-8;
   }
 
   .app-form-card {
-    @apply md:card md:shadow-xl dark:md:bg-neutral
+    @apply md:card md:shadow-xl dark:md:bg-neutral;
   }
 
   .app-card {
-    @apply card shadow-xl max-md:w-full dark:bg-neutral
+    @apply card shadow-xl max-md:w-full dark:bg-neutral;
   }
 }

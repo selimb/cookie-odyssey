@@ -12,7 +12,7 @@ repos:
     hooks:
       - id: prettier
         name: prettier
-        entry: bun run prettier . --check
+        entry: bun run prettier . --write
         pass_filenames: false
         language: system
 

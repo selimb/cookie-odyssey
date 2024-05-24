@@ -89,7 +89,11 @@
           {# FIXME Handle video #}
           <div class="w-full">
             <div>
-              <img src="{{ media.url }}" class="mx-auto h-auto max-w-full" />
+              <img
+                src="{{ media.url }}"
+                class="mx-auto h-auto max-w-full"
+                alt=""
+              />
             </div>
             <form class="form-caption" data-mode="view">
               <div class="mt-2 flex justify-between gap-2">
@@ -210,8 +214,6 @@
        * @param {MediaUploadUrlResult} uploadUrlParams
        */
       async function doUpload(file, uploadUrlParams) {
-        // XXX
-        console.debug("uploadUrlParams", uploadUrlParams);
         const resp = await fetch(uploadUrlParams.upload_url, {
           method: uploadUrlParams.upload_method,
           body: file,

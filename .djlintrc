@@ -1,4 +1,4 @@
 {
   "profile": "jinja",
-  "ignore": "H020"
+  "ignore": "H006,H020"
 }
