@@ -8,11 +8,12 @@ Idea inspired by https://themurph.hashnode.dev/go-beyond-the-basics-mastering-to
 >
   <template>
     <div class="alert flex items-center justify-between" role="alert">
-      <div id="message" class="whitespace-pre"></div>
+      {# Don't use whitespace-pre on mobile to prevent overflow #}
+      <div id="message" class="app-toast-text whitespace-pre-wrap"></div>
       <!-- https://flowbite.com/docs/components/toast/#default-toast -->
       <button
         type="button"
-        class="bg- btn btn-circle btn-outline btn-sm"
+        class="btn btn-circle btn-outline btn-sm"
         aria-label="Close"
       >
         <span class="sr-only">Close</span>
@@ -108,13 +109,13 @@ Idea inspired by https://themurph.hashnode.dev/go-beyond-the-basics-mastering-to
 </script>
 
 <style>
-  #toast-container .toast {
-    /* Override bulma's margin-bottom. */
-    margin-bottom: 0;
+  /* Overwide daisyUI's properties to avoid overflow on mobile */
+  .toast {
+    min-width: auto;
+    white-space: unset;
   }
 
-  #toast-container .toast--text {
-    /* Enough space for the X not to be on top of text */
-    padding-right: 24px;
+  .app-toast-text {
+    overflow-wrap: anywhere;
   }
 </style>

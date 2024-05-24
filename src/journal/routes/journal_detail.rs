@@ -31,8 +31,7 @@ pub async fn journal_detail_get(
         }
     };
 
-    let entries_by_day =
-        query_entries_by_day(journal.id, &journal.slug, &state.db, &session).await?;
+    let entries_by_day = query_entries_by_day(&journal, &state.db, &session).await?;
 
     let href_journal_entry_new = Route::JournalEntryNewGet(Some((
         &JournalEntryNewPath { slug },
@@ -54,12 +53,20 @@ struct EntrySlim {
     draft: bool,
 }
 
+#[derive(Serialize, Debug)]
+struct Day {
+    date: chrono::NaiveDate,
+    /// One-based number of days since the journal's start date
+    day_number: i64,
+    href: String,
+    entries: Vec<EntrySlim>,
+}
+
 async fn query_entries_by_day(
-    journal_id: i32,
-    journal_slug: impl AsRef<str>,
+    journal: &journal::Model,
     db: &DatabaseConnection,
     auth: &AuthSession,
-) -> Result<Vec<(chrono::NaiveDate, String, Vec<EntrySlim>)>, anyhow::Error> {
+) -> Result<Vec<Day>, anyhow::Error> {
     let mut q = JournalEntry::find()
         .columns([
             journal_entry::Column::Id,
@@ -68,7 +75,7 @@ async fn query_entries_by_day(
             journal_entry::Column::Time,
             journal_entry::Column::Draft,
         ])
-        .filter(journal_entry::Column::JournalId.eq(journal_id));
+        .filter(journal_entry::Column::JournalId.eq(journal.id));
     q = auth.backend.filter_journal_entries(auth, q).await?;
     let entries = q.all(db).await.context("DB query failed")?;
 
@@ -87,16 +94,24 @@ async fn query_entries_by_day(
             }
         })
         .sorted_by_key(|e| e.datetime);
-    let mut entries_by_day = Vec::new();
+
+    let journal_start = date_from_sqlite(&journal.start_date).unwrap();
+    let mut entries_by_day: Vec<Day> = Vec::new();
     for (date, chunk) in &entries.into_iter().chunk_by(|e| e.date) {
+        let day_number = (date - journal_start).num_days() + 1;
         let href = Route::JournalDayGet(Some(&JournalDayGetPath {
-            slug: journal_slug.as_ref().to_string(),
+            slug: journal.slug.clone(),
             date,
         }))
         .as_path()
         .to_string();
 
-        entries_by_day.push((date, href, chunk.collect_vec()))
+        entries_by_day.push(Day {
+            date,
+            day_number,
+            href,
+            entries: chunk.collect_vec(),
+        })
     }
 
     Ok(entries_by_day)
