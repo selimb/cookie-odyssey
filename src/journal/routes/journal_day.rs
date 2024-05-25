@@ -1,7 +1,6 @@
 use axum::{extract::Path, response::IntoResponse as _};
-use itertools::Itertools as _;
 use minijinja::context;
-use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QuerySelect};
+use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -38,6 +37,8 @@ pub async fn journal_day_get(
     let entries =
         query_entries_for_day(&journal, &date, &state.db, &session, &state.storage).await?;
 
+    let datetime = chrono::NaiveDateTime::new(date, Default::default());
+    let href_journal_detail = Route::JournalDetailGet { slug: Some(&slug) }.as_path();
     let href_journal_entry_new = Route::JournalEntryNewGet(Some((
         &JournalEntryNewPath { slug },
         &JournalEntryNewQuery { date: Some(date) },
@@ -45,8 +46,9 @@ pub async fn journal_day_get(
     .as_path();
     let ctx = context! {
         journal,
-        date,
+        datetime,
         entries,
+        href_journal_detail,
         href_journal_entry_new,
     };
 

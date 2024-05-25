@@ -9,7 +9,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     journal::queries::{
-        append_journal_entry_media, query_journal_entry_by_id, query_media_for_journal_entry,
+        append_journal_entry_media, delete_journal_entry_media, query_journal_entry_by_id,
+        query_media_for_journal_entry, MediaFull,
     },
     utils::{
         date_utils::{date_to_sqlite, time_to_sqlite},
@@ -43,18 +44,18 @@ pub async fn journal_entry_edit_get(
     };
 
     let href_upload = Route::MediaUploadUrlGet.as_path();
-    let href_caption_edit = Route::JournalEntryMediaEditCaptionPost.as_path();
     let href_publish = Route::JournalEntryPublishPost {
         entry_id: Some(entry_id),
     }
     .as_path();
     let ctx = context! {
-        ..minijinja::Value::from_serialize(entry_full),
         ..context! {
             href_upload,
-            href_caption_edit,
             href_publish,
-        }
+            entry => entry_full.entry,
+            journal => entry_full.journal,
+        },
+        ..get_media_list_ctx(entry_full.media_list, entry_id)
     };
     let html = templ.render_ctx("journal_entry_edit.html", ctx)?;
     Ok(html.into_response())
@@ -99,7 +100,10 @@ pub async fn journal_entry_publish_post(state: AppState, Path(entry_id): Path<i3
     };
     JournalEntry::update(data).exec(&state.db).await?;
 
-    let resp = Toast::success("Published");
+    let toast = Toast::success("Published");
+    // Simply wipes the button.
+    let html = Html("");
+    let resp = (toast.into_headers(), html);
     Ok(resp.into_response())
 }
 
@@ -120,30 +124,15 @@ pub async fn journal_entry_media_commit_post(
     Ok(html.into_response())
 }
 
-pub async fn journal_entry_media_reorder(state: State<AppState>) -> RouteResult {
-    todo!()
-}
-
-async fn render_media_list(
-    entry_id: i32,
-    state: &AppState,
-    templ: &Templ,
-) -> Result<Html<String>, RouteError> {
-    let media_list = query_media_for_journal_entry(entry_id, &state.db, &state.storage).await?;
-
-    let ctx = context! {media_list};
-    let html = templ.render_ctx_fragment("journal_entry_edit.html", ctx, "fragment_media_list")?;
-
-    Ok(html)
-}
-
 #[derive(Deserialize, Debug)]
 pub struct JournalEntryMediaDelete {
     media_id: i32,
+    entry_id: i32,
 }
 
 pub async fn journal_entry_media_delete(
     state: State<AppState>,
+    templ: Templ,
     form: Result<Form<JournalEntryMediaDelete>, FormRejection>,
 ) -> RouteResult {
     let form = match form {
@@ -153,13 +142,42 @@ pub async fn journal_entry_media_delete(
             return Ok(resp.into_response());
         }
     };
+    delete_journal_entry_media(form.media_id, &state.db).await?;
 
-    JournalEntryMedia::delete_by_id(form.media_id)
-        .exec(&state.db)
-        .await?;
-
-    let resp = Toast::success("Deleted");
+    let toast = Toast::success("Deleted");
+    let html = render_media_list(form.entry_id, &state, &templ).await?;
+    let resp = (toast.into_headers(), html);
     Ok(resp.into_response())
+}
+
+pub async fn journal_entry_media_reorder(state: State<AppState>) -> RouteResult {
+    todo!()
+}
+
+fn get_media_list_ctx(media_list: Vec<MediaFull>, entry_id: i32) -> minijinja::Value {
+    let href_caption_edit = Route::JournalEntryMediaEditCaptionPost.as_path();
+    let href_delete = Route::JournalEntryMediaDelete.as_path();
+    let href_reorder = Route::JournalEntryMediaReorder.as_path();
+
+    let ctx = context! {
+        media_list,
+        entry_id,
+        href_caption_edit,
+        href_delete,
+        href_reorder,
+    };
+    ctx
+}
+
+async fn render_media_list(
+    entry_id: i32,
+    state: &AppState,
+    templ: &Templ,
+) -> Result<Html<String>, RouteError> {
+    let media_list = query_media_for_journal_entry(entry_id, &state.db, &state.storage).await?;
+    let ctx = get_media_list_ctx(media_list, entry_id);
+    let html = templ.render_ctx_fragment("journal_entry_edit.html", ctx, "fragment_media_list")?;
+    Ok(html)
 }
 
 #[derive(Deserialize, Debug)]

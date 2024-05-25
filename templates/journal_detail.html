@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "common/datetime.html" as dt %}
 
 {% block content %}
   <h1 class="app-title">{{ journal.name }}</h1>
@@ -20,7 +21,9 @@
       <a class="app-card mx-auto" href="{{ day.href }}">
         <div class="card-body">
           <h2 class="card-title">
-            {{ day.day_number }} - {{ day.date | date }}
+            <span>{{ day.day_number }}</span>
+            <span> - </span>
+            {{ dt.date(day.date) }}
           </h2>
           {% for entry in day.entries %}
             <p {% if entry.draft %}class="italic"{% endif %}>

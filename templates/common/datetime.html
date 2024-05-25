@@ -1,0 +1,53 @@
+<script>
+  // @ts-check
+
+  (() => {
+    /** @type {MutationCallback} */
+    const onMutation = (mutations) => {
+      const n = mutations.length;
+      for (const mut of mutations) {
+        for (const node of mut.addedNodes) {
+          let $times = [];
+          if (node instanceof HTMLTimeElement) {
+            $times.push(node);
+          } else if (node instanceof HTMLElement) {
+            $times.push(...node.getElementsByTagName("time"));
+          }
+          for (const $time of $times) {
+            const datetimeString = $time.getAttribute("datetime");
+            if (!datetimeString) continue;
+            const d = new Date(datetimeString);
+            // @ts-ignore
+            if (isNaN(d)) {
+              console.error(`Invalid datetime: '${datetimeString}'`);
+              continue;
+            }
+
+            const dateStyle =
+              $time.getAttribute("data-date-style") ?? undefined;
+            const timeStyle =
+              $time.getAttribute("data-time-style") ?? undefined;
+            const text = Intl.DateTimeFormat(undefined, {
+              // @ts-ignore
+              dateStyle,
+              // @ts-ignore
+              timeStyle,
+            }).format(d);
+            $time.textContent = text;
+          }
+        }
+      }
+    };
+
+    const observer = new MutationObserver(onMutation);
+    observer.observe(document, { childList: true, subtree: true });
+  })();
+</script>
+
+{% macro date(d) %}
+  <time datetime="{{ d }}" data-date-style="long">{{ d }}</time>
+{% endmacro %}
+
+{% macro time(d) %}
+  <time datetime="{{ d }}" data-time-style="short">{{ d }}</time>
+{% endmacro %}

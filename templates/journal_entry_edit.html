@@ -75,9 +75,9 @@
         rows="10"
         class="textarea textarea-bordered textarea-lg w-full leading-tight"
         placeholder="Jot it like it's hot..."
+        autocomplete="off"
       >
-{{ entry.text }}
-      </textarea
+{{ entry.text }}</textarea
       >
       <button type="submit" class="btn btn-primary mt-2 w-full">Save</button>
       {% if entry.draft %}
@@ -85,6 +85,7 @@
           type="button"
           class="btn btn-secondary mt-2 w-full"
           hx-post="{{ href_publish }}"
+          hx-swap="outerHTML"
         >
           Publish
         </button>
@@ -103,7 +104,7 @@
               <img
                 src="{{ media.url }}"
                 class="mx-auto h-auto max-w-full"
-                alt=""
+                alt="media"
               />
             </div>
             <form class="form-caption" data-mode="view">
@@ -133,6 +134,39 @@
                 </button>
               </div>
             </form>
+            <div class="flex w-full justify-between">
+              <button
+                type="button"
+                hx-post="{{ href_reorder }}"
+                hx-vals='{ "media_id": "{{ media.id }}", "entry_id": "{{ entry_id }}", "order": {{ media.order }}, "direction": "up"}'
+                class="btn btn-secondary"
+                {% if loop.first %}
+                  disabled
+                {% endif %}
+              >
+                Up
+              </button>
+              <button
+                type="button"
+                hx-post="{{ href_reorder }}"
+                hx-vals='{ "media_id": "{{ media.id }}", "entry_id": "{{ entry_id }}", "order": {{ media.order }}, "direction": "down"}'
+                class="btn btn-secondary"
+                {% if loop.last %}
+                  disabled
+                {% endif %}
+              >
+                Down
+              </button>
+              <button
+                type="button"
+                hx-delete="{{ href_delete }}"
+                hx-vals='{ "media_id": "{{ media.id }}", "entry_id": "{{ entry_id }}"}'
+                hx-confirm="Are you sure you wish to delete this?"
+                class="btn btn-error"
+              >
+                Delete
+              </button>
+            </div>
           </div>
         {% endfor %}
       </div>

@@ -1,7 +1,14 @@
 {% extends "base.html" %}
+{% import "common/datetime.html" as dt %}
 
 {% block content %}
-  <h1 class="app-title">{{ journal.name }} - {{ date | date }}</h1>
+  <h1 class="app-title">
+    <a href="{{ href_journal_detail }}" class="link-hover link"
+      >{{ journal.name }}</a
+    >
+    <span> - </span>
+    {{ dt.date(datetime) }}
+  </h1>
 
   {# Header #}
   {% if user.admin %}
@@ -15,21 +22,30 @@
     </div>
   {% endif %}
 
-  {% for entry in entries %}
-    <div>
-      <a
-        {% if user.admin %}
-          href="{{ entry.href_edit }}"
-        {% endif %}
-        class="{% if entry.draft %}italic{% endif %} link-hover link font-semibold"
-      >
-        <time datetime="{{ entry.datetime }}">{{ entry.time | time }}</time>
-        <br />
-        <span>{{ entry.title }}</span>
-      </a>
-    </div>
-    <p class="whitespace-pre-wrap leading-snug">{{ entry.text }}</p>
-  {% endfor %}
+  <div class="space-y-4">
+    {% for entry in entries %}
+      <div>
+        <div>
+          <a
+            {% if user.admin %}
+              href="{{ entry.href_edit }}"
+            {% endif %}
+            class="{% if entry.draft %}italic{% endif %} link-hover link font-semibold leading-tight"
+          >
+            <div>{{ dt.time(entry.datetime) }}</div>
+            <div>
+              <span>{{ entry.title }}</span>
+            </div>
+          </a>
+        </div>
+        <div class="mt-2 space-y-2 leading-snug">
+          {% for chunk in entry.text | splitlines %}
+            <p>{{ chunk }}</p>
+          {% endfor %}
+        </div>
+      </div>
+    {% endfor %}
+  </div>
 
   {# XXX finish #}
 {% endblock content %}

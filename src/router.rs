@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use axum::{
-    routing::{get, post, put},
+    routing::{delete, get, post, put},
     Router,
 };
 use axum_login::{login_required, permission_required};
@@ -31,6 +31,8 @@ pub enum Route<'a> {
     JournalDayGet(Option<&'a journal::JournalDayGetPath>),
     JournalEntryMediaCommitPost(Option<&'a journal::JournalEntryMediaCommitParams>),
     JournalEntryMediaEditCaptionPost,
+    JournalEntryMediaDelete,
+    JournalEntryMediaReorder,
     LoginGet,
     LoginPost,
     LogoutPost,
@@ -107,6 +109,8 @@ impl<'a> Route<'a> {
                 None => "/api/entry-commit".into(),
             },
             Route::JournalEntryMediaEditCaptionPost => "/api/media-caption-edit".into(),
+            Route::JournalEntryMediaDelete => "/api/media-delete".into(),
+            Route::JournalEntryMediaReorder => "/api/media-reorder".into(),
             Route::NotificationsListGet => "/notifications".into(),
             Route::RegisterGet => "/register".into(),
             Route::RegisterPost => "/register".into(),
@@ -170,6 +174,14 @@ fn get_protected_routes() -> Router<AppState> {
         .route(
             &Route::JournalEntryMediaEditCaptionPost.as_path(),
             admin!(post(journal::journal_entry_media_caption_edit)),
+        )
+        .route(
+            &Route::JournalEntryMediaDelete.as_path(),
+            admin!(delete(journal::journal_entry_media_delete)),
+        )
+        .route(
+            &Route::JournalEntryMediaReorder.as_path(),
+            admin!(post(journal::journal_entry_media_reorder)),
         )
         .route(
             &Route::MediaUploadUrlGet.as_path(),

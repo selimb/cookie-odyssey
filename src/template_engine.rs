@@ -9,10 +9,12 @@ use axum::{
     response::Html,
     RequestPartsExt,
 };
+use itertools::Itertools;
 use minijinja::context;
 use once_cell::sync::Lazy;
 use serde::Serialize;
 
+use crate::utils::date_utils::time_from_sqlite;
 use crate::{
     utils::date_utils::date_from_sqlite, AppState, AuthSession, AuthUser, Route, RouteError,
 };
@@ -25,6 +27,9 @@ pub fn init_templates() -> TemplateEngine {
     env.set_undefined_behavior(minijinja::UndefinedBehavior::Strict);
     env.add_filter("date", date);
     env.add_filter("time", time);
+    env.add_filter("time", time);
+    env.add_filter("splitlines", splitlines);
+
     env
 }
 
@@ -42,7 +47,15 @@ fn date(value: String) -> String {
 }
 
 fn time(value: String) -> String {
+    // match time_from_sqlite(value) {
+    //     Ok(time) => time.format("")
+    //     Err(_) => "--".into(),
+    // }
     value
+}
+
+fn splitlines(value: &str) -> Vec<String> {
+    value.split("\n\n").map(|s| s.into()).collect_vec()
 }
 
 #[derive(Debug, Serialize)]

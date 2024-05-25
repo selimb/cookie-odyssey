@@ -55,7 +55,7 @@ struct EntrySlim {
 
 #[derive(Serialize, Debug)]
 struct Day {
-    date: chrono::NaiveDate,
+    date: chrono::NaiveDateTime,
     /// One-based number of days since the journal's start date
     day_number: i64,
     href: String,
@@ -107,7 +107,7 @@ async fn query_entries_by_day(
         .to_string();
 
         entries_by_day.push(Day {
-            date,
+            date: chrono::NaiveDateTime::new(date, Default::default()),
             day_number,
             href,
             entries: chunk.collect_vec(),

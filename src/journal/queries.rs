@@ -1,5 +1,6 @@
 use sea_orm::{
-    ColumnTrait, DatabaseConnection, DbErr, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
+    ColumnTrait, ConnectionTrait, DatabaseConnection, DbErr, EntityTrait, PaginatorTrait,
+    QueryFilter, QueryOrder, Statement, TransactionTrait,
 };
 
 use entities::{prelude::*, *};
@@ -7,7 +8,7 @@ use serde::Serialize;
 
 use crate::{storage::FileStore, NotFound, RouteError};
 
-use super::routes::JournalEntryMediaCommitParams;
+use super::routes::{JournalEntryMediaCommitParams, JournalEntryMediaDelete};
 
 pub async fn query_journal_by_slug(
     slug: String,
@@ -32,7 +33,7 @@ pub struct MediaFull {
     pub caption: String,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Debug)]
 pub struct JournalEntryFull {
     pub entry: journal_entry::Model,
     pub journal: journal::Model,
@@ -107,6 +108,41 @@ pub async fn append_journal_entry_media(
         ..Default::default()
     };
     JournalEntryMedia::insert(data).exec(db).await?;
+
+    Ok(())
+}
+
+pub async fn delete_journal_entry_media(
+    // Don't like referencing upper layers here, but this is easier.
+    media_id: i32,
+    db: &DatabaseConnection,
+) -> Result<(), DbErr> {
+    let media = JournalEntryMedia::find_by_id(media_id).one(db).await?;
+
+    let media = match media {
+        None => {
+            return Ok(());
+        }
+        Some(media) => media,
+    };
+    let order = media.order;
+
+    let tx = db.begin().await?;
+
+    JournalEntryMedia::delete_by_id(media_id).exec(db).await?;
+
+    let q = Statement::from_sql_and_values(
+        sea_orm::DatabaseBackend::Sqlite,
+        r#"
+        UPDATE journal_entry_media
+        SET "order" = "order" - 1
+        WHERE "journal_entry_id" = ? AND "order" >= ?
+        "#,
+        [order.into(), media.journal_entry_id.into()],
+    );
+    db.execute(q).await?;
+
+    tx.commit().await?;
 
     Ok(())
 }

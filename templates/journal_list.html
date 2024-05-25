@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% import "common/macros.html" as common %}
+{% import "common/datetime.html" as dt %}
 
 {% block content %}
   <div>
@@ -17,11 +17,10 @@
           <div class="card-body">
             <h2 class="card-title">{{ journal.name }}</h2>
             <div>
-              {{ common.date(date=journal.start_date) }} -
+              {{ dt.date(journal.start_date) }}
+              <span> - </span>
               {% if journal.end_date %}
-                {{ common.date(date=journal.end_date) }}
-              {% else %}
-                -
+                {{ dt.date(journal.end_date) }}
               {% endif %}
             </div>
           </div>
