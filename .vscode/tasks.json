@@ -14,6 +14,12 @@
       "type": "shell",
       "command": "make dev",
       "problemMatcher": []
+    },
+    {
+      "label": "azurite",
+      "type": "shell",
+      "command": "make azurite",
+      "problemMatcher": []
     }
   ]
 }

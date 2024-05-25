@@ -27,6 +27,7 @@ pub enum Route<'a> {
     JournalEntryNewPost { slug: Option<&'a str> },
     JournalEntryEditGet { entry_id: Option<i32> },
     JournalEntryEditPost { entry_id: Option<i32> },
+    JournalEntryPublishPost { entry_id: Option<i32> },
     JournalDayGet(Option<&'a journal::JournalDayGetPath>),
     JournalEntryMediaCommitPost(Option<&'a journal::JournalEntryMediaCommitParams>),
     JournalEntryMediaEditCaptionPost,
@@ -78,6 +79,10 @@ impl<'a> Route<'a> {
             Route::JournalEntryEditPost { entry_id } => match entry_id {
                 Some(entry_id) => format!("/entry/{entry_id}/edit").into(),
                 None => "/entry/:entry_id/edit".into(),
+            },
+            Route::JournalEntryPublishPost { entry_id } => match entry_id {
+                Some(entry_id) => format!("/entry/{entry_id}/publish").into(),
+                None => "/entry/:entry_id/publish".into(),
             },
             Route::JournalDayGet(params) => match params {
                 None => "/journal/:slug/entry/:date".into(),
@@ -153,6 +158,10 @@ fn get_protected_routes() -> Router<AppState> {
         .route(
             &Route::JournalEntryEditPost { entry_id: None }.as_path(),
             admin!(post(journal::journal_entry_edit_post)),
+        )
+        .route(
+            &Route::JournalEntryPublishPost { entry_id: None }.as_path(),
+            admin!(post(journal::journal_entry_publish_post)),
         )
         .route(
             &Route::JournalEntryMediaCommitPost(None).as_path(),

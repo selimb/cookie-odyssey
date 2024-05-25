@@ -4,6 +4,7 @@ use axum::{
     Form,
 };
 
+use chrono::Datelike;
 use minijinja::context;
 use sea_orm::EntityTrait;
 use serde::{Deserialize, Serialize};
@@ -50,10 +51,22 @@ pub async fn journal_entry_new_get(
             return Ok(err.render(&templ).into_response());
         }
     };
+    let default_date = query.date.map(format_input_date_value);
 
-    let ctx = context! { journal };
+    let ctx = context! {
+        journal,
+        default_date,
+    };
     let html = templ.render_ctx("journal_entry_new.html", ctx)?;
     Ok(html.into_response())
+}
+
+fn format_input_date_value(d: chrono::NaiveDate) -> String {
+    let year = d.year();
+    let month = d.month();
+    let day = d.day();
+    let value = format!("{year}-{month:0>2}-{day:0>2}");
+    value
 }
 
 pub async fn journal_entry_new_post(

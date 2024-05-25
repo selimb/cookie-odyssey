@@ -44,11 +44,16 @@ pub async fn journal_entry_edit_get(
 
     let href_upload = Route::MediaUploadUrlGet.as_path();
     let href_caption_edit = Route::JournalEntryMediaEditCaptionPost.as_path();
+    let href_publish = Route::JournalEntryPublishPost {
+        entry_id: Some(entry_id),
+    }
+    .as_path();
     let ctx = context! {
         ..minijinja::Value::from_serialize(entry_full),
         ..context! {
             href_upload,
             href_caption_edit,
+            href_publish,
         }
     };
     let html = templ.render_ctx("journal_entry_edit.html", ctx)?;
@@ -84,6 +89,18 @@ pub async fn journal_entry_edit_post(
             Ok(resp.into_response())
         }
     }
+}
+
+pub async fn journal_entry_publish_post(state: AppState, Path(entry_id): Path<i32>) -> RouteResult {
+    let data = journal_entry::ActiveModel {
+        id: sea_orm::ActiveValue::Set(entry_id),
+        draft: sea_orm::ActiveValue::Set(false),
+        ..Default::default()
+    };
+    JournalEntry::update(data).exec(&state.db).await?;
+
+    let resp = Toast::success("Published");
+    Ok(resp.into_response())
 }
 
 #[derive(Serialize, Deserialize, Debug)]

@@ -46,7 +46,7 @@
 {% endmacro %}
 
 {% block content %}
-  <div class="app-form mx-auto">
+  <div class="mx-auto">
     <h1 class="app-title">Edit Entry</h1>
     <form hx-post="" id="journal_entry_new_form">
       {{ form.form_error(error="") }}
@@ -73,11 +73,22 @@
         name="text"
         cols="30"
         rows="10"
-        class="textarea textarea-bordered textarea-lg w-full"
-        value="{{ entry.text }}"
+        class="textarea textarea-bordered textarea-lg w-full leading-tight"
         placeholder="Jot it like it's hot..."
-      ></textarea>
+      >
+{{ entry.text }}
+      </textarea
+      >
       <button type="submit" class="btn btn-primary mt-2 w-full">Save</button>
+      {% if entry.draft %}
+        <button
+          type="button"
+          class="btn btn-secondary mt-2 w-full"
+          hx-post="{{ href_publish }}"
+        >
+          Publish
+        </button>
+      {% endif %}
     </form>
     {# FIXME location #}
 
@@ -129,7 +140,7 @@
     <button
       type="button"
       id="media-btn"
-      class="btn btn-secondary my-4 w-full"
+      class="btn btn-primary my-4 w-full"
       data-get-upload-url="{{ href_upload }}"
       data-entry-id="{{ entry.id }}"
     >
@@ -143,7 +154,7 @@
     // @ts-check
 
     // @ts-ignore
-    htmx.onLoad(() => {
+    (() => {
       const ID_MEDIA_CONTAINER = "media-container";
 
       function findElems() {
@@ -293,7 +304,7 @@
           return;
         }
       });
-    });
+    })();
   </script>
 
   {# Caption Editing #}

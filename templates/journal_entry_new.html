@@ -7,7 +7,6 @@
     <form hx-post="" id="journal_entry_new_form">
       {{ form.form_error(error="") }}
 
-      <input type="hidden" name="journal_id" , value="{{ journal.id }}" />
       {{ form.input("", "Journal", disabled=true, value=journal.name, autocomplete="off") }}
       {{ form.input("title", label="Title") }}
       <div class="my-4 flex w-full gap-2">
@@ -15,7 +14,9 @@
           type="date"
           name="date"
           required
-          value=""
+          {% if default_date %}
+            value="{{ default_date }}"
+          {% endif %}
           class="input input-bordered flex-1"
         />
         <input
@@ -25,22 +26,28 @@
           class="input input-bordered flex-1"
         />
       </div>
+      <input
+        type="hidden"
+        name="journal_id"
+        required="false"
+        value="{{ journal.id }}"
+      />
 
       <button type="submit" class="btn btn-primary my-8 w-full">Create</button>
     </form>
+
     <script>
       htmx.onLoad(() => {
         const $form = document.getElementById("journal_entry_new_form");
         /** @type {HTMLInputElement | undefined} */
         const $inputDate = $form?.querySelector(`input[name="date"]`);
-        if ($inputDate) {
+        if ($inputDate && !$inputDate.value) {
           const now = new Date();
           const value = [
             now.getFullYear(),
-            now.getMonth().toString().padStart(2, "0"),
+            (now.getMonth() + 1).toString().padStart(2, "0"),
             now.getDate().toString().padStart(2, "0"),
           ].join("-");
-          console.info("now", now, "value", value);
           $inputDate.value = value;
         }
       });

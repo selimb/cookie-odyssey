@@ -24,6 +24,7 @@ pub fn init_templates() -> TemplateEngine {
     env.set_loader(minijinja::path_loader("templates"));
     env.set_undefined_behavior(minijinja::UndefinedBehavior::Strict);
     env.add_filter("date", date);
+    env.add_filter("time", time);
     env
 }
 
@@ -38,6 +39,10 @@ fn date(value: String) -> String {
         // FIXME test
         Err(_) => "--".into(),
     }
+}
+
+fn time(value: String) -> String {
+    value
 }
 
 #[derive(Debug, Serialize)]

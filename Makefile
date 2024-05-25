@@ -26,11 +26,8 @@ fix-all:
 	cargo fix
 	cargo clippy --all-targets --fix
 
-local-s3:
-	docker run \
-	--rm \
-	-p 4566:4566 \
-	localstack/localstack:s3-latest
+azurite:
+	docker compose up
 
 dev:
 	cargo watch --quiet --watch src --watch templates --exec "run server"

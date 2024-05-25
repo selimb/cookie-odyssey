@@ -15,34 +15,21 @@
     </div>
   {% endif %}
 
-  <div class="space-y-4">
-    {% for (day, href, entries) in entries_by_day %}
-      <a class="app-card mx-auto" href="{{ href }}">
-        <div class="card-body">
-          <h2 class="card-title">{{ day | date }}</h2>
-          {% for entry in entries %}
-            <p>{{ entry.title }}</p>
-          {% endfor %}
-        </div>
+  {% for entry in entries %}
+    <div>
+      <a
+        {% if user.admin %}
+          href="{{ entry.href_edit }}"
+        {% endif %}
+        class="{% if entry.draft %}italic{% endif %} link-hover link font-semibold"
+      >
+        <time datetime="{{ entry.datetime }}">{{ entry.time | time }}</time>
+        <br />
+        <span>{{ entry.title }}</span>
       </a>
-    {% endfor %}
-  </div>
-
-  {# Footer #}
-  <div class="mt-4 flex justify-between">
-    <div></div>
-    <div class="join max-md:grow max-md:justify-between">
-      {# FIXME links #}
-      <button class="btn join-item border-neutral max-md:flex-grow">
-        View Map
-      </button>
-      <button class="btn join-item border-neutral max-md:flex-grow">
-        View All
-      </button>
-      <button class="btn join-item border-neutral max-md:flex-grow">
-        Export
-      </button>
     </div>
-    <div></div>
-  </div>
+    <p class="whitespace-pre-wrap leading-snug">{{ entry.text }}</p>
+  {% endfor %}
+
+  {# XXX finish #}
 {% endblock content %}

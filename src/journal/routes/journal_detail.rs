@@ -5,6 +5,7 @@ use axum::{
 };
 use itertools::Itertools;
 use minijinja::context;
+use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QuerySelect};
 use serde::Serialize;
 
 use crate::{
@@ -13,7 +14,6 @@ use crate::{
     AppState, AuthSession, Route, RouteResult, Templ,
 };
 use entities::{prelude::*, *};
-use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QuerySelect};
 
 use super::{JournalDayGetPath, JournalEntryNewPath, JournalEntryNewQuery};
 
