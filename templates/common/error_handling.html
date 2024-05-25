@@ -1,15 +1,18 @@
-<script>
-  htmx.on("htmx:responseError", (evt) => {
-    console.error("got htmx:responseError");
-    // FIXME: Bundle/import [toast]
-    let error = evt.detail.error + "\n" + evt.detail.xhr.responseText;
-    toast({ message: error, variant: "error" });
-  });
-  htmx.on("htmx:sendError", (evt) => {
-    // FIXME: Bundle/import [toast]
-    console.error("got htmx:sendError");
-    let url = evt.detail.xhr.responseURL;
-    let error = `Network error: ${url}`;
-    toast({ message: error, variant: "error" });
-  });
-</script>
+{% if not hx_boosted %}
+  <script>
+    // Relines on [toast-fn]
+    htmx.on("htmx:responseError", (evt) => {
+      // FIXME: Bundle/import [toast]
+      let error = evt.detail.error + "\n" + evt.detail.xhr.responseText;
+      console.error("Response Error:", error);
+      toast({ message: error, variant: "error" });
+    });
+    htmx.on("htmx:sendError", (evt) => {
+      // FIXME: Bundle/import [toast]
+      let url = evt.detail.xhr.responseURL;
+      let error = `Network error: ${url}`;
+      console.error(error);
+      toast({ message: error, variant: "error" });
+    });
+  </script>
+{% endif %}

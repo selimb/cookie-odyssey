@@ -2,6 +2,7 @@ use std::sync::Arc;
 use std::{borrow::Cow, ops::Deref};
 
 use anyhow::{anyhow, Context};
+use axum::http::HeaderMap;
 use axum::{
     async_trait,
     extract::{FromRef, FromRequestParts},
@@ -89,6 +90,7 @@ static TEMPL_CONTEXT_LINKS: Lazy<TemplContextLinks> = Lazy::new(|| TemplContextL
 pub struct Templ {
     engine: Arc<TemplateEngine>,
     user: Option<TemplContextUser>,
+    hx_boosted: bool,
 }
 
 impl Templ {
@@ -128,6 +130,7 @@ impl Templ {
         context! {
             user => self.user,
             links => TEMPL_CONTEXT_LINKS.deref(),
+            hx_boosted => self.hx_boosted,
         }
     }
 }
@@ -154,9 +157,15 @@ where
             .map_err(|err| anyhow!("Failed to extract session from request: {err:?}"))?;
         let user = session.user;
 
+        let header_map = HeaderMap::from_request_parts(parts, state)
+            .await
+            .expect("HeaderMap extractor is infallible");
+        let hx_boosted = header_map.contains_key("HX-Boosted");
+
         Ok(Self {
             engine: app_state.template_engine,
             user: user.map(TemplContextUser::from),
+            hx_boosted,
         })
     }
 }
