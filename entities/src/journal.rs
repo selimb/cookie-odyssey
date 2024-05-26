@@ -27,6 +27,8 @@ pub enum Relation {
         on_delete = "NoAction"
     )]
     File,
+    #[sea_orm(has_many = "super::journal_comment::Entity")]
+    JournalComment,
     #[sea_orm(has_many = "super::journal_entry::Entity")]
     JournalEntry,
 }
@@ -34,6 +36,12 @@ pub enum Relation {
 impl Related<super::file::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::File.def()
+    }
+}
+
+impl Related<super::journal_comment::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::JournalComment.def()
     }
 }
 
