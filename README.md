@@ -3,6 +3,9 @@
 ## TODO
 
 - Comments
-- Fix double toast
-- Fix theme switcher
 - View All
+
+## TODO Future
+
+- Better JS bundling
+- Improve styles

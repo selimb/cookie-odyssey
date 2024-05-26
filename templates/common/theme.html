@@ -42,6 +42,8 @@
     var onThemeChange = (() => {
       const storageKey = "theme-preference";
       const $themeToggle = document.querySelector("#theme-toggle");
+      const $themeInput = $themeToggle.querySelector("input");
+
       // Matches [daisyui-themes]
       const themeMap = {
         light: "nord",
@@ -59,6 +61,9 @@
         setPreference();
       };
 
+      /**
+       * @returns {"light" | "dark"}
+       */
       const getColorPreference = () => {
         const stored = localStorage.getItem(storageKey);
         if (stored) return stored;
@@ -78,8 +83,8 @@
           "data-theme",
           themeMap[theme.value],
         );
-        // $themeController.value = themeMap[theme.value];
         $themeToggle.title = themeTitleMap[theme.value];
+        $themeInput.checked = theme.value === "dark";
       };
 
       const theme = {
