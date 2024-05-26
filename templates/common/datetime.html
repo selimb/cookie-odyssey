@@ -1,7 +1,7 @@
 <script>
   // @ts-check
 
-  (() => {
+  once("datetime", () => {
     /** @type {MutationCallback} */
     const onMutation = (mutations) => {
       const n = mutations.length;
@@ -41,7 +41,7 @@
 
     const observer = new MutationObserver(onMutation);
     observer.observe(document, { childList: true, subtree: true });
-  })();
+  });
 </script>
 
 {% macro date(d) %}

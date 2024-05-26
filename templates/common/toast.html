@@ -53,8 +53,8 @@ Idea inspired by https://themurph.hashnode.dev/go-beyond-the-basics-mastering-to
   <script>
     // @ts-check
 
-    // [toast-fn]
-    var toast = (() => {
+    // @ts-ignore
+    once("toast", () => {
       // Keep in sync with [toast]
       const TOAST_EVT = "app.toast";
 
@@ -137,7 +137,9 @@ Idea inspired by https://themurph.hashnode.dev/go-beyond-the-basics-mastering-to
         toast(detail);
       });
 
-      return toast;
-    })();
+      // [toast-fn]
+      // @ts-ignore
+      window.toast = toast;
+    });
   </script>
 {% endif %}
