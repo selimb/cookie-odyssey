@@ -24,11 +24,14 @@
       {% for entry in entries %}
         <div>
           <div>
+            {% set aclass %}
+              class="font-semibold leading-tight
+              {% if entry.draft %}italic{% endif %}
+              {% if user.admin %}link-hover link{% endif %}"
+            {% endset %}
             <a
-              {% if user.admin %}
-                href="{{ entry.href_edit }}"
-              {% endif %}
-              class="{% if entry.draft %}italic{% endif %} {% if user.admin %}link-hover link{% endif %} font-semibold leading-tight"
+              {% if user.admin %}href="{{ entry.href_edit }}"{% endif %}
+              {{ aclass | clsx }}
             >
               <div>{{ dt.time(entry.datetime) }}</div>
               <div>

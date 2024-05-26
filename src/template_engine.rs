@@ -23,12 +23,18 @@ pub fn init_templates() -> TemplateEngine {
     env.set_loader(minijinja::path_loader("templates"));
     env.set_undefined_behavior(minijinja::UndefinedBehavior::Strict);
     env.add_filter("splitlines", splitlines);
+    env.add_filter("clsx", clsx);
 
     env
 }
 
 fn splitlines(value: &str) -> Vec<String> {
     value.split("\n\n").map(|s| s.into()).collect_vec()
+}
+
+fn clsx(value: &str) -> minijinja::Value {
+    let s = value.split('\n').map(|line| line.trim()).join(" ");
+    minijinja::Value::from_safe_string(s)
 }
 
 #[derive(Debug, Serialize)]
