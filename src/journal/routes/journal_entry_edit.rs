@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     journal::queries::{
         append_journal_entry_media, delete_journal_entry_media, query_journal_entry_by_id,
-        query_media_for_journal_entry, MediaFull,
+        query_media_for_journal_entry, reorder_journal_entry_media, MediaFull,
     },
     utils::{
         date_utils::{date_to_sqlite, time_to_sqlite},
@@ -24,6 +24,8 @@ use entities::{prelude::*, *};
 pub struct JournalEntryEdit {
     #[serde(deserialize_with = "string_trim")]
     title: String,
+    #[serde(deserialize_with = "string_trim")]
+    address: String,
     date: chrono::NaiveDate,
     time: chrono::NaiveTime,
     #[serde(deserialize_with = "string_trim")]
@@ -48,10 +50,16 @@ pub async fn journal_entry_edit_get(
         entry_id: Some(entry_id),
     }
     .as_path();
+    let href_journal_detail = Route::JournalDetailGet {
+        slug: Some(&entry_full.journal.slug),
+    }
+    .as_path();
+
     let ctx = context! {
         ..context! {
             href_upload,
             href_publish,
+            href_journal_detail,
             entry => entry_full.entry,
             journal => entry_full.journal,
         },
@@ -73,6 +81,7 @@ pub async fn journal_entry_edit_post(
         }
         Ok(Form(JournalEntryEdit {
             title,
+            address,
             date,
             time,
             text,
@@ -80,6 +89,7 @@ pub async fn journal_entry_edit_post(
             let data = journal_entry::ActiveModel {
                 id: sea_orm::ActiveValue::Set(entry_id),
                 title: sea_orm::ActiveValue::Set(title),
+                address: sea_orm::ActiveValue::Set(address),
                 date: sea_orm::ActiveValue::Set(date_to_sqlite(date)),
                 time: sea_orm::ActiveValue::Set(time_to_sqlite(time)),
                 text: sea_orm::ActiveValue::Set(text),
@@ -150,8 +160,37 @@ pub async fn journal_entry_media_delete(
     Ok(resp.into_response())
 }
 
-pub async fn journal_entry_media_reorder(state: State<AppState>) -> RouteResult {
-    todo!()
+#[derive(Deserialize, PartialEq, Debug)]
+#[serde(rename_all = "lowercase")]
+pub enum Direction {
+    Up,
+    Down,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct JournalEntryMediaReorder {
+    pub media_id: i32,
+    pub entry_id: i32,
+    pub order: i32,
+    pub direction: Direction,
+}
+
+pub async fn journal_entry_media_reorder(
+    state: State<AppState>,
+    templ: Templ,
+    form: Result<Form<JournalEntryMediaReorder>, FormRejection>,
+) -> RouteResult {
+    let form = match form {
+        Ok(form) => form,
+        Err(err) => {
+            let resp = Toast::error(err);
+            return Ok(resp.into_response());
+        }
+    };
+    reorder_journal_entry_media(&form, &state.db).await?;
+
+    let html = render_media_list(form.entry_id, &state, &templ).await?;
+    Ok(html.into_response())
 }
 
 fn get_media_list_ctx(media_list: Vec<MediaFull>, entry_id: i32) -> minijinja::Value {

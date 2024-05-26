@@ -47,12 +47,18 @@
 
 {% block content %}
   <div class="mx-auto">
-    <h1 class="app-title">Edit Entry</h1>
+    <h1 class="app-title">
+      <a href="{{ href_journal_detail }}" class="link-hover link"
+        >{{ journal.name }}</a
+      >
+      <span> - </span>
+      <span>Edit Entry</span>
+    </h1>
     <form hx-post="" id="journal_entry_new_form">
       {{ form.form_error(error="") }}
 
-      {{ form.input("", "Journal", disabled=true, value=journal.name, autocomplete="off") }}
       {{ form.input("title", "Title", value=entry.title) }}
+      {{ form.input("address", "Location", value=entry.address) }}
       <div class="my-4 flex w-full gap-2">
         <input
           type="date"
@@ -101,11 +107,7 @@
           {# FIXME Handle video #}
           <div class="w-full">
             <div>
-              <img
-                src="{{ media.url }}"
-                class="mx-auto h-auto max-w-full"
-                alt="media"
-              />
+              <img src="{{ media.url }}" class="w-full" alt="media" />
             </div>
             <form class="form-caption" data-mode="view">
               <div class="mt-2 flex justify-between gap-2">
@@ -114,6 +116,7 @@
                   name="caption"
                   disabled
                   placeholder="Caption..."
+                  value="{{ media.caption }}"
                   class="flex-1"
                 />
                 <button
@@ -139,6 +142,8 @@
                 type="button"
                 hx-post="{{ href_reorder }}"
                 hx-vals='{ "media_id": "{{ media.id }}", "entry_id": "{{ entry_id }}", "order": {{ media.order }}, "direction": "up"}'
+                hx-target="#media-container"
+                hx-swap="outerHTML"
                 class="btn btn-secondary"
                 {% if loop.first %}
                   disabled
@@ -150,6 +155,8 @@
                 type="button"
                 hx-post="{{ href_reorder }}"
                 hx-vals='{ "media_id": "{{ media.id }}", "entry_id": "{{ entry_id }}", "order": {{ media.order }}, "direction": "down"}'
+                hx-target="#media-container"
+                hx-swap="outerHTML"
                 class="btn btn-secondary"
                 {% if loop.last %}
                   disabled
@@ -161,6 +168,8 @@
                 type="button"
                 hx-delete="{{ href_delete }}"
                 hx-vals='{ "media_id": "{{ media.id }}", "entry_id": "{{ entry_id }}"}'
+                hx-target="#media-container"
+                hx-swap="outerHTML"
                 hx-confirm="Are you sure you wish to delete this?"
                 class="btn btn-error"
               >

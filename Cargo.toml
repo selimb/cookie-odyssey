@@ -46,7 +46,6 @@ chrono = { version = "0.4.38", features = ["std", "clock"] }
 clap = { version = "4.5.4", features = ["derive"] }
 sea-orm = { version = "0.12.15", features = ["sqlx-sqlite", "runtime-tokio-native-tls", "macros", "with-uuid"] }
 serde = { version = "1.0.200", features = ["derive"] }
-strum = "0.26.2"
 thiserror = { version = "1.0.60" }
 tokio = { version = "1.37.0", features = ["full"] }
 tracing = { version = "0.1.40" }

@@ -21,7 +21,7 @@
       <a class="app-card mx-auto" href="{{ day.href }}">
         <div class="card-body">
           <h2 class="card-title">
-            <span>{{ day.day_number }}</span>
+            <span>{{ loop.index }}</span>
             <span> - </span>
             {{ dt.date(day.date) }}
           </h2>

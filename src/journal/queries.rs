@@ -8,7 +8,7 @@ use serde::Serialize;
 
 use crate::{storage::FileStore, NotFound, RouteError};
 
-use super::routes::{JournalEntryMediaCommitParams, JournalEntryMediaDelete};
+use super::routes::{Direction, JournalEntryMediaCommitParams, JournalEntryMediaReorder};
 
 pub async fn query_journal_by_slug(
     slug: String,
@@ -129,7 +129,7 @@ pub async fn delete_journal_entry_media(
 
     let tx = db.begin().await?;
 
-    JournalEntryMedia::delete_by_id(media_id).exec(db).await?;
+    JournalEntryMedia::delete_by_id(media_id).exec(&tx).await?;
 
     let q = Statement::from_sql_and_values(
         sea_orm::DatabaseBackend::Sqlite,
@@ -138,14 +138,37 @@ pub async fn delete_journal_entry_media(
         SET "order" = "order" - 1
         WHERE "journal_entry_id" = ? AND "order" >= ?
         "#,
-        [order.into(), media.journal_entry_id.into()],
+        [media.journal_entry_id.into(), order.into()],
     );
-    db.execute(q).await?;
+    tx.execute(q).await?;
 
     tx.commit().await?;
 
     Ok(())
 }
 
-// pub async fn reorder_journal_entry_media(
-// )
+pub async fn reorder_journal_entry_media(
+    // Don't like referencing upper layers here, but this is easier.
+    params: &JournalEntryMediaReorder,
+    db: &DatabaseConnection,
+) -> Result<(), DbErr> {
+    let order_src = params.order;
+    let order_dst = match params.direction {
+        Direction::Up => order_src - 1,
+        Direction::Down => order_src + 1,
+    };
+
+    let q = Statement::from_sql_and_values(
+        sea_orm::DatabaseBackend::Sqlite,
+        // "SELECT $1, $2, $3",
+        r#"
+        UPDATE journal_entry_media
+        SET "order" = (CASE WHEN "order" = $1 THEN $2 ELSE $1 END)
+        WHERE "journal_entry_id" = $3 AND ("order" = $1 OR "order" = $2)
+        "#,
+        [order_src.into(), order_dst.into(), params.entry_id.into()],
+    );
+    db.execute(q).await?;
+
+    Ok(())
+}

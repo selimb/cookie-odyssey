@@ -4,7 +4,7 @@ const darkMode = "night";
 const daisyui = {
   // [daisyui-themes]
   // FIXME narrow down
-  themes: [darkMode, "light"],
+  themes: [darkMode, "nord"],
 };
 
 /** @type {import('tailwindcss').Config} */

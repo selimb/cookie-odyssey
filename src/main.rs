@@ -53,6 +53,7 @@ struct CliArgs {
 
 #[derive(Subcommand, Debug)]
 enum Commands {
+    Conf,
     CreateAdmin,
     Server,
 }
@@ -65,9 +66,15 @@ struct Cli {
 impl Cli {
     pub async fn run(&self) -> Result<(), anyhow::Error> {
         match self.args.command {
+            Commands::Conf => self.print_conf(),
             Commands::CreateAdmin => self.create_admin().await,
             Commands::Server => self.server().await,
         }
+    }
+
+    fn print_conf(&self) -> Result<(), anyhow::Error> {
+        println!("{:#?}", self.conf);
+        Ok(())
     }
 
     async fn server(&self) -> Result<(), anyhow::Error> {

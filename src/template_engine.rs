@@ -14,10 +14,7 @@ use minijinja::context;
 use once_cell::sync::Lazy;
 use serde::Serialize;
 
-use crate::utils::date_utils::time_from_sqlite;
-use crate::{
-    utils::date_utils::date_from_sqlite, AppState, AuthSession, AuthUser, Route, RouteError,
-};
+use crate::{AppState, AuthSession, AuthUser, Route, RouteError};
 
 pub type TemplateEngine = minijinja::Environment<'static>;
 
@@ -25,33 +22,9 @@ pub fn init_templates() -> TemplateEngine {
     let mut env = minijinja::Environment::new();
     env.set_loader(minijinja::path_loader("templates"));
     env.set_undefined_behavior(minijinja::UndefinedBehavior::Strict);
-    env.add_filter("date", date);
-    env.add_filter("time", time);
-    env.add_filter("time", time);
     env.add_filter("splitlines", splitlines);
 
     env
-}
-
-fn date(value: String) -> String {
-    match date_from_sqlite(value) {
-        // [datefmt] Match `Intl.DateTimeFormat("en-US", {dateStyle: "long"}`:
-        // ```
-        // Intl.DateTimeFormat("en-US", {dateStyle: "long"}).format(d)
-        // "December 31, 2022"
-        // ```
-        Ok(date) => date.format("%B %e, %Y").to_string(),
-        // FIXME test
-        Err(_) => "--".into(),
-    }
-}
-
-fn time(value: String) -> String {
-    // match time_from_sqlite(value) {
-    //     Ok(time) => time.format("")
-    //     Err(_) => "--".into(),
-    // }
-    value
 }
 
 fn splitlines(value: &str) -> Vec<String> {

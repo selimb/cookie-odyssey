@@ -8,6 +8,7 @@
     <!-- this hidden checkbox controls the state -->
     <input type="checkbox" onClick="onThemeChange()" />
 
+    {# XXX check rendered depending on state #}
     <!-- sun icon -->
     <svg
       class="swap-off h-6 w-6 fill-current"
@@ -43,7 +44,7 @@
       const $themeToggle = document.querySelector("#theme-toggle");
       // Matches [daisyui-themes]
       const themeMap = {
-        light: "light",
+        light: "nord",
         dark: "night",
       };
       const themeTitleMap = {

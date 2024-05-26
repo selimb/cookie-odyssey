@@ -11,6 +11,5 @@ anyhow = { workspace = true }
 config = { version = "0.14.0", features = [] }
 dotenv = { version = "0.15.0" }
 serde = { workspace = true }
-strum = { workspace = true, features = ["derive"] }
 thiserror ={ workspace = true }
 tracing = { workspace = true }

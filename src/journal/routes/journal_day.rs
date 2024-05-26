@@ -61,6 +61,7 @@ struct Entry {
     datetime: chrono::NaiveDateTime,
     time: chrono::NaiveTime,
     title: String,
+    address: String,
     text: String,
     draft: bool,
     href_edit: String,
@@ -97,6 +98,7 @@ async fn query_entries_for_day(
 
         let entry = Entry {
             title: e.title,
+            address: e.address,
             text: e.text,
             draft: e.draft,
             datetime,

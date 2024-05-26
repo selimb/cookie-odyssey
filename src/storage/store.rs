@@ -5,7 +5,7 @@ use anyhow::Context as _;
 use axum::body::Bytes;
 use azure_storage::{shared_access_signature::service_sas::BlobSasPermissions, StorageCredentials};
 use azure_storage_blobs::prelude::{BlobServiceClient, ClientBuilder, ContainerClient};
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
 
 use app_config::{AppConfig, StorageConfig};
 

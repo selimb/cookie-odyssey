@@ -21,11 +21,11 @@ pub struct Toast {
 impl Toast {
     pub fn error(err: impl std::error::Error) -> Self {
         let message = if AppEnv::is_dev() {
-            err.to_string()
+            format!("{err:#?}")
         } else {
             "Something went wrong".to_string()
         };
-        error!("Unhandled error: {err:#?}\n{message:#?}");
+        error!("Unhandled error: {err}\n{err:#?}");
         Self {
             message,
             variant: "error".into(),

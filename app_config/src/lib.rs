@@ -2,7 +2,6 @@ use anyhow::Context;
 use config::{Config, Environment};
 use serde::Deserialize;
 use std::env::current_dir;
-use strum::EnumString;
 use thiserror::Error;
 use tracing::{info, warn};
 
@@ -20,7 +19,7 @@ pub fn load_env() -> Result<(), anyhow::Error> {
     Ok(())
 }
 
-#[derive(Clone, Debug, Default, Deserialize, EnumString, PartialEq)]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq)]
 pub enum AppEnv {
     Dev,
     #[default]
