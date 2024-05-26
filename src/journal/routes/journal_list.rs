@@ -17,7 +17,6 @@ struct JournalListItem {
     cover_url: Option<Url>,
 }
 
-// FIXME auth
 pub async fn journal_list(State(state): State<AppState>, templ: Templ) -> RouteResult {
     let journals = Journal::find()
         .find_also_related(File)

@@ -72,14 +72,12 @@ pub struct TemplContextLinks {
     home: Cow<'static, str>,
     admin_users_list: Cow<'static, str>,
     logout: Cow<'static, str>,
-    notifications: Cow<'static, str>,
 }
 
 static TEMPL_CONTEXT_LINKS: Lazy<TemplContextLinks> = Lazy::new(|| TemplContextLinks {
     home: "/".into(),
     admin_users_list: Route::UserListGet.as_path(),
     logout: Route::LogoutPost.as_path(),
-    notifications: Route::NotificationsListGet.as_path(),
 });
 
 /// Template renderer, which is pre-populated with common context variables (see [TemplContext]).

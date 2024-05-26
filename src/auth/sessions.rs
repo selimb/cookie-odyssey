@@ -146,8 +146,4 @@ impl axum_login::AuthnBackend for AuthBackend {
     }
 }
 
-// FIXME check this
-// We use a type alias for convenience.
-//
-// Note that we've supplied our concrete backend here.
 pub type AuthSession = axum_login::AuthSession<AuthBackend>;

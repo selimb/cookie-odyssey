@@ -38,8 +38,6 @@ pub enum Route<'a> {
     LogoutPost,
     MediaUploadUrlGet,
     MediaUploadProxyPut(Option<&'a storage::MediaUploadProxyParams>),
-    // FIXME route
-    NotificationsListGet,
     RegisterGet,
     RegisterPost,
     UserListGet,
@@ -111,7 +109,6 @@ impl<'a> Route<'a> {
             Route::JournalEntryMediaEditCaptionPost => "/api/media-caption-edit".into(),
             Route::JournalEntryMediaDelete => "/api/media-delete".into(),
             Route::JournalEntryMediaReorder => "/api/media-reorder".into(),
-            Route::NotificationsListGet => "/notifications".into(),
             Route::RegisterGet => "/register".into(),
             Route::RegisterPost => "/register".into(),
             Route::UserListGet => "/users".into(),

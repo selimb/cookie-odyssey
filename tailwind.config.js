@@ -3,7 +3,6 @@ const darkMode = "night";
 /** @type {import('daisyui').Config} */
 const daisyui = {
   // [daisyui-themes]
-  // FIXME narrow down
   themes: [darkMode, "nord"],
 };
 

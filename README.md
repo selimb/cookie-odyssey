@@ -7,5 +7,6 @@
 
 ## TODO Future
 
-- Better JS bundling
+- [todo-loading] Loading indicators
+- [todo-bundle] Better JS bundling
 - Improve styles
