@@ -10,6 +10,7 @@ use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QuerySe
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    comment::routes::CommentList,
     journal::queries::query_journal_by_slug,
     utils::date_utils::{date_from_sqlite, time_from_sqlite},
     AppState, AuthSession, Route, RouteResult, Templ, Toast,
@@ -33,6 +34,13 @@ pub async fn journal_detail_get(
     };
 
     let entries_by_day = query_entries_by_day(&journal, &state.db, &session).await?;
+    let comments = CommentList {
+        journal_id: journal.id,
+        date: None,
+        partial: false,
+    }
+    .query_and_render(&state.db, &templ, &session)
+    .await?;
 
     let href_journal_entry_new = Route::JournalEntryNewGet(Some((
         &JournalEntryNewPath { slug },
@@ -116,142 +124,4 @@ async fn query_entries_by_day(
     }
 
     Ok(entries_by_day)
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-pub struct JournalDetailAddCommentQuery {
-    journal_id: i32,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct JournalDetailAddCommentForm {
-    text: String,
-}
-
-pub async fn journal_detail_add_comment_post(
-    state: AppState,
-    templ: Templ,
-    session: AuthSession,
-    query: Query<JournalDetailAddCommentQuery>,
-    form: Result<Form<JournalDetailAddCommentForm>, FormRejection>,
-) -> RouteResult {
-    let form = match form {
-        Err(err) => {
-            let resp = Toast::error(err);
-            return Ok(resp.into_response());
-        }
-        Ok(form) => form,
-    };
-
-    let text = form.0.text;
-    let user_id = session.user.as_ref().expect("Should be authenticated").0.id;
-    let params = AddCommentToJournal {
-        date: Some(query.date),
-        journal_id: query.journal_id,
-        text,
-        user_id,
-    };
-
-    add_comment_to_journal(params, &state.db).await?;
-
-    let html = query_and_render_comments(
-        query.journal_id,
-        &query.date,
-        true,
-        &state.db,
-        &templ,
-        &session,
-    )
-    .await?;
-    Ok(html.into_response())
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-pub struct JournalDetailEditCommentQuery {
-    journal_id: i32,
-    date: chrono::NaiveDate,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct JournalDetailEditCommentForm {
-    comment_id: i32,
-    text: String,
-}
-
-pub async fn journal_detail_edit_comment_post(
-    state: AppState,
-    templ: Templ,
-    session: AuthSession,
-    query: Query<JournalDetailEditCommentQuery>,
-    form: Result<Form<JournalDetailEditCommentForm>, FormRejection>,
-) -> RouteResult {
-    let form = match form {
-        Err(err) => {
-            let resp = Toast::error(err);
-            return Ok(resp.into_response());
-        }
-        Ok(form) => form,
-    };
-
-    let data = journal_comment::ActiveModel {
-        id: sea_orm::ActiveValue::Set(form.comment_id),
-        text: sea_orm::ActiveValue::Set(form.0.text),
-        ..Default::default()
-    };
-    // TODO [perms] Verify permissions server-side.
-    JournalComment::update(data).exec(&state.db).await?;
-
-    let html = query_and_render_comments(
-        query.journal_id,
-        &query.date,
-        true,
-        &state.db,
-        &templ,
-        &session,
-    )
-    .await?;
-    Ok(html.into_response())
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-pub struct JournalDetailDeleteCommentQuery {
-    journal_id: i32,
-    date: chrono::NaiveDate,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct JournalDetailDeleteCommentForm {
-    comment_id: i32,
-}
-
-pub async fn journal_detail_delete_comment_post(
-    state: AppState,
-    templ: Templ,
-    session: AuthSession,
-    query: Query<JournalDetailDeleteCommentQuery>,
-    form: Result<Form<JournalDetailDeleteCommentForm>, FormRejection>,
-) -> RouteResult {
-    let form = match form {
-        Err(err) => {
-            let resp = Toast::error(err);
-            return Ok(resp.into_response());
-        }
-        Ok(form) => form,
-    };
-
-    // TODO [perms] Verify permissions server-side.
-    JournalComment::delete_by_id(form.comment_id)
-        .exec(&state.db)
-        .await?;
-
-    let html = query_and_render_comments(
-        query.journal_id,
-        &query.date,
-        true,
-        &state.db,
-        &templ,
-        &session,
-    )
-    .await?;
-    Ok(html.into_response())
 }

@@ -110,15 +110,20 @@ impl Templ {
         &self,
         template_name: impl AsRef<str>,
         ctx: minijinja::Value,
-        block_name: impl AsRef<str>,
+        block_name: Option<impl AsRef<str>>,
     ) -> Result<Html<String>, RouteError> {
         let context = context! { ..self.build_default_ctx(), ..ctx };
-        let body = self
-            .engine
-            .get_template(template_name.as_ref())?
-            .eval_to_state(context)?
-            .render_block(block_name.as_ref())?;
-        Ok(Html(body))
+        match block_name {
+            Some(block_name) => {
+                let body = self
+                    .engine
+                    .get_template(template_name.as_ref())?
+                    .eval_to_state(context)?
+                    .render_block(block_name.as_ref())?;
+                Ok(Html(body))
+            }
+            None => self.render_ctx(template_name, context),
+        }
     }
 
     fn build_default_ctx(&self) -> minijinja::Value {

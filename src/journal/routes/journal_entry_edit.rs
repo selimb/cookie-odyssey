@@ -215,7 +215,8 @@ async fn render_media_list(
 ) -> Result<Html<String>, RouteError> {
     let media_list = query_media_for_journal_entry(entry_id, &state.db, &state.storage).await?;
     let ctx = get_media_list_ctx(media_list, entry_id);
-    let html = templ.render_ctx_fragment("journal_entry_edit.html", ctx, "fragment_media_list")?;
+    let html =
+        templ.render_ctx_fragment("journal_entry_edit.html", ctx, Some("fragment_media_list"))?;
     Ok(html)
 }
 
