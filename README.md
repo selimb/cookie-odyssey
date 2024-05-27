@@ -2,7 +2,6 @@
 
 ## TODO
 
-- Comments
 - View All
 
 ## TODO Future

@@ -8,10 +8,10 @@
   }
 
   .app-form-card {
-    @apply md:p-8 md:card md:shadow-xl dark:md:bg-neutral;
+    @apply md:card md:p-8 md:shadow-xl dark:md:bg-neutral;
   }
 
   .app-card {
-    @apply card shadow border dark:border-0 border-gray-200 max-md:w-full dark:bg-neutral;
+    @apply card border border-gray-200 shadow max-md:w-full dark:border-0 dark:bg-neutral;
   }
 }

@@ -56,9 +56,10 @@ pub async fn query_comments_for_journal(
     let mut q = entities::journal_comment::Entity::find()
         .filter(entities::journal_comment::Column::JournalId.eq(journal_id))
         .order_by_asc(entities::journal_comment::Column::CreatedAt);
-    if let Some(date) = date {
-        q = q.filter(entities::journal_comment::Column::Date.eq(date_to_sqlite(date)))
-    }
+    q = match date {
+        Some(date) => q.filter(entities::journal_comment::Column::Date.eq(date_to_sqlite(date))),
+        None => q.filter(entities::journal_comment::Column::Date.is_null()),
+    };
     let comments = q.all(db).await?;
     let users = comments.load_one(entities::user::Entity, db).await?;
 

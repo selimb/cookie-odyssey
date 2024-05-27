@@ -6,7 +6,7 @@ use axum::{
 use itertools::Itertools;
 use minijinja::context;
 use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QuerySelect};
-use serde::{Serialize};
+use serde::Serialize;
 
 use crate::{
     comment::routes::CommentList,
@@ -33,7 +33,7 @@ pub async fn journal_detail_get(
     };
 
     let entries_by_day = query_entries_by_day(&journal, &state.db, &session).await?;
-    let _comments = CommentList {
+    let comments = CommentList {
         journal_id: journal.id,
         date: None,
         partial: false,
@@ -47,7 +47,12 @@ pub async fn journal_detail_get(
     )))
     .as_path();
 
-    let ctx = context! { journal, entries_by_day, href_journal_entry_new };
+    let ctx = context! {
+        journal,
+        entries_by_day,
+        href_journal_entry_new,
+        comments_fragment => comments.0,
+    };
     let html = templ.render_ctx("journal_detail.html", ctx)?;
     Ok(html.into_response())
 }

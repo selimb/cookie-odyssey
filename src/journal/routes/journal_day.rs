@@ -1,15 +1,10 @@
-use axum::{
-    extract::{Path},
-    response::{IntoResponse as _},
-};
+use axum::{extract::Path, response::IntoResponse as _};
 use minijinja::context;
 use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    comment::{
-        routes::CommentList,
-    },
+    comment::routes::CommentList,
     journal::{
         queries::{query_journal_by_slug, query_media_for_journal_entry, MediaFull},
         routes::{JournalEntryNewPath, JournalEntryNewQuery},

@@ -47,8 +47,8 @@
     <div id="comment-list" class="mb-2 space-y-2">
       {% for comment in comments %}
         <div data-comment-edit-root="">
-          <div class="flex items-center justify-between text-sm">
-            <div class="flex gap-2">
+          <div class="flex flex-row items-center justify-between text-sm">
+            <div class="flex flex-col md:flex-row md:gap-2">
               <span class="font-semibold">
                 {{ comment.created_by.first_name }}
                 {{ comment.created_by.last_name }}
@@ -170,6 +170,7 @@
     /** @param {HTMLFormElement} $form */
     function resetTextarea($form) {
       $form.reset();
+      $textarea.blur();
       updateButtonVisibility();
     }
 

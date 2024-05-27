@@ -1,6 +1,3 @@
-
-
-
 const DATE_FMT: &str = "%Y-%m-%d";
 const TIME_FMT: &str = "%H:%M";
 

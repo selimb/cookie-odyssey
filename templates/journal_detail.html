@@ -16,6 +16,7 @@
     </div>
   {% endif %}
 
+  {# Main #}
   <div class="space-y-4">
     {% for day in entries_by_day %}
       <a class="app-card mx-auto" href="{{ day.href }}">
@@ -39,19 +40,31 @@
   <div class="mt-4 flex justify-between">
     <div></div>
     <div class="join max-md:grow max-md:justify-between">
-      {# FIXME links #}
-      <button class="btn join-item border-neutral max-md:flex-grow">
+      {# TODO #}
+      {# [toast-fn] #}
+      <button
+        class="btn join-item border-neutral max-md:flex-grow"
+        onclick="toast({message: 'Coming soon!', variant: 'success', auto_close: true})"
+      >
         View Map
       </button>
+      {# XXX #}
       <button class="btn join-item border-neutral max-md:flex-grow">
         View All
       </button>
-      <button class="btn join-item border-neutral max-md:flex-grow">
+      {# TODO #}
+      {# [toast-fn] #}
+      <button
+        class="btn join-item border-neutral max-md:flex-grow"
+        onclick="toast({message: 'Coming soon!', variant: 'success', auto_close: true})"
+      >
         Export
       </button>
     </div>
     <div></div>
   </div>
 
-  {{ comments | safe }}
+  {# Comments #}
+  <hr class="my-8 h-px border-0 bg-gray-200 dark:bg-gray-700" />
+  <div class="mb-8">{{ comments_fragment | safe }}</div>
 {% endblock content %}
