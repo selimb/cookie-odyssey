@@ -42,9 +42,6 @@
   </svg>
 {% endmacro %}
 
-{% macro media_figure(src, caption) %}
-{% endmacro %}
-
 {% block content %}
   <div class="mx-auto">
     <h1 class="app-title">
@@ -118,6 +115,7 @@
                   value="{{ media.caption }}"
                   class="flex-1"
                 />
+                {# [onclick-caption-edit] #}
                 <button
                   type="submit"
                   class="btn btn-circle btn-ghost"
@@ -127,10 +125,15 @@
                 >
                   {{ icon_check() }}
                 </button>
+
+                {# [onclick-caption-edit] #}
+                {% set onclick %}
+                  onclick="toggleCaptionEdit(this, 'edit')"'
+                {% endset %}
                 <button
                   type="button"
                   class="btn btn-circle btn-ghost"
-                  onclick="toggleCaptionEdit(this, 'edit')"
+                  {{ onclick | safe }}
                 >
                   {{ icon_edit() }}
                 </button>
@@ -191,31 +194,28 @@
     <input id="media-input" class="hidden" type="file" accept="image/*" />
   </div>
 
-  {# Add Photo #}
   <script>
     // @ts-check
+    /// <reference path="./common/toast.d.ts" />
 
-    // @ts-ignore
+    //
+    // Add Photo
+    //
     (() => {
       const ID_MEDIA_CONTAINER = "media-container";
 
       function findElems() {
         const $mediaContainer = document.getElementById(ID_MEDIA_CONTAINER);
-        if (!$mediaContainer) throw new Error("No media-container found");
 
         const $mediaBtn = /** @type {HTMLButtonElement | null} */ (
           document.getElementById("media-btn")
         );
-        if (!$mediaBtn) throw new Error("No media-btn found");
         const dataGetUploadUrl = $mediaBtn.getAttribute("data-get-upload-url");
-        if (!dataGetUploadUrl) throw new Error("Missing data-get-upload-url");
         const dataEntryId = $mediaBtn.getAttribute("data-entry-id");
-        if (!dataEntryId) throw new Error("Missing data-entry-id");
 
         const $mediaInput = /** @type {HTMLInputElement | null} */ (
           document.getElementById("media-input")
         );
-        if (!$mediaInput) throw new Error("No media-input found");
 
         return {
           $mediaContainer,
@@ -313,8 +313,7 @@
             dataEntryId,
           );
         } catch (err) {
-          // @ts-ignore
-          toast({
+          window.toast({
             message: "Failed to request upload URL",
             detail: err.message,
             variant: "error",
@@ -326,8 +325,7 @@
         try {
           await doUpload(file, uploadUrlParams);
         } catch (err) {
-          // @ts-ignore
-          toast({
+          window.toast({
             message: "Failed to upload file",
             detail: err.message,
             variant: "error",
@@ -337,8 +335,7 @@
         try {
           await doCommit(uploadUrlParams);
         } catch (err) {
-          // @ts-ignore
-          toast({
+          window.toast({
             message: "Failed to commit file",
             detail: err.message,
             variant: "error",
@@ -347,21 +344,17 @@
         }
       });
     })();
-  </script>
 
-  {# Caption Editing #}
-  <script>
-    // @ts-check
-
+    //
+    // Caption Editing
+    //
     /**
      * @param {HTMLButtonElement} $button
      * @param {"edit" | "view"} mode
      */
     function toggleCaptionEdit($button, mode) {
       const $form = $button.closest("form");
-      if (!$form) throw new Error("Expected form");
       const $input = $form.querySelector("input");
-      if (!$input) throw new Error("Expected input");
 
       $form.setAttribute("data-mode", mode);
       $input.disabled = mode === "view";
@@ -370,6 +363,7 @@
       }
     }
   </script>
+
   <style>
     .form-caption[data-mode="view"] button[type="submit"] {
       display: none;

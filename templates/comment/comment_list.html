@@ -1,0 +1,242 @@
+{% import "common/datetime.html" as dt %}
+
+{% macro icon_edit() %}
+  <!-- https://flowbite.com/icons/ edit -->
+  <svg
+    class="h-4 w-4 text-gray-800 dark:text-white"
+    aria-hidden="true"
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    fill="none"
+    viewBox="0 0 24 24"
+  >
+    <path
+      stroke="currentColor"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="2"
+      d="m14.304 4.844 2.852 2.852M7 7H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1v-4.5m2.409-9.91a2.017 2.017 0 0 1 0 2.853l-6.844 6.844L8 14l.713-3.565 6.844-6.844a2.015 2.015 0 0 1 2.852 0Z"
+    />
+  </svg>
+{% endmacro %}
+
+{% macro icon_delete() %}
+  <!-- https://flowbite.com/icons/ trash-bin -->
+  <svg
+    class="h-4 w-4 text-gray-800 dark:text-white"
+    aria-hidden="true"
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    fill="none"
+    viewBox="0 0 24 24"
+  >
+    <path
+      stroke="currentColor"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="2"
+      d="M5 7h14m-9 3v8m4-8v8M10 3h4a1 1 0 0 1 1 1v3H9V4a1 1 0 0 1 1-1ZM6 7h12v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V7Z"
+    />
+  </svg>
+{% endmacro %}
+
+<div>
+  {% block fragment_comment_list %}
+    <div id="comment-list" class="mb-2 space-y-2">
+      {% for comment in comments %}
+        <div data-comment-edit-root="">
+          <div class="flex items-center justify-between text-sm">
+            <div class="flex gap-2">
+              <span class="font-semibold">
+                {{ comment.created_by.first_name }}
+                {{ comment.created_by.last_name }}
+              </span>
+              {{ dt.datetimetz(comment.created_at) }}
+            </div>
+            {% if comment.created_by.id == user.id %}
+              <div>
+                {# For some reason having an onclick confuses TS (no more type-checking in script below #}
+                {# [onclick-comment-edit] #}
+                {% set onclick = 'onclick="commentEditClick(this)"' %}
+                <button
+                  type="button"
+                  title="Edit"
+                  {{ onclick | safe }}
+                  data-mode="view"
+                  class="btn-ghost px-2"
+                >
+                  {{ icon_edit() }}
+                </button>
+                <button
+                  type="button"
+                  title="Delete"
+                  hx-post="{{ href_delete_comment }}"
+                  hx-confirm="Are you sure you wish to delete this comment?"
+                  hx-vals='{ "comment_id": "{{ comment.id }}" }'
+                  hx-target="#comment-list"
+                  hx-swap="outerHTML"
+                  class="btn-ghost px-2"
+                >
+                  {{ icon_delete() }}
+                </button>
+              </div>
+            {% endif %}
+          </div>
+          <p data-comment-edit-target="view">{{ comment.text }}</p>
+          <form
+            data-comment-edit-target="edit"
+            class="hidden"
+            hx-post="{{ href_edit_comment }}"
+            hx-vals='{ "comment_id": "{{ comment.id }}" }'
+            hx-target="#comment-list"
+            hx-swap="outerHTML"
+          >
+            {% set onkeydown = 'onkeydown="commentEditKeydown(event, this)"' %}
+            <textarea
+              name="text"
+              class="textarea textarea-bordered w-full"
+              {{ onkeydown | safe }}
+            >
+{{ comment.text }}</textarea
+            >
+            <div class="mt-1 flex items-center justify-end gap-2">
+              {% set oncancel = 'onclick="commentEditCancel(this)"' %}
+              <button type="button" class="btn btn-sm" {{ oncancel | safe }}>
+                Cancel
+              </button>
+              <button type="submit" class="btn btn-primary btn-sm">Edit</button>
+            </div>
+          </form>
+        </div>
+      {% endfor %}
+    </div>
+  {% endblock fragment_comment_list %}
+
+  <form
+    id="add-comment-form"
+    hx-post="{{ href_add_comment }}"
+    hx-target="#comment-list"
+    hx-swap="outerHTML"
+    hx-on::after-request="resetTextarea(this)"
+  >
+    <textarea
+      name="text"
+      class="textarea textarea-bordered w-full"
+      placeholder="Let us know what you think..."
+    ></textarea>
+    <div class="mt-2 flex items-center justify-end">
+      <button type="submit" class="btn btn-primary hidden">Post</button>
+    </div>
+  </form>
+</div>
+
+<script>
+  // @ts-check
+  /// <reference path="../common/js_utils.d.ts" />
+  (() => {
+    const $form = document.getElementById("add-comment-form");
+    const $textarea = $form.querySelector("textarea");
+    const $button = $form.querySelector("button");
+
+    function updateButtonVisibility() {
+      const text = $textarea.value;
+      const cl = $button.classList;
+      if (text.trim().length > 0) {
+        window.jsUtils.show($button);
+        return true;
+      } else {
+        window.jsUtils.hide($button);
+        return false;
+      }
+    }
+
+    $textarea.addEventListener("keydown", (evt) => {
+      const visible = updateButtonVisibility();
+      if (visible && evt.ctrlKey && evt.key == "Enter") {
+        $button.click();
+      }
+    });
+
+    $form.addEventListener("htmx:afterRequest", (evt) => {
+      // @ts-ignore
+      const ok = evt.detail.successful;
+      console.info("afterRequest", ok);
+    });
+
+    updateButtonVisibility();
+
+    /** @param {HTMLFormElement} $form */
+    function resetTextarea($form) {
+      $form.reset();
+      updateButtonVisibility();
+    }
+
+    // @ts-ignore
+    window.resetTextarea = resetTextarea;
+  })();
+</script>
+
+<script>
+  // @ts-check
+  /// <reference path="../common/js_utils.d.ts" />
+  window.jsUtils.once("comment-edit", () => {
+    const DATA_MODE = "data-mode";
+
+    // [onclick-comment-edit]
+    /** @param {Element} $button */
+    function commentEditClick($button) {
+      console.info("commentEditClick", $button);
+      const $commentRoot = $button.closest("[data-comment-edit-root]");
+      const $view = /** @type {HTMLElement} */ (
+        $commentRoot.querySelector('[data-comment-edit-target="view"]')
+      );
+      const $edit = /** @type {HTMLElement} */ (
+        $commentRoot.querySelector('[data-comment-edit-target="edit"]')
+      );
+      const mode = $button.getAttribute(DATA_MODE);
+      if (mode === "view") {
+        $button.setAttribute(DATA_MODE, "edit");
+        window.jsUtils.hide($view);
+        window.jsUtils.show($edit);
+        const $textarea = $commentRoot.querySelector("textarea");
+        $textarea.value = $view.textContent;
+        $textarea.focus();
+      } else {
+        $button.setAttribute(DATA_MODE, "view");
+        window.jsUtils.show($view);
+        window.jsUtils.hide($edit);
+      }
+    }
+
+    /** @param {Element} $button */
+    function commentEditCancel($button) {
+      const $commentRoot = $button.closest("[data-comment-edit-root]");
+      console.info("commentEditCancel", $button, $commentRoot);
+      const $editButton = $commentRoot.querySelector("button[data-mode]");
+      commentEditClick($editButton);
+    }
+
+    /**
+     * @param {KeyboardEvent} evt
+     * @param {Element} $textarea
+     */
+    function commentEditKeydown(evt, $textarea) {
+      if (evt.ctrlKey && evt.key == "Enter") {
+        const $form = $textarea.closest("form");
+        const $submit = /** @type {HTMLButtonElement} */ (
+          $form.querySelector('button[type="submit"]')
+        );
+        $submit.click();
+      }
+    }
+
+    // @ts-ignore
+    window.commentEditClick = commentEditClick;
+    // @ts-ignore
+    window.commentEditCancel = commentEditCancel;
+    // @ts-ignore
+    window.commentEditKeydown = commentEditKeydown;
+  });
+</script>

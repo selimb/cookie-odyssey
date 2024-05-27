@@ -3,6 +3,9 @@
 
 {% block content %}
   <div>
+    {#
+    Header
+    #}
     <h1 class="app-title">
       <a href="{{ href_journal_detail }}" class="link-hover link"
         >{{ journal.name }}</a
@@ -10,7 +13,7 @@
       <span> - </span>
       {{ dt.date(datetime) }}
     </h1>
-    {# Header #}
+
     {% if user.admin %}
       <div class="my-4 flex items-center justify-end">
         <a
@@ -20,6 +23,10 @@
         >
       </div>
     {% endif %}
+
+    {#
+    Entries
+    #}
     <div class="space-y-4">
       {% for entry in entries %}
         <div>
@@ -60,5 +67,11 @@
         </div>
       {% endfor %}
     </div>
+
+    <hr class="my-8 h-px border-0 bg-gray-200 dark:bg-gray-700" />
+    {#
+    Comments
+    #}
+    <div class="mb-8">{{ comments_fragment | safe }}</div>
   </div>
 {% endblock content %}

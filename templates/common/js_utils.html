@@ -1,0 +1,48 @@
+<script>
+  // @ts-check
+  /// <reference path="./js_utils.d.ts" />
+  (() => {
+    const onceRegistry = new Set();
+    window.jsUtils = {
+      once: (key, fn) => {
+        if (onceRegistry.has(key)) {
+          return;
+        }
+        onceRegistry.add(key);
+        fn();
+      },
+      show($elem) {
+        const cl = $elem.classList;
+        if (cl.contains("hidden")) {
+          cl.remove("hidden");
+        }
+      },
+      hide($elem) {
+        const cl = $elem.classList;
+        if (!cl.contains("hidden")) {
+          cl.add("hidden");
+        }
+      },
+      observe(selector, fn) {
+        /** @type {MutationCallback} */
+        const onMutation = (mutations) => {
+          for (const mut of mutations) {
+            for (const node of mut.addedNodes) {
+              if (node instanceof Element) {
+                if (node.matches(selector)) {
+                  fn(node);
+                } else {
+                  for (const subnode of node.querySelectorAll(selector)) {
+                    fn(subnode);
+                  }
+                }
+              }
+            }
+          }
+        };
+        const observer = new MutationObserver(onMutation);
+        observer.observe(document, { childList: true, subtree: true });
+      },
+    };
+  })();
+</script>

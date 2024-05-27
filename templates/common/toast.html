@@ -52,9 +52,10 @@ Idea inspired by https://themurph.hashnode.dev/go-beyond-the-basics-mastering-to
 {% if not hx_boosted %}
   <script>
     // @ts-check
+    /// <reference path="./js_utils.d.ts" />
+    /// <reference path="./toast.d.ts" />
 
-    // @ts-ignore
-    once("toast", () => {
+    window.jsUtils.once("toast", () => {
       // Keep in sync with [toast]
       const TOAST_EVT = "app.toast";
 
@@ -75,15 +76,6 @@ Idea inspired by https://themurph.hashnode.dev/go-beyond-the-basics-mastering-to
             ),
         },
       };
-
-      /**
-       * @typedef Toast
-       * @type {object}
-       * @property {string} message
-       * @property {string | undefined} detail
-       * @property {"success" | "error"} variant
-       * @property {boolean | undefined} auto_close
-       */
 
       /**
        * @param data {Toast}
@@ -109,8 +101,8 @@ Idea inspired by https://themurph.hashnode.dev/go-beyond-the-basics-mastering-to
         return [$toast, $button];
       }
 
-      /** @param data {Toast} */
-      function toast(data) {
+      // [toast-fn]
+      window.toast = (data) => {
         const $toastContainer = document.getElementById("toast-container");
         if (!$toastContainer)
           throw new Error("Could not find #toast-container");
@@ -129,17 +121,13 @@ Idea inspired by https://themurph.hashnode.dev/go-beyond-the-basics-mastering-to
           setTimeout(remove, 5000);
         }
         $button.addEventListener("click", remove);
-      }
+      };
 
       document.body.addEventListener(TOAST_EVT, (evt) => {
         // @ts-ignore
         const detail = evt.detail;
-        toast(detail);
+        window.toast(detail);
       });
-
-      // [toast-fn]
-      // @ts-ignore
-      window.toast = toast;
     });
   </script>
 {% endif %}

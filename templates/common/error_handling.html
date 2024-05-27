@@ -1,7 +1,7 @@
 {% if not hx_boosted %}
   {# [todo-bundle] #}
   <script>
-    once("error_handling", () => {
+    window.jsUtils.once("error_handling", () => {
       // Relines on [toast-fn]
       htmx.on("htmx:responseError", (evt) => {
         let error = evt.detail.error + "\n" + evt.detail.xhr.responseText;

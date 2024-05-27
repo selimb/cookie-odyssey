@@ -6,7 +6,7 @@ use minijinja::context;
 use crate::{RouteError, Templ};
 
 pub struct NotFound {
-    msg: Cow<'static, str>,
+    pub msg: Cow<'static, str>,
 }
 
 impl NotFound {

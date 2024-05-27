@@ -32,24 +32,23 @@ pub async fn journal_new_post(
     state: State<AppState>,
     form: Result<Form<JournalNew>, FormRejection>,
 ) -> Result<Response, RouteError> {
-    match form {
+    let form = match form {
         Err(err) => {
             let resp = FormError::from(err).render(&state)?;
-            Ok(resp.into_response())
+            return Ok(resp.into_response());
         }
-        Ok(form) => {
-            let data = journal::ActiveModel {
-                name: sea_orm::ActiveValue::Set(form.name.clone()),
-                slug: sea_orm::ActiveValue::Set(form.slug.clone()),
-                start_date: sea_orm::ActiveValue::Set(date_to_sqlite(form.start_date)),
-                end_date: sea_orm::ActiveValue::Set(form.end_date.map(date_to_sqlite)),
-                ..Default::default()
-            };
-            // TODO: Handle conflict (can't use on_conflict, since we have two unique constraints).
-            Journal::insert(data).exec(&state.db).await?;
-            let href = Route::JournalListGet.as_path();
-            let resp = [("HX-Location", href.as_ref())];
-            Ok(resp.into_response())
-        }
-    }
+        Ok(form) => form,
+    };
+    let data = journal::ActiveModel {
+        name: sea_orm::ActiveValue::Set(form.name.clone()),
+        slug: sea_orm::ActiveValue::Set(form.slug.clone()),
+        start_date: sea_orm::ActiveValue::Set(date_to_sqlite(form.start_date)),
+        end_date: sea_orm::ActiveValue::Set(form.end_date.map(date_to_sqlite)),
+        ..Default::default()
+    };
+    // TODO: Handle conflict (can't use on_conflict, since we have two unique constraints).
+    Journal::insert(data).exec(&state.db).await?;
+    let href = Route::JournalListGet.as_path();
+    let resp = [("HX-Location", href.as_ref())];
+    Ok(resp.into_response())
 }

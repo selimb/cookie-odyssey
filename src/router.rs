@@ -20,6 +20,12 @@ pub enum Route<'a> {
     ForgotPasswordGet,
     ForgotPasswordPost,
     JournalDetailGet { slug: Option<&'a str> },
+    // XXX
+    JournalDetailAddCommentPost,
+    // XXX
+    JournalDetailEditCommentPost,
+    // XXX
+    JournalDetailDeleteCommentPost,
     JournalListGet,
     JournalNewGet,
     JournalNewPost,
@@ -29,6 +35,9 @@ pub enum Route<'a> {
     JournalEntryEditPost { entry_id: Option<i32> },
     JournalEntryPublishPost { entry_id: Option<i32> },
     JournalDayGet(Option<&'a journal::JournalDayGetPath>),
+    JournalDayAddCommentPost(Option<&'a journal::JournalDayAddCommentQuery>),
+    JournalDayEditCommentPost(Option<&'a journal::JournalDayEditCommentQuery>),
+    JournalDayDeleteCommentPost(Option<&'a journal::JournalDayDeleteCommentQuery>),
     JournalEntryMediaCommitPost(Option<&'a journal::JournalEntryMediaCommitParams>),
     JournalEntryMediaEditCaptionPost,
     JournalEntryMediaDelete,
@@ -56,6 +65,9 @@ impl<'a> Route<'a> {
                 Some(slug) => format!("/journal/{slug}").into(),
                 None => "/journal/:slug".into(),
             },
+            Route::JournalDetailAddCommentPost => "/hx/add-journal-comment".into(),
+            Route::JournalDetailEditCommentPost => "/hx/edit-journal-comment".into(),
+            Route::JournalDetailDeleteCommentPost => "/hx/delete-journal-comment".into(),
             Route::JournalListGet => "/".into(),
             Route::JournalNewGet => "/new-journal".into(),
             Route::JournalNewPost => "/new-journal".into(),
@@ -87,6 +99,27 @@ impl<'a> Route<'a> {
             Route::JournalDayGet(params) => match params {
                 None => "/journal/:slug/entry/:date".into(),
                 Some(params) => format!("/journal/{}/entry/{}", params.slug, params.date).into(),
+            },
+            Route::JournalDayAddCommentPost(params) => match params {
+                None => "/hx/add-day-comment".into(),
+                Some(params) => {
+                    let qs = serde_qs::to_string(params).expect(EXPECT_QS);
+                    format!("/hx/add-day-comment?{qs}").into()
+                }
+            },
+            Route::JournalDayEditCommentPost(params) => match params {
+                None => "/hx/edit-day-comment".into(),
+                Some(params) => {
+                    let qs = serde_qs::to_string(params).expect(EXPECT_QS);
+                    format!("/hx/edit-day-comment?{qs}").into()
+                }
+            },
+            Route::JournalDayDeleteCommentPost(params) => match params {
+                None => "/hx/delete-day-comment".into(),
+                Some(params) => {
+                    let qs = serde_qs::to_string(params).expect(EXPECT_QS);
+                    format!("/hx/delete-day-comment?{qs}").into()
+                }
             },
             Route::LoginGet => "/login".into(),
             Route::LoginPost => "/login".into(),
@@ -132,9 +165,33 @@ fn get_protected_routes() -> Router<AppState> {
             &Route::JournalDetailGet { slug: None }.as_path(),
             get(journal::journal_detail_get),
         )
+        // .route(
+        //     &Route::JournalDetailAddCommentPost.as_path(),
+        //     post(journal::journal_detail_add_comment_post),
+        // )
+        // .route(
+        //     &Route::JournalDetailEditCommentPost.as_path(),
+        //     post(journal::journal_detail_edit_comment_post),
+        // )
+        // .route(
+        //     &Route::JournalDetailDeleteCommentPost.as_path(),
+        //     post(journal::journal_detail_delete_comment_post),
+        // )
         .route(
             &Route::JournalDayGet(None).as_path(),
             get(journal::journal_day_get),
+        )
+        .route(
+            &Route::JournalDayAddCommentPost(None).as_path(),
+            post(journal::journal_day_add_comment_post),
+        )
+        .route(
+            &Route::JournalDayEditCommentPost(None).as_path(),
+            post(journal::journal_day_edit_comment_post),
+        )
+        .route(
+            &Route::JournalDayDeleteCommentPost(None).as_path(),
+            post(journal::journal_day_delete_comment_post),
         )
         .route(
             &Route::JournalNewGet.as_path(),

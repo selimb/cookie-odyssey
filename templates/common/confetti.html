@@ -2,7 +2,10 @@
 {% if not hx_boosted %}
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
   <script>
-    once("confetti", () => {
+    // @ts-check
+    /// <reference path="./js_utils.d.ts" />
+
+    window.jsUtils.once("confetti", () => {
       // [confetti-fn]
       function fireConfetti() {
         // Implementation 100% from https://www.kirilv.com/canvas-confetti/#fireworks
@@ -29,11 +32,13 @@
 
           const particleCount = 50 * (timeLeft / duration);
           // since particles fall down, start a bit higher than random
+          // @ts-ignore
           window.confetti({
             ...defaults,
             particleCount,
             origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 },
           });
+          // @ts-ignore
           window.confetti({
             ...defaults,
             particleCount,
@@ -45,6 +50,7 @@
       // Keep in sync with [confetti-evt]
       const CONFETTI_EVT = "app.confetti";
       document.body.addEventListener(CONFETTI_EVT, fireConfetti);
+      // @ts-ignore
       window.fireConfetti = fireConfetti;
     });
   </script>

@@ -1,6 +1,8 @@
+use itertools::{zip_eq, Itertools};
 use sea_orm::{
     ColumnTrait, DatabaseConnection, DbErr, EntityTrait, LoaderTrait, QueryFilter, QueryOrder,
 };
+use serde::Serialize;
 
 use crate::utils::date_utils::date_to_sqlite;
 
@@ -31,17 +33,19 @@ pub async fn add_comment_to_journal(
     Ok(())
 }
 
+#[derive(Serialize, Debug)]
 pub struct JournalCommentUser {
     id: i32,
     first_name: String,
     last_name: String,
 }
 
+#[derive(Serialize, Debug)]
 pub struct JournalComment {
     id: i32,
-    text: i32,
-    created_at: chrono::Utc,
-    created_by: JournalCommentUser,
+    text: String,
+    created_at: chrono::DateTime<chrono::Utc>,
+    created_by: Option<JournalCommentUser>,
 }
 
 pub async fn query_comments_for_journal(
@@ -58,7 +62,19 @@ pub async fn query_comments_for_journal(
     let comments = q.all(db).await?;
     let users = comments.load_one(entities::user::Entity, db).await?;
 
-    println!("users: {:#?}", users);
+    let ret = zip_eq(comments, users)
+        .map(|(comment, user)| JournalComment {
+            id: comment.id,
+            text: comment.text,
+            created_at: chrono::DateTime::from_timestamp(comment.created_at, 0)
+                .expect("Should be a valid timestamp"),
+            created_by: user.map(|user| JournalCommentUser {
+                id: user.id,
+                first_name: user.first_name,
+                last_name: user.last_name,
+            }),
+        })
+        .collect_vec();
 
-    Ok(vec![])
+    Ok(ret)
 }

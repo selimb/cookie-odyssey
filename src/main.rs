@@ -1,3 +1,5 @@
+use std::io::Write;
+
 use anyhow::Context;
 use clap::{Parser, Subcommand};
 use cookie_odyssey::{auth::sessions::AuthBackend, server::init_db};
@@ -73,7 +75,7 @@ impl Cli {
     }
 
     fn print_conf(&self) -> Result<(), anyhow::Error> {
-        println!("{:#?}", self.conf);
+        std::io::stdout().write_fmt(format_args!("{:#?}\n", self.conf))?;
         Ok(())
     }
 
