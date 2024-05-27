@@ -4,7 +4,7 @@ use axum::{
     Form,
 };
 use minijinja::context;
-use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QuerySelect};
+use sea_orm::{DatabaseConnection, EntityTrait};
 use serde::{Deserialize, Serialize};
 
 use entities::{prelude::*, *};

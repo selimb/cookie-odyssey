@@ -61,7 +61,7 @@ pub enum Route<'a> {
     UserListDeletePost,
 }
 
-const EXPECT_QS: &'static str = "Should be a valid querystring";
+const EXPECT_QS: &str = "Should be a valid querystring";
 
 impl<'a> Route<'a> {
     pub fn as_path(&self) -> Cow<'static, str> {

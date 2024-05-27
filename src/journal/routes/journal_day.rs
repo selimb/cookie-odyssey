@@ -1,7 +1,6 @@
 use axum::{
-    extract::{rejection::FormRejection, Path, Query},
-    response::{Html, IntoResponse as _},
-    Form,
+    extract::{Path},
+    response::{IntoResponse as _},
 };
 use minijinja::context;
 use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
@@ -9,7 +8,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     comment::{
-        queries::{add_comment_to_journal, query_comments_for_journal, AddCommentToJournal},
         routes::CommentList,
     },
     journal::{
@@ -18,7 +16,7 @@ use crate::{
     },
     storage::FileStore,
     utils::date_utils::{date_from_sqlite, date_to_sqlite, time_from_sqlite},
-    AppState, AuthSession, Route, RouteError, RouteResult, Templ, Toast,
+    AppState, AuthSession, Route, RouteResult, Templ,
 };
 use entities::{prelude::*, *};
 

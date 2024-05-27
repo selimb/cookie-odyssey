@@ -35,7 +35,7 @@ pub async fn init_session(
         // SameSite::Strict is too strict: can't follow link from email!
         .with_same_site(tower_sessions::cookie::SameSite::Lax)
         .with_expiry(tower_sessions::Expiry::OnInactivity(COOKIE_MAX_AGE))
-        .with_secure(if AppEnv::is_dev() { false } else { true })
+        .with_secure(!AppEnv::is_dev())
         .with_http_only(true);
 
     let auth_backend = AuthBackend { db: db.clone() };

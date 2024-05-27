@@ -1,19 +1,18 @@
 use anyhow::Context as _;
 use axum::{
-    extract::{rejection::FormRejection, Path, Query, State},
+    extract::{Path, State},
     response::IntoResponse as _,
-    Form,
 };
 use itertools::Itertools;
 use minijinja::context;
 use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QuerySelect};
-use serde::{Deserialize, Serialize};
+use serde::{Serialize};
 
 use crate::{
     comment::routes::CommentList,
     journal::queries::query_journal_by_slug,
     utils::date_utils::{date_from_sqlite, time_from_sqlite},
-    AppState, AuthSession, Route, RouteResult, Templ, Toast,
+    AppState, AuthSession, Route, RouteResult, Templ,
 };
 use entities::{prelude::*, *};
 
@@ -34,7 +33,7 @@ pub async fn journal_detail_get(
     };
 
     let entries_by_day = query_entries_by_day(&journal, &state.db, &session).await?;
-    let comments = CommentList {
+    let _comments = CommentList {
         journal_id: journal.id,
         date: None,
         partial: false,
