@@ -1,0 +1,11 @@
+[Unit]
+Description=The cookie-odyssey web application
+
+[Service]
+User=cookie-odyssey
+Group=cookie-odyssey
+WorkingDirectory=/home/cookie-odyssey/app
+ExecStart=/home/cookie-odyssey/app/cookie-odyssey server
+
+[Install]
+WantedBy=multi-user.target
