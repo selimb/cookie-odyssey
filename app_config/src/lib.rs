@@ -51,6 +51,8 @@ pub struct StorageConfig {
     pub container_media: String,
     pub azure_storage_account: String,
     pub azure_storage_access_key: String,
+    pub azure_storage_endpoint: Option<String>,
+    #[serde(default)]
     pub emulator: bool,
 }
 

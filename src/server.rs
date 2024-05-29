@@ -26,7 +26,7 @@ pub async fn mkapp(conf: &AppConfig) -> Result<Router, anyhow::Error> {
     Ok(router)
 }
 
-async fn init_state(conf: &AppConfig) -> Result<(AppState, sqlx::SqlitePool), anyhow::Error> {
+pub async fn init_state(conf: &AppConfig) -> Result<(AppState, sqlx::SqlitePool), anyhow::Error> {
     let template_engine = init_templates();
     let (pool, db) = init_db(conf).await?;
     let storage = init_storage(conf).await?;

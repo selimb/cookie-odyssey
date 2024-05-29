@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use axum::{
     extract::{Query, State},
     response::{IntoResponse, Response},
@@ -25,6 +27,7 @@ pub struct MediaUploadUrlQuery {
 pub struct MediaUploadUrlResult {
     upload_url: String,
     upload_method: String,
+    upload_headers: HashMap<String, String>,
     commit_url: String,
     commit_method: String,
 }
@@ -62,6 +65,7 @@ pub async fn media_upload_url_get(
     let resp_body = MediaUploadUrlResult {
         upload_method: upload_params.method,
         upload_url: upload_params.url,
+        upload_headers: upload_params.headers,
         commit_url: commit_url.to_string(),
         commit_method: "POST".to_string(),
     };

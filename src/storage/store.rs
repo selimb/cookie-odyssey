@@ -3,9 +3,12 @@
 //!
 use anyhow::Context as _;
 use axum::body::Bytes;
-use azure_storage::{shared_access_signature::service_sas::BlobSasPermissions, StorageCredentials};
+use azure_storage::{
+    shared_access_signature::service_sas::BlobSasPermissions, CloudLocation, StorageCredentials,
+};
 use azure_storage_blobs::prelude::{BlobServiceClient, ClientBuilder, ContainerClient};
-use std::sync::Arc;
+use futures::stream::StreamExt as _;
+use std::{collections::HashMap, sync::Arc};
 
 use app_config::{AppConfig, StorageConfig};
 
@@ -23,8 +26,15 @@ pub async fn init_storage(conf: &AppConfig) -> Result<Arc<FileStore>, anyhow::Er
                 sc.azure_storage_account.clone(),
                 sc.azure_storage_access_key.clone(),
             );
-            BlobServiceClient::builder(sc.azure_storage_account.clone(), creds)
-                .blob_service_client()
+            let account = sc.azure_storage_account.clone();
+            let loc = match &sc.azure_storage_endpoint {
+                None => CloudLocation::Public { account },
+                Some(endpoint) => CloudLocation::Custom {
+                    account,
+                    uri: endpoint.clone(),
+                },
+            };
+            ClientBuilder::with_location(loc, creds).blob_service_client()
         }
     };
 
@@ -48,11 +58,13 @@ impl Bucket {
 
 pub type SignedUrl = String;
 
+#[derive(Debug)]
 pub struct UploadUrl {
     pub bucket: String,
     pub key: String,
     pub url: SignedUrl,
     pub method: String,
+    pub headers: HashMap<String, String>,
 }
 
 #[derive(Debug)]
@@ -62,6 +74,19 @@ pub struct FileStore {
 }
 
 impl FileStore {
+    pub async fn list_containers(&self) -> Result<Vec<String>, anyhow::Error> {
+        let mut r = self.client.list_containers().into_stream();
+        let mut containers: Vec<String> = Vec::new();
+        while let Some(page) = r.next().await {
+            let page = page.context("Failed to query containers")?;
+            for container in page.containers {
+                containers.push(container.name);
+            }
+        }
+
+        Ok(containers)
+    }
+
     pub async fn get_upload_url(
         &self,
         bucket: Bucket,
@@ -77,6 +102,7 @@ impl FileStore {
             return Ok(UploadUrl {
                 method: "PUT".into(),
                 url: url.into(),
+                headers: Default::default(),
                 bucket,
                 key,
             });
@@ -86,11 +112,13 @@ impl FileStore {
         let blob_client = client
             .container_client(bucket.clone())
             .blob_client(key.clone());
+
+        let expiry = time::OffsetDateTime::now_utc() + time::Duration::hours(12);
         let perms = BlobSasPermissions {
             create: true,
             ..Default::default()
         };
-        let expiry = time::OffsetDateTime::now_utc() + time::Duration::hours(1);
+
         let sas = blob_client
             .shared_access_signature(perms, expiry)
             .await
@@ -98,9 +126,12 @@ impl FileStore {
         let url = blob_client
             .generate_signed_blob_url(&sas)
             .context("Failed to generate signed URL")?;
+
+        let headers = HashMap::from([("x-ms-blob-type".to_string(), "BlockBlob".to_string())]);
         Ok(UploadUrl {
             bucket,
             key,
+            headers,
             url: url.to_string(),
             method: "PUT".to_string(),
         })
@@ -139,11 +170,18 @@ impl FileStore {
         let blob_client = client
             .container_client(bucket.as_ref())
             .blob_client(key.as_ref());
+
+        // Use a semi-constant expiry to leverage browser caches.
+        let start = time::OffsetDateTime::now_utc()
+            .replace_day(1)
+            .unwrap()
+            .replace_time(time::Time::from_hms(0, 0, 0).unwrap());
+        let expiry = start + time::Duration::days(30);
+
         let perms = BlobSasPermissions {
             read: true,
             ..Default::default()
         };
-        let expiry = time::OffsetDateTime::now_utc() + time::Duration::days(30);
         let sas = blob_client
             .shared_access_signature(perms, expiry)
             .await

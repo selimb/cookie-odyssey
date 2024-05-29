@@ -239,6 +239,7 @@
        * @type {object}
        * @property {string} upload_url
        * @property {string} upload_method
+       * @property {Record<string, string>} upload_headers
        * @property {string} commit_url
        * @property {string} commit_method
        */
@@ -269,6 +270,7 @@
       async function doUpload(file, uploadUrlParams) {
         const resp = await fetch(uploadUrlParams.upload_url, {
           method: uploadUrlParams.upload_method,
+          headers: uploadUrlParams.upload_headers,
           body: file,
         });
         if (!resp.ok) {

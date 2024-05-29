@@ -2,7 +2,10 @@ use std::io::Write;
 
 use anyhow::Context;
 use clap::{Parser, Subcommand};
-use cookie_odyssey::{auth::sessions::AuthBackend, server::init_db};
+use cookie_odyssey::{
+    auth::sessions::AuthBackend,
+    server::{init_db, init_state},
+};
 use sea_orm::EntityTrait;
 use tracing::info;
 
@@ -58,6 +61,7 @@ enum Commands {
     Conf,
     CreateAdmin,
     Server,
+    Check,
 }
 
 struct Cli {
@@ -71,6 +75,7 @@ impl Cli {
             Commands::Conf => self.print_conf(),
             Commands::CreateAdmin => self.create_admin().await,
             Commands::Server => self.server().await,
+            Commands::Check => self.check().await,
         }
     }
 
@@ -121,6 +126,15 @@ impl Cli {
             .context("Failed to insert user")?;
 
         info!("Created user: '{}'", email);
+        Ok(())
+    }
+
+    async fn check(&self) -> Result<(), anyhow::Error> {
+        let (state, _) = init_state(&self.conf).await?;
+        let containers = state.storage.list_containers().await?;
+
+        info!("Containers: {containers:?}");
+
         Ok(())
     }
 }

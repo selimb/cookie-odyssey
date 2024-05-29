@@ -16,6 +16,7 @@ azure_storage_blobs = "0.20.0"
 chrono = { workspace = true, features = ["serde"] }
 clap = { workspace = true }
 entities = { path = "entities" }
+futures = "0.3.30"
 itertools = "0.13.0"
 migration = { path = "migration" }
 minijinja = { version = "2.0.1", features = ["loader"] }
