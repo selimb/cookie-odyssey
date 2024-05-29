@@ -11,8 +11,9 @@
 
       {% set forgot_password %}
         <a
-          href="{{ href_forgot_password }}"
+          {# href="{{ href_forgot_password }}" #}
           class="link label-text-alt link-primary"
+          onclick="toast({message: 'Too bad!', variant: 'success', auto_close: true})"
           >Forgot password?</a
         >
       {% endset %}
