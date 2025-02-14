@@ -37,12 +37,6 @@ fn clsx(value: &str) -> minijinja::Value {
     minijinja::Value::from_safe_string(s)
 }
 
-#[derive(Debug, Serialize)]
-struct TemplContext<'a> {
-    user: &'a Option<TemplContextUser>,
-    links: &'a TemplContextLinks,
-}
-
 /// Mostly like AuthUser/User, but without `password`, and maybe with some extra
 /// fields eventually (like the profile image URL).
 #[derive(Debug, Serialize)]
@@ -98,12 +92,7 @@ impl Templ {
         template_name: impl AsRef<str>,
         ctx: minijinja::Value,
     ) -> Result<Html<String>, RouteError> {
-        let context = context! { ..self.build_default_ctx(), ..ctx };
-        let body = self
-            .engine
-            .get_template(template_name.as_ref())?
-            .render(context)?;
-        Ok(Html(body))
+        self.render_ctx_fragment(template_name, ctx, None::<String>)
     }
 
     pub fn render_ctx_fragment(
@@ -112,27 +101,38 @@ impl Templ {
         ctx: minijinja::Value,
         block_name: Option<impl AsRef<str>>,
     ) -> Result<Html<String>, RouteError> {
-        let context = context! { ..self.build_default_ctx(), ..ctx };
-        match block_name {
-            Some(block_name) => {
-                let body = self
-                    .engine
-                    .get_template(template_name.as_ref())?
-                    .eval_to_state(context)?
-                    .render_block(block_name.as_ref())?;
-                Ok(Html(body))
-            }
-            None => self.render_ctx(template_name, context),
-        }
+        // NOTE: Precedence is from left to right, so `ctx` must come first
+        //   in order to override `wide_layout`.
+        let context = context! { ..ctx, ..self.build_default_ctx() };
+        let template = self.engine.get_template(template_name.as_ref())?;
+        let body = match block_name {
+            Some(block_name) => template
+                .eval_to_state(context)?
+                .render_block(block_name.as_ref())?,
+            None => template.render(context)?,
+        };
+        Ok(Html(body))
     }
 
     fn build_default_ctx(&self) -> minijinja::Value {
+        // See [TemplContext].
         context! {
             user => self.user,
             links => TEMPL_CONTEXT_LINKS.deref(),
             hx_boosted => self.hx_boosted,
+            wide_layout => false,
         }
     }
+}
+
+#[allow(dead_code)] // Serves as documentation.
+#[derive(Debug, Serialize)]
+struct TemplContext<'a> {
+    user: &'a Option<TemplContextUser>,
+    links: &'a TemplContextLinks,
+    hx_boosted: bool,
+    /// Can be overriden.
+    wide_layout: bool,
 }
 
 #[async_trait]

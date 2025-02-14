@@ -23,7 +23,8 @@ async fn query_and_render_user_list(
     let ctx = context! {
         users,
         href_approve => Route::UserListApprovePost.as_path(),
-        href_delete => Route::UserListDeletePost.as_path()
+        href_delete => Route::UserListDeletePost.as_path(),
+        wide_layout => true,
     };
     templ.render_ctx_fragment(
         "user_list.html",

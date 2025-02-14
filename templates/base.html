@@ -19,7 +19,11 @@
 
   {# NOTE: We need response-targets, otherwise HTMX completely ignores error responses! #}
   <body hx-boost="true" hx-ext="response-targets">
+    {% if wide_layout %}
+    <div class="m-2 md:mx-auto">
+    {% else %}
     <div class="m-2 md:mx-auto md:w-[600px]">
+    {% endif %}
       {% include "common/navbar.html" %}
       {% block content %}
       {% endblock content %}
