@@ -1,6 +1,6 @@
 use axum::{extract::Path, response::IntoResponse as _};
 use minijinja::context;
-use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
+use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QueryOrder};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -45,13 +45,30 @@ pub async fn journal_day_get(
     .query_and_render(&state.db, &templ, &session)
     .await?;
 
+    let (day_prev, day_next) = query_surrounding_days(&journal, &date, &state.db, &session).await?;
+
     let datetime = chrono::NaiveDateTime::new(date, Default::default());
     let href_journal_detail = Route::JournalDetailGet { slug: Some(&slug) }.as_path();
     let href_journal_entry_new = Route::JournalEntryNewGet(Some((
-        &JournalEntryNewPath { slug },
+        &JournalEntryNewPath { slug: slug.clone() },
         &JournalEntryNewQuery { date: Some(date) },
     )))
     .as_path();
+    let href_journal_day_prev = day_prev.map(|day| {
+        Route::JournalDayGet(Some(&JournalDayGetPath {
+            slug: slug.clone(),
+            date: day,
+        }))
+        .as_path()
+    });
+    let href_journal_day_next = day_next.map(|day| {
+        Route::JournalDayGet(Some(&JournalDayGetPath {
+            slug: slug.clone(),
+            date: day,
+        }))
+        .as_path()
+    });
+
     let ctx = context! {
         journal,
         datetime,
@@ -59,6 +76,8 @@ pub async fn journal_day_get(
         comments_fragment => comments.0,
         href_journal_detail,
         href_journal_entry_new,
+        href_journal_day_prev,
+        href_journal_day_next,
     };
 
     let html = templ.render_ctx("journal_day.html", ctx)?;
@@ -120,4 +139,31 @@ async fn query_entries_for_day(
     entries.sort_by_key(|e| e.datetime);
 
     Ok(entries)
+}
+
+async fn query_surrounding_days(
+    journal: &journal::Model,
+    date: &chrono::NaiveDate,
+    db: &DatabaseConnection,
+    auth: &AuthSession,
+) -> Result<(Option<chrono::NaiveDate>, Option<chrono::NaiveDate>), anyhow::Error> {
+    // TODO: Only select date.
+    let mut q_base = JournalEntry::find().filter(journal_entry::Column::JournalId.eq(journal.id));
+    q_base = auth.backend.filter_journal_entries(auth, q_base).await?;
+
+    let q_prev = q_base
+        .clone()
+        .filter(journal_entry::Column::Date.lt(date_to_sqlite(*date)))
+        .order_by_desc(journal_entry::Column::Date);
+    let q_next = q_base
+        .filter(journal_entry::Column::Date.gt(date_to_sqlite(*date)))
+        .order_by_asc(journal_entry::Column::Date);
+
+    let entry_prev = q_prev.one(db).await?;
+    let entry_next = q_next.one(db).await?;
+
+    let day_prev = entry_prev.map(|entry| date_from_sqlite(entry.date).unwrap());
+    let day_next = entry_next.map(|entry| date_from_sqlite(entry.date).unwrap());
+
+    Ok((day_prev, day_next))
 }

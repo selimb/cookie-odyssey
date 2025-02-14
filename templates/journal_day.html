@@ -68,6 +68,28 @@
       {% endfor %}
     </div>
 
+    {# Footer #}
+    <div class="mt-4 flex justify-between">
+      <a
+        class="btn border-neutral"
+        {% if href_journal_day_prev %}
+          href="{{ href_journal_day_prev }}"
+        {% else %}
+          disabled
+        {% endif %}
+        >Previous</a
+      >
+      <a
+        class="btn border-neutral"
+        {% if href_journal_day_next %}
+          href="{{ href_journal_day_next }}"
+        {% else %}
+          disabled
+        {% endif %}
+        >Next</a
+      >
+    </div>
+
     {#
     Comments
     #}
