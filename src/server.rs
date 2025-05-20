@@ -42,8 +42,14 @@ pub async fn init_state(conf: &AppConfig) -> Result<(AppState, sqlx::SqlitePool)
 pub async fn init_db(
     conf: &AppConfig,
 ) -> Result<(sqlx::SqlitePool, sea_orm::DatabaseConnection), anyhow::Error> {
-    let db_url = conf.database_url();
-    let pool = sqlx::SqlitePool::connect(&db_url)
+    let db_path = &conf.database_file;
+    // https://cj.rs/blog/sqlite-pragma-cheatsheet-for-performance-and-consistency/
+    let opts = sqlx::sqlite::SqliteConnectOptions::new()
+        .filename(db_path)
+        .journal_mode(sqlx::sqlite::SqliteJournalMode::Wal)
+        .synchronous(sqlx::sqlite::SqliteSynchronous::Normal)
+        .foreign_keys(true);
+    let pool = sqlx::SqlitePool::connect_with(opts)
         .await
         .context("Failed to connect to database")?;
     let db = sea_orm::SqlxSqliteConnector::from_sqlx_sqlite_pool(pool.clone());
