@@ -6,6 +6,7 @@ mod m20240512_173332_create_table_user;
 mod m20240518_025335_create_table_journal_entry;
 mod m20240518_135530_create_table_journal_entry_media;
 mod m20240526_203520_create_table_journal_comment;
+mod m20250520_001650_media_type;
 
 pub struct Migrator;
 
@@ -19,6 +20,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20240518_025335_create_table_journal_entry::Migration),
             Box::new(m20240518_135530_create_table_journal_entry_media::Migration),
             Box::new(m20240526_203520_create_table_journal_comment::Migration),
+            Box::new(m20250520_001650_media_type::Migration),
         ]
     }
 }

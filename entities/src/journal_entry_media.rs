@@ -12,7 +12,20 @@ pub struct Model {
     pub order: i32,
     pub caption: String,
     pub file_id: i32,
-    pub media_type: String,
+    // KEEP ME
+    pub media_type: MediaType,
+}
+
+// KEEP ME
+// SYNC
+#[derive(Debug, Clone, Copy, PartialEq, Eq, EnumIter, DeriveActiveEnum, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+#[sea_orm(rs_type = "String", db_type = "String(None)")]
+pub enum MediaType {
+    #[sea_orm(string_value = "image")]
+    Image,
+    #[sea_orm(string_value = "video")]
+    Video,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
