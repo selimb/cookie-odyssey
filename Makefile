@@ -14,7 +14,7 @@ orm-gen:
 	sea-orm-cli generate entity \
 		--output-dir entities/src \
 		--database-url sqlite://data/db.sqlite \
-		--with-serde serialize \
+		--with-serde both \
 		--ignore-tables seaql_migrations \
 		--ignore-tables tower_sessions \
 		--lib
