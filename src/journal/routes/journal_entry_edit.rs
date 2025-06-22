@@ -121,6 +121,7 @@ pub async fn journal_entry_publish_post(state: AppState, Path(entry_id): Path<i3
 pub struct JournalEntryMediaCommitParams {
     pub file_id: i32,
     pub entry_id: i32,
+    pub media_type: journal_entry_media::MediaType,
 }
 
 pub async fn journal_entry_media_commit_post(

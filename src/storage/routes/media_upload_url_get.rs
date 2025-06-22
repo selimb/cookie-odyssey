@@ -20,6 +20,7 @@ use serde::{Deserialize, Serialize};
 pub struct MediaUploadUrlQuery {
     filename: String,
     entry_id: i32,
+    media_type: journal_entry_media::MediaType,
 }
 
 // SYNC
@@ -59,6 +60,7 @@ pub async fn media_upload_url_get(
     let commit_url = Route::JournalEntryMediaCommitPost(Some(&JournalEntryMediaCommitParams {
         file_id,
         entry_id: query.entry_id,
+        media_type: query.media_type,
     }))
     .as_path();
 

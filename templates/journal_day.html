@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% import "common/datetime.html" as dt %}
+{% import "common/media_tag.html" as media_tag %}
 
 {% block content %}
   <div>
@@ -57,7 +58,7 @@
           <div class="mt-2 space-y-2">
             {% for media in entry.media %}
               <figure class="w-full">
-                <img src="{{ media.url }}" alt="media" class="w-full" />
+                {{ media_tag.media_tag(media, "w-full") }}
                 <figcaption class="mt-2 text-center text-sm">
                   {{ media.caption }}
                 </figcaption>

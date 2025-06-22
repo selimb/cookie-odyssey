@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% import "common/form.html" as form %}
+{% import "common/media_tag.html" as media_tag %}
 
 {% macro icon_check() %}
   <!-- https://flowbite.com/icons/ check -->
@@ -102,9 +103,7 @@
         {% for media in media_list %}
           {# FIXME Handle video #}
           <div class="w-full">
-            <div>
-              <img src="{{ media.url }}" class="w-full" alt="media" />
-            </div>
+            <div>{{ media_tag.media_tag(media, "w-full") }}</div>
             <form class="form-caption" data-mode="view">
               <div class="mt-2 flex justify-between gap-2">
                 <input
@@ -191,7 +190,12 @@
     >
       Add
     </button>
-    <input id="media-input" class="hidden" type="file" accept="image/*" />
+    <input
+      id="media-input"
+      class="hidden"
+      type="file"
+      accept="image/*,video/*"
+    />
   </div>
 
   <script>
@@ -199,7 +203,7 @@
     /// <reference path="./common/toast.d.ts" />
 
     //
-    // Add Photo
+    // Add Media
     //
     (() => {
       const ID_MEDIA_CONTAINER = "media-container";
@@ -228,10 +232,16 @@
 
       /**
        * SYNC
+       * @typedef MediaType
+       * @type {'image' | 'video'}
+       */
+      /**
+       * SYNC
        * @typedef MediaUploadUrlQuery
        * @type {object}
        * @property {string} filename
        * @property {string} entry_id
+       * @property {MediaType} media_type
        */
       /**
        * SYNC
@@ -248,11 +258,16 @@
        * @param {File} file
        * @param {string} getUploadUrl
        * @param {string} entryId
+       * @param {MediaType} mediaType
        * @return {Promise<MediaUploadUrlResult>}
        */
-      async function fetchUploadUrl(file, getUploadUrl, entryId) {
+      async function fetchUploadUrl(file, getUploadUrl, entryId, mediaType) {
         /** @type {MediaUploadUrlQuery} */
-        const params = { entry_id: entryId, filename: file.name };
+        const params = {
+          entry_id: entryId,
+          filename: file.name,
+          media_type: mediaType,
+        };
         const qs = new URLSearchParams(params).toString();
         const reqUrl = `${getUploadUrl}?${qs}`;
         const resp = await fetch(reqUrl);
@@ -307,12 +322,15 @@
           return;
         }
         const file = files[0];
+        const mimeType = file.type;
+        const mediaType = mimeType.startsWith("image/") ? "image" : "video";
 
         try {
           var uploadUrlParams = await fetchUploadUrl(
             file,
             dataGetUploadUrl,
             dataEntryId,
+            mediaType,
           );
         } catch (err) {
           window.toast({
@@ -350,6 +368,7 @@
     //
     // Caption Editing
     //
+
     /**
      * @param {HTMLButtonElement} $button
      * @param {"edit" | "view"} mode

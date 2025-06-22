@@ -31,6 +31,7 @@ pub struct MediaFull {
     pub file_id: i32,
     pub url: String,
     pub caption: String,
+    pub media_type: journal_entry_media::MediaType,
 }
 
 #[derive(Debug)]
@@ -85,6 +86,7 @@ pub async fn query_media_for_journal_entry(
             file_id: media.file_id,
             caption: media.caption,
             url,
+            media_type: media.media_type,
         };
         media_list.push(m);
     }
@@ -105,6 +107,7 @@ pub async fn append_journal_entry_media(
         file_id: sea_orm::ActiveValue::Set(params.file_id),
         journal_entry_id: sea_orm::ActiveValue::Set(params.entry_id),
         order: sea_orm::ActiveValue::Set(next_order as i32),
+        media_type: sea_orm::ActiveValue::Set(params.media_type),
         ..Default::default()
     };
     JournalEntryMedia::insert(data).exec(db).await?;

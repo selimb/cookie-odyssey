@@ -92,8 +92,8 @@ impl Cli {
         let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{port}"))
             .await
             .context("Failed to bind TCP listener")?;
-        let addr = format!("http://localhost:{port}");
-        info!("Starting server on {addr}");
+        let addr = format!("http://0.0.0.0:{port}");
+        info!("Starting server on http://localhost:{port}");
         axum::serve(listener, app).await?;
         Ok(())
     }
