@@ -1,11 +1,11 @@
 use axum::{
-    extract::{rejection::FormRejection, Path, Query, State},
+    extract::{rejection::FormRejection, Path, State},
     response::{Html, IntoResponse},
     Form,
 };
 use minijinja::context;
 use sea_orm::EntityTrait;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 use crate::{
     journal::queries::{
@@ -45,7 +45,8 @@ pub async fn journal_entry_edit_get(
         }
     };
 
-    let href_upload = Route::MediaUploadUrlGet.as_path();
+    let href_get_upload_url = Route::MediaUploadUrlPost.as_path();
+    let href_commit_upload = Route::JournalEntryMediaCommitPost.as_path();
     let href_publish = Route::JournalEntryPublishPost {
         entry_id: Some(entry_id),
     }
@@ -57,7 +58,8 @@ pub async fn journal_entry_edit_get(
 
     let ctx = context! {
         ..context! {
-            href_upload,
+            href_get_upload_url,
+            href_commit_upload,
             href_publish,
             href_journal_detail,
             entry => entry_full.entry,
@@ -117,21 +119,45 @@ pub async fn journal_entry_publish_post(state: AppState, Path(entry_id): Path<i3
     Ok(resp.into_response())
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct JournalEntryMediaCommitParams {
-    pub file_id: i32,
-    pub entry_id: i32,
+// SYNC
+#[derive(Deserialize, Debug)]
+pub struct JournalEntryMediaCommitItem {
     pub media_type: journal_entry_media::MediaType,
+    pub file_id_original: i32,
+    pub width_original: i32,
+    pub height_original: i32,
+    pub file_id_thumbnail: i32,
+    pub width_thumbnail: i32,
+    pub height_thumbnail: i32,
+}
+
+// SYNC
+#[derive(Deserialize, Debug)]
+pub struct JournalEntryMediaCommitBody {
+    pub entry_id: i32,
+    pub items: Vec<JournalEntryMediaCommitItem>,
+}
+
+// Can't send JSON payloads with htmx.ajax, so we wrap the JSON in a form field.
+#[derive(Deserialize, Debug)]
+pub struct JournalEntryMediaCommitForm {
+    json: String,
 }
 
 pub async fn journal_entry_media_commit_post(
     state: State<AppState>,
     templ: Templ,
-    Query(params): Query<JournalEntryMediaCommitParams>,
+    form: Form<JournalEntryMediaCommitForm>,
 ) -> RouteResult {
-    append_journal_entry_media(&params, &state.db).await?;
+    let body: JournalEntryMediaCommitBody = match serde_json::from_str(&form.json) {
+        Ok(body) => body,
+        Err(err) => {
+            return Ok((FormError::STATUS, err.to_string()).into_response());
+        }
+    };
+    append_journal_entry_media(&body, &state.db).await?;
 
-    let html = render_media_list(params.entry_id, &state, &templ).await?;
+    let html = render_media_list(body.entry_id, &state, &templ).await?;
     Ok(html.into_response())
 }
 

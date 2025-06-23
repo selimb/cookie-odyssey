@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use sea_orm::{
     ColumnTrait, ConnectionTrait, DatabaseConnection, DbErr, EntityTrait, PaginatorTrait,
     QueryFilter, QueryOrder, Statement, TransactionTrait,
@@ -8,7 +10,7 @@ use serde::Serialize;
 
 use crate::{storage::FileStore, NotFound, RouteError};
 
-use super::routes::{Direction, JournalEntryMediaCommitParams, JournalEntryMediaReorder};
+use super::routes::{Direction, JournalEntryMediaCommitBody, JournalEntryMediaReorder};
 
 pub async fn query_journal_by_slug(
     slug: String,
@@ -28,10 +30,14 @@ pub async fn query_journal_by_slug(
 pub struct MediaFull {
     pub id: i32,
     pub order: i32,
-    pub file_id: i32,
-    pub url: String,
     pub caption: String,
     pub media_type: journal_entry_media::MediaType,
+    pub url_original: String,
+    pub width_original: i32,
+    pub height_original: i32,
+    pub url_thumbnail: String,
+    pub width_thumbnail: i32,
+    pub height_thumbnail: i32,
 }
 
 #[derive(Debug)]
@@ -70,23 +76,58 @@ pub async fn query_media_for_journal_entry(
     db: &DatabaseConnection,
     storage: &FileStore,
 ) -> Result<Vec<MediaFull>, RouteError> {
-    let media_db = JournalEntryMedia::find()
+    // Collect media entries.
+    let medias_db = JournalEntryMedia::find()
         .filter(journal_entry_media::Column::JournalEntryId.eq(entry_id))
-        .find_also_related(File)
         .order_by_asc(journal_entry_media::Column::Order)
         .all(db)
         .await?;
+
+    // Collect files.
+    let mut file_ids: Vec<i32> = Vec::with_capacity(medias_db.len() * 2);
+    for media in &medias_db {
+        file_ids.push(media.file_id);
+        file_ids.push(media.thumbnail_file_id);
+    }
+    let files_db = File::find()
+        .filter(file::Column::Id.is_in(file_ids))
+        .all(db)
+        .await?;
+    let mut files_db_by_id: HashMap<i32, file::Model> = HashMap::new();
+    for file in files_db {
+        files_db_by_id.insert(file.id, file);
+    }
+
     let mut media_list: Vec<MediaFull> = Vec::new();
-    for (media, file) in media_db {
-        let file = file.expect("Should be non-null");
-        let url = storage.sign_url(file.bucket, file.key).await?;
+    for media in medias_db {
+        // Use .remove to take ownership and avoid copying.
+        // Assumes that two `media` don't have the same file_id or thumbnail_file_id,
+        // which should always be true.
+        let file_original = files_db_by_id
+            .remove(&media.file_id)
+            .expect("Should be non-null");
+        let file_thumbnail = files_db_by_id
+            .remove(&media.thumbnail_file_id)
+            .expect("Should be non-null");
+
+        let url_original = storage
+            .sign_url(file_original.bucket, file_original.key)
+            .await?;
+        let url_thumbnail = storage
+            .sign_url(file_thumbnail.bucket, file_thumbnail.key)
+            .await?;
+
         let m = MediaFull {
             id: media.id,
             order: media.order,
-            file_id: media.file_id,
             caption: media.caption,
-            url,
             media_type: media.media_type,
+            url_original,
+            width_original: media.width,
+            height_original: media.height,
+            url_thumbnail,
+            width_thumbnail: media.thumbnail_width,
+            height_thumbnail: media.thumbnail_height,
         };
         media_list.push(m);
     }
@@ -95,22 +136,34 @@ pub async fn query_media_for_journal_entry(
 
 pub async fn append_journal_entry_media(
     // Don't like referencing upper layers here, but this is easier.
-    params: &JournalEntryMediaCommitParams,
+    input: &JournalEntryMediaCommitBody,
     db: &DatabaseConnection,
 ) -> Result<(), DbErr> {
     let next_order = JournalEntryMedia::find()
-        .filter(journal_entry_media::Column::JournalEntryId.eq(params.entry_id))
+        .filter(journal_entry_media::Column::JournalEntryId.eq(input.entry_id))
         .count(db)
         .await?;
+    let next_order = next_order as usize;
 
-    let data = journal_entry_media::ActiveModel {
-        file_id: sea_orm::ActiveValue::Set(params.file_id),
-        journal_entry_id: sea_orm::ActiveValue::Set(params.entry_id),
-        order: sea_orm::ActiveValue::Set(next_order as i32),
-        media_type: sea_orm::ActiveValue::Set(params.media_type),
-        ..Default::default()
-    };
-    JournalEntryMedia::insert(data).exec(db).await?;
+    let data = input
+        .items
+        .iter()
+        .enumerate()
+        .map(|(index, item)| journal_entry_media::ActiveModel {
+            journal_entry_id: sea_orm::ActiveValue::Set(input.entry_id),
+            media_type: sea_orm::ActiveValue::Set(item.media_type),
+            order: sea_orm::ActiveValue::Set((next_order + index) as i32),
+            file_id: sea_orm::ActiveValue::Set(item.file_id_original),
+            width: sea_orm::ActiveValue::Set(item.width_original),
+            height: sea_orm::ActiveValue::Set(item.height_original),
+            thumbnail_file_id: sea_orm::ActiveValue::Set(item.file_id_thumbnail),
+            thumbnail_width: sea_orm::ActiveValue::Set(item.width_thumbnail),
+            thumbnail_height: sea_orm::ActiveValue::Set(item.height_thumbnail),
+            caption: sea_orm::ActiveValue::NotSet,
+            id: sea_orm::ActiveValue::NotSet, // Auto-incremented.
+        })
+        .collect::<Vec<_>>();
+    JournalEntryMedia::insert_many(data).exec(db).await?;
 
     Ok(())
 }

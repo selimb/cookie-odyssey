@@ -1,7 +1,7 @@
 //! Mostly copied/adapted from https://github.com/maxcountryman/axum-login/blob/main/examples/sqlite/src/web/app.rs
 use anyhow::Context;
 use app_config::AppEnv;
-use axum::async_trait;
+use async_trait::async_trait;
 use axum_login::tower_sessions::ExpiredDeletion;
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 use serde::{Deserialize, Serialize};

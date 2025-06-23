@@ -1,0 +1,42 @@
+<link
+  rel="stylesheet"
+  href="https://unpkg.com/photoswipe@5.2.2/dist/photoswipe.css"
+/>
+
+<script type="module">
+  // @ts-check
+
+  // XXX types
+  import PhotoSwipeLightbox from "https://unpkg.com/photoswipe@5/dist/photoswipe-lightbox.esm.js?module";
+
+  console.info("importing lightbox");
+
+  const lightbox = new PhotoSwipeLightbox({
+    gallery: "[data-pswp-gallery-target]",
+    children: "a[data-pswp-children]",
+    showHideAnimationType: "none",
+    pswpModule: () =>
+      import("https://unpkg.com/photoswipe@5/dist/photoswipe.esm.js?module"),
+  });
+
+  lightbox.init();
+</script>
+
+{% macro media_tag(media, class) %}
+  {% if media.media_type == "image" %}
+    <a
+      href="{{ media.url_original }}"
+      data-pswp-children
+      data-pswp-width="{{ media.width_original }}"
+      data-pswp-height="{{ media.height_original }}"
+      target="_blank"
+    >
+      <img src="{{ media.url_thumbnail }}" alt="media" class="{{ class }}" />
+    </a>
+  {% else %}
+    <!-- XXX -->
+    <video src="{{ media.url }}" controls class="{{ class }}">
+      Your browser does not support the video tag.
+    </video>
+  {% endif %}
+{% endmacro %}

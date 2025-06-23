@@ -1,7 +1,4 @@
-use axum::{
-    async_trait,
-    extract::{FromRef, FromRequestParts},
-};
+use axum::extract::{FromRef, FromRequestParts};
 use std::{convert::Infallible, sync::Arc};
 
 use crate::{storage::FileStore, template_engine::TemplateEngine};
@@ -16,7 +13,6 @@ pub struct AppState {
 
 // Copied from https://github.com/tokio-rs/axum/discussions/1732#discussioncomment-4878401.
 // This is necessary for using AppState in custom extractors (like [`Templ`]).
-#[async_trait]
 impl<S> FromRequestParts<S> for AppState
 where
     Self: FromRef<S>, // <---- added this line

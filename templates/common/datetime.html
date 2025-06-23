@@ -3,6 +3,7 @@
   /// <reference path="./js_utils.d.ts" />
 
   window.jsUtils.once("datetime", () => {
+    console.info("datetime script once");
     window.jsUtils.observe(
       "time",
       /** @param {HTMLTimeElement} $time */

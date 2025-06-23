@@ -8,9 +8,10 @@ publish = false
 
 [dependencies]
 anyhow = { workspace = true }
+async-trait = { workspace = true }
 app-config = { path = "app_config" }
-axum = "0.7.5"
-axum-login = "0.15.1"
+axum = "0.8.4"
+axum-login = "0.17.0"
 azure_storage = "0.20.0"
 azure_storage_blobs = "0.20.0"
 chrono = { workspace = true, features = ["serde"] }
@@ -31,8 +32,8 @@ sqlx = { version = "0.8.6", features = ["runtime-tokio", "tls-native-tls", "sqli
 thiserror = { workspace = true }
 time = "0.3.36"
 tokio = { workspace = true }
-tower-http = { version = "0.5.2", features = ["fs", "catch-panic"] }
-tower-sessions = { version = "0.12.2", default-features = false }
+tower-http = { version = "0.6.6", features = ["fs", "catch-panic"] }
+tower-sessions = { version = "0.14.0", default-features = false }
 tower-sessions-sqlx-store = { version = "0.15.0", features = ["sqlite"] }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
@@ -43,6 +44,7 @@ members = ["app_config", "entities", "migration"]
 
 [workspace.dependencies]
 anyhow = "1.0.83"
+async-trait = "0.1.88"
 chrono = { version = "0.4.38", features = ["std", "clock"] }
 clap = { version = "4.5.4", features = ["derive"] }
 sea-orm = { version = "1.1", features = ["sqlx-sqlite", "runtime-tokio-native-tls", "macros", "with-uuid"] }
