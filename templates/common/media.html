@@ -1,32 +1,61 @@
-<link
+<!-- <link
   rel="stylesheet"
   href="https://unpkg.com/photoswipe@5.2.2/dist/photoswipe.css"
-/>
+/> -->
 
 <script type="module">
   // @ts-check
+  /// <reference path="./js_utils.d.ts" />
+  /// <reference path="./media.d.ts" />
+  /// <reference path="./theme.d.ts" />
 
-  // XXX types
-  import PhotoSwipeLightbox from "https://unpkg.com/photoswipe@5/dist/photoswipe-lightbox.esm.js?module";
+  window.jsUtils.once("media", () => {
+    function bindFancybox($gallery) {
+      console.info("bindFancybox", window.theme.value, $gallery);
+      // window.Fancybox.destroy();
+      if ($gallery) {
+        window.Fancybox.bind($gallery, "[data-fancybox]", {
+          zoomEffect: false,
+          theme: window.theme.value,
+        });
+      }
+    }
 
-  console.info("importing lightbox");
+    function init() {
+      bindFancybox(document.querySelector("[data-fancybox-gallery]"));
+    }
 
-  const lightbox = new PhotoSwipeLightbox({
-    gallery: "[data-pswp-gallery-target]",
-    children: "a[data-pswp-children]",
-    showHideAnimationType: "none",
-    pswpModule: () =>
-      import("https://unpkg.com/photoswipe@5/dist/photoswipe.esm.js?module"),
+    init();
+
+    // Assumes there's always only one gallery per page.
+    // window.jsUtils.observe("[data-fancybox-gallery]", ($gallery) => {
+    //   bindFancybox($gallery);
+    // });
+
+    // window.theme.onChange(function rebindFancybox() {
+    //   init();
+    // });
   });
 
-  lightbox.init();
+  // XXX types
+  // import PhotoSwipeLightbox from "https://unpkg.com/photoswipe@5/dist/photoswipe-lightbox.esm.js?module";
+  // import PhotoSwipe from "https://unpkg.com/photoswipe@5/dist/photoswipe.esm.js?module";
+
+  // const lightbox = new PhotoSwipeLightbox({
+  //   gallery: "[data-pswp-gallery-target]",
+  //   children: "a[data-pswp-children]",
+  //   showHideAnimationType: "none",
+  //   pswpModule: PhotoSwipe,
+  // });
+
+  // lightbox.init();
 </script>
 
 {% macro media_tag(media, class) %}
   {% if media.media_type == "image" %}
     <a
       href="{{ media.url_original }}"
-      data-pswp-children
+      data-fancybox="gallery"
       data-pswp-width="{{ media.width_original }}"
       data-pswp-height="{{ media.height_original }}"
       target="_blank"

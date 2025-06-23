@@ -6,9 +6,8 @@
     id="theme-toggle"
   >
     <!-- this hidden checkbox controls the state -->
-    <input type="checkbox" onClick="onThemeChange()" />
+    <input type="checkbox" />
 
-    {# XXX check rendered depending on state #}
     <!-- sun icon -->
     <svg
       class="swap-off h-6 w-6 fill-current"
@@ -39,7 +38,9 @@
   {# [todo-bundle #}
   {# Inspired by https://web.dev/patterns/theming/theme-switch #}
   <script>
-    var onThemeChange = (() => {
+    /// <reference path="./theme.d.ts" />
+
+    window.theme = (() => {
       const storageKey = "theme-preference";
       const $themeToggle = document.querySelector("#theme-toggle");
       const $themeInput = $themeToggle.querySelector("input");
@@ -52,13 +53,6 @@
       const themeTitleMap = {
         light: "Toggle dark mode",
         dark: "Toggle light mode",
-      };
-
-      const onThemeChange = () => {
-        // flip current value
-        theme.value = theme.value === "light" ? "dark" : "light";
-
-        setPreference();
       };
 
       /**
@@ -85,11 +79,29 @@
         );
         $themeToggle.title = themeTitleMap[theme.value];
         $themeInput.checked = theme.value === "dark";
+
+        console.info("listeners", listeners);
+        for (const listener of listeners) {
+          listener(theme.value);
+        }
       };
 
+      const listeners = [];
+
+      /** @type {typeof window['theme']} */
       const theme = {
         value: getColorPreference(),
+        onChange: (callback) => {
+          listeners.push(callback);
+        },
       };
+
+      $themeInput.addEventListener("click", () => {
+        // flip current value
+        theme.value = theme.value === "light" ? "dark" : "light";
+
+        setPreference();
+      });
 
       // set early so no page flashes / CSS is made aware
       reflectPreference();
@@ -107,7 +119,7 @@
           setPreference();
         });
 
-      return onThemeChange;
+      return theme;
     })();
   </script>
 {% endmacro %}

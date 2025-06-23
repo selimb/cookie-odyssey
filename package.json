@@ -3,6 +3,7 @@
   "module": "index.ts",
   "type": "module",
   "devDependencies": {
+    "@fancyapps/ui": "^6.0.5",
     "@types/bun": "latest",
     "daisyui": "^4.11.1",
     "prettier": "^3.2.5",

@@ -99,11 +99,7 @@
     <hr class="my-8 h-px border-0 bg-gray-200 dark:bg-gray-700" />
 
     {% block fragment_media_list %}
-      <div
-        id="media-container"
-        data-pswp-gallery-target
-        class="w-full space-y-4"
-      >
+      <div id="media-container" data-fancybox-gallery class="w-full space-y-4">
         {% for media in media_list %}
           <div class="w-full">
             <div>{{ m.media_tag(media, "w-full") }}</div>
@@ -170,7 +166,7 @@
               </button>
               <button
                 type="button"
-                hx-delete="{{ href_delete }}"
+                hx-post="{{ href_delete }}"
                 hx-vals='{ "media_id": "{{ media.id }}", "entry_id": "{{ entry_id }}"}'
                 hx-target="#media-container"
                 hx-swap="outerHTML"

@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use axum::{
-    routing::{delete, get, post, put},
+    routing::{get, post, put},
     Router,
 };
 use axum_login::{login_required, permission_required};
@@ -218,7 +218,7 @@ fn get_protected_routes() -> Router<AppState> {
         )
         .route(
             &Route::JournalEntryMediaDelete.as_path(),
-            admin!(delete(journal::journal_entry_media_delete)),
+            admin!(post(journal::journal_entry_media_delete)),
         )
         .route(
             &Route::JournalEntryMediaReorder.as_path(),
