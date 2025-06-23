@@ -11,9 +11,14 @@ pub struct Model {
     pub journal_entry_id: i32,
     pub order: i32,
     pub caption: String,
-    pub file_id: i32,
     // KEEP ME
     pub media_type: MediaType,
+    pub width: i32,
+    pub height: i32,
+    pub file_id: i32,
+    pub thumbnail_width: i32,
+    pub thumbnail_height: i32,
+    pub thumbnail_file_id: i32,
 }
 
 // KEEP ME
@@ -32,12 +37,20 @@ pub enum MediaType {
 pub enum Relation {
     #[sea_orm(
         belongs_to = "super::file::Entity",
+        from = "Column::ThumbnailFileId",
+        to = "super::file::Column::Id",
+        on_update = "NoAction",
+        on_delete = "NoAction"
+    )]
+    File2,
+    #[sea_orm(
+        belongs_to = "super::file::Entity",
         from = "Column::FileId",
         to = "super::file::Column::Id",
         on_update = "NoAction",
         on_delete = "NoAction"
     )]
-    File,
+    File1,
     #[sea_orm(
         belongs_to = "super::journal_entry::Entity",
         from = "Column::JournalEntryId",
@@ -46,12 +59,6 @@ pub enum Relation {
         on_delete = "NoAction"
     )]
     JournalEntry,
-}
-
-impl Related<super::file::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::File.def()
-    }
 }
 
 impl Related<super::journal_entry::Entity> for Entity {

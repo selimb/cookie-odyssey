@@ -16,19 +16,11 @@ pub struct Model {
 pub enum Relation {
     #[sea_orm(has_many = "super::journal::Entity")]
     Journal,
-    #[sea_orm(has_many = "super::journal_entry_media::Entity")]
-    JournalEntryMedia,
 }
 
 impl Related<super::journal::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Journal.def()
-    }
-}
-
-impl Related<super::journal_entry_media::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::JournalEntryMedia.def()
     }
 }
 
