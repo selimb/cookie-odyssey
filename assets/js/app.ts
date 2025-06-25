@@ -1,15 +1,17 @@
+import "htmx-ext-response-targets";
+import "./htmx-error-handling";
+
 import * as Stimulus from "@hotwired/stimulus";
 import htmx from "htmx.org";
-import "htmx-ext-response-targets";
-import { DatetimeController } from "./datetime";
-import { toast, ToastController } from "./toast";
-import { fireConfetti } from "./confetti";
-import "./htmx-error-handling";
-import { ThemeToggleController } from "./theme";
+
 import { ComingSoonController } from "./coming-soon";
-import { JournalEntryMediaFormController } from "./media/form-controller";
 import { AddCommentController } from "./comment/add-comment";
 import { EditCommentController } from "./comment/edit-comment";
+import { fireConfetti } from "./confetti";
+import { DatetimeController } from "./datetime";
+import { JournalEntryMediaFormController } from "./media/form-controller";
+import { ThemeToggleController } from "./theme";
+import { toast, ToastController } from "./toast";
 
 const stimulus = Stimulus.Application.start();
 
@@ -38,6 +40,7 @@ window.toast = toast;
 window.fireConfetti = fireConfetti;
 
 declare global {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-definitions -- Need interface augmentation
   interface Window {
     htmx: typeof htmx;
     Stimulus: Stimulus.Application;

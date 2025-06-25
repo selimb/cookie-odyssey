@@ -5,7 +5,8 @@ function updateDate($time: HTMLTimeElement): void {
   if (!datetimeString) return;
 
   const date = new Date(datetimeString);
-  if (isNaN(date.getTime())) {
+  if (Number.isNaN(date.getTime())) {
+    // eslint-disable-next-line no-console -- TODO [error-reporting]
     console.error(`Invalid datetime: '${datetimeString}'`);
     return;
   }
@@ -13,8 +14,8 @@ function updateDate($time: HTMLTimeElement): void {
   const dateStyle = $time.getAttribute("data-date-style") ?? undefined;
   const timeStyle = $time.getAttribute("data-time-style") ?? undefined;
   const text = Intl.DateTimeFormat(undefined, {
-    dateStyle: dateStyle as any,
-    timeStyle: timeStyle as any,
+    dateStyle: dateStyle as never,
+    timeStyle: timeStyle as never,
   }).format(date);
   $time.textContent = text;
 }

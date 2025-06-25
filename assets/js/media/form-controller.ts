@@ -1,20 +1,23 @@
 import { Controller } from "@hotwired/stimulus";
-import {
-  THUMBNAIL_EXT,
-  thumbnailFromImage,
-  thumbnailFromVideo,
-  type ThumbnailFromAnyResult,
-} from "./thumbnail";
-import { defineTargets, defineValues } from "../stimulus-utils";
-import { toast } from "../toast";
 import htmx from "htmx.org";
 
+import { defineTargets, defineValues } from "../stimulus-utils";
+import { toast } from "../toast";
+import {
+  THUMBNAIL_EXT,
+  type ThumbnailFromAnyResult,
+  thumbnailFromImage,
+  thumbnailFromVideo,
+} from "./thumbnail";
+
+// eslint-disable-next-line @typescript-eslint/unbound-method -- This is OK.
 const { targets, getTarget } = defineTargets({
   mediaContainer: "div",
   addMediaButton: "button",
   fileInput: "input",
 });
 
+// eslint-disable-next-line @typescript-eslint/unbound-method -- This is OK.
 const { values, getValue } = defineValues({
   getUploadUrl: "string",
   commitUploadUrl: "string",
@@ -41,6 +44,7 @@ export class JournalEntryMediaFormController extends Controller {
       $fileInput.click();
     });
 
+    // eslint-disable-next-line @typescript-eslint/no-misused-promises -- Hush.
     $fileInput.addEventListener("change", async () => {
       // TODO: Generic?
       $mediaButton.disabled = true;
@@ -54,7 +58,7 @@ export class JournalEntryMediaFormController extends Controller {
     });
   }
 
-  async handleFileInput($fileInput: HTMLInputElement) {
+  async handleFileInput($fileInput: HTMLInputElement): Promise<void> {
     if (!$fileInput.files || $fileInput.files.length === 0) {
       return;
     }
@@ -72,15 +76,12 @@ export class JournalEntryMediaFormController extends Controller {
     const thumbnailPromises = files.map(async (file, index) => {
       const mediaType = mediaTypes[index];
       switch (mediaType) {
-        case "video":
+        case "video": {
           return await thumbnailFromVideo(file);
-        case "image":
+        }
+        case "image": {
           return await thumbnailFromImage(file);
-        default:
-          // Should never happen, thanks to the `accept` attribute on the input.
-          throw new Error(
-            `Unsupported media type ${mediaType} for file ${file.name}`,
-          );
+        }
       }
     });
 
@@ -95,9 +96,9 @@ export class JournalEntryMediaFormController extends Controller {
       return;
     }
 
-    const commitItems: JournalEntryMediaCommitItem[] = new Array(
-      uploadParamsList.length,
-    );
+    const commitItems: JournalEntryMediaCommitItem[] = Array.from({
+      length: uploadParamsList.length,
+    });
 
     let hasError = false;
     await Promise.all(
@@ -132,12 +133,13 @@ export class JournalEntryMediaFormController extends Controller {
         };
       }),
     );
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- You're drunk.
     if (hasError) {
       return;
     }
 
     const commitBody: JournalEntryMediaCommitBody = {
-      entry_id: Number(dataEntryId),
+      entry_id: dataEntryId,
       items: commitItems,
     };
     try {
@@ -157,13 +159,13 @@ export class JournalEntryMediaFormController extends Controller {
 type MediaType = "image" | "video";
 
 // SYNC
-interface MediaUploadUrlBody {
+type MediaUploadUrlBody = {
   thumbnail_extension: string;
   filenames: string[];
-}
+};
 
 // SYNC
-interface MediaUploadUrlResultItem {
+type MediaUploadUrlResultItem = {
   upload_method: string;
   upload_url_original: string;
   upload_url_thumbnail: string;
@@ -171,10 +173,10 @@ interface MediaUploadUrlResultItem {
   upload_headers_thumbnail: Record<string, string>;
   file_id_original: number;
   file_id_thumbnail: number;
-}
+};
 
 // SYNC
-interface JournalEntryMediaCommitItem {
+type JournalEntryMediaCommitItem = {
   media_type: MediaType;
   file_id_original: number;
   width_original: number;
@@ -182,13 +184,13 @@ interface JournalEntryMediaCommitItem {
   file_id_thumbnail: number;
   width_thumbnail: number;
   height_thumbnail: number;
-}
+};
 
 // SYNC
-interface JournalEntryMediaCommitBody {
+type JournalEntryMediaCommitBody = {
   entry_id: number;
   items: JournalEntryMediaCommitItem[];
-}
+};
 
 async function fetchUploadUrls(
   files: File[],
@@ -208,6 +210,7 @@ async function fetchUploadUrls(
   if (!resp.ok) {
     throw new Error(`Request failed with status ${resp.status}`);
   }
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-return -- Trust.
   return await resp.json();
 }
 
@@ -234,7 +237,7 @@ async function uploadOriginalAndThumbnail(
 ): Promise<ThumbnailFromAnyResult> {
   // This is a bit complicated, but the goal is to kick off the upload of the original file
   // as fast as possible, i.e. not wait for thumbnail generation.
-  const promises: Promise<void>[] = [];
+  const promises: Array<Promise<void>> = [];
 
   // Original
   promises.push(
@@ -265,8 +268,8 @@ async function doCommit(
   commitUrl: string,
   body: JournalEntryMediaCommitBody,
   hxTarget: Element,
-) {
-  htmx.ajax("post", commitUrl, {
+): Promise<void> {
+  await htmx.ajax("post", commitUrl, {
     target: hxTarget,
     swap: "outerHTML",
     values: { json: body },

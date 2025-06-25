@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus";
+
 import { defineTargets } from "./stimulus-utils";
 
 export type ToastVariant = "error" | "success";
@@ -16,6 +17,7 @@ export type ToastData = {
 // Keep in sync with [toast]
 const TOAST_EVT = "app.toast" as const;
 
+// eslint-disable-next-line @typescript-eslint/unbound-method -- This is fine.
 const { targets, getTarget } = defineTargets({
   template: "template",
 });
@@ -25,11 +27,11 @@ export class ToastController extends Controller {
   static targets = targets;
   getTarget = getTarget;
 
-  override connect() {
+  override connect(): void {
     document.body.addEventListener(TOAST_EVT, this.onToastEvent);
   }
 
-  override disconnect() {
+  override disconnect(): void {
     document.body.removeEventListener(TOAST_EVT, this.onToastEvent);
   }
 
@@ -40,9 +42,9 @@ export class ToastController extends Controller {
 
   private showToast(data: ToastData): void {
     const { $toast, $button } = this.makeToast(data);
-    this.element.appendChild($toast);
+    this.element.append($toast);
 
-    const remove = () => {
+    const remove = (): void => {
       $toast.remove();
     };
 
@@ -67,7 +69,7 @@ export class ToastController extends Controller {
     const variant = data.variant;
 
     {
-      let classNames =
+      const classNames =
         $toast.getAttribute(`data-${variant}-class`)?.split(" ") ?? [];
       $toast.classList.add(...classNames);
     }

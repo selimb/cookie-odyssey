@@ -1,24 +1,24 @@
 import type { Controller } from "@hotwired/stimulus";
-import type { ValueDefinitionMap } from "@hotwired/stimulus/dist/types/core/value_properties";
 
 type TargetDef = keyof HTMLElementTagNameMap | "element";
-type TargetDefs = { [K: string]: TargetDef };
+type TargetDefs = Record<string, TargetDef>;
 
 type InferTargetDef<T extends TargetDef> = T extends keyof HTMLElementTagNameMap
   ? HTMLElementTagNameMap[T]
   : HTMLElement;
 
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type -- Type inferrence is easier here.
 export function defineTargets<T extends TargetDefs>(targetDefs: T) {
   return {
     targets: Object.keys(targetDefs),
     getTarget<K extends keyof T>(
-      this: { [key: string]: any },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- This is the way.
+      this: Record<string, any>,
       name: K,
     ): InferTargetDef<T[K]> {
       const key = `${String(name)}Target`;
-      const element = this[key];
-      if (!element) throw new Error(`Missing target: ${String(name)}`);
-      return element;
+      // NOTE: Stimulus automatically throws if the target is not found.
+      return this[key] as never;
     },
   };
 }
@@ -26,9 +26,7 @@ export function defineTargets<T extends TargetDefs>(targetDefs: T) {
 // This isn't publicly exported, and I don't like importing from `dist`.
 type StimulusValueDefs = (typeof Controller)["values"];
 type ValueDef = "string" | "number" | "boolean";
-type ValueDefs = {
-  [K: string]: ValueDef;
-};
+type ValueDefs = Record<string, ValueDef>;
 
 type InferValueDef<T extends ValueDef> = T extends "string"
   ? string
@@ -47,6 +45,7 @@ const valueDefMap: Record<
   boolean: Boolean,
 };
 
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type -- Type inferrence is easier here.
 export function defineValues<T extends ValueDefs>(valueDefs: T) {
   const stimulusValueDefs: StimulusValueDefs = Object.fromEntries(
     Object.entries(valueDefs).map(([key, valueDef]) => {
@@ -56,14 +55,17 @@ export function defineValues<T extends ValueDefs>(valueDefs: T) {
 
   return {
     values: stimulusValueDefs,
-    getValue<K extends keyof T>(this: { [key: string]: any }, name: K): T[K] {
+    getValue<K extends keyof T>(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- This is the way.
+      this: Record<string, any>,
+      name: K,
+    ): InferValueDef<T[K]> {
       const existentialKey = `has${capitalize(String(name))}Value`;
       const exists = this[existentialKey] as boolean;
       if (!exists) throw new Error(`Missing value: ${String(name)}`);
 
       const getterKey = `${String(name)}Value`;
-      const value = this[getterKey];
-      if (!value) throw new Error(`Missing target: ${String(name)}`);
+      const value = this[getterKey] as never;
       return value;
     },
   };

@@ -1,5 +1,6 @@
 import { Controller } from "@hotwired/stimulus";
-import { jsUtils } from "./js_utils";
+
+import { jsUtils } from "./js-utils";
 import { toast } from "./toast";
 
 const MESSAGES = [

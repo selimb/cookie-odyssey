@@ -1,27 +1,31 @@
 {
-  "include": ["assets/**/*.ts", "templates/**/*.html", "templates/**/*.js"],
+  "include": [
+    "assets/**/*.ts",
+    "templates/**/*.html",
+    "eslint.config.js",
+    "tailwind.config.js",
+    "tools/**/*.ts"
+  ],
   "exclude": ["node_modules", "assets/dist"],
   "compilerOptions": {
     // Enable latest features
     "lib": ["dom", "DOM.Iterable", "esnext"],
     "target": "ESNext",
     "moduleDetection": "force",
+
+    // Vanilla JS
     "allowJs": true,
+    "checkJs": true,
 
     // Bundler mode
     "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
+    "module": "es2022",
     "verbatimModuleSyntax": true,
     "noEmit": true,
 
     // Best practices
     "strict": true,
     "skipLibCheck": true,
-    "noFallthroughCasesInSwitch": true,
-
-    // Some stricter flags (disabled by default)
-    "noUnusedLocals": false,
-    "noUnusedParameters": false,
-    "noPropertyAccessFromIndexSignature": false
+    "noFallthroughCasesInSwitch": true
   }
 }

@@ -3,6 +3,7 @@
  */
 
 import { Controller } from "@hotwired/stimulus";
+
 import { defineTargets } from "./stimulus-utils";
 
 const STORAGE_KEY = "theme-preference";
@@ -29,9 +30,10 @@ function getColorPreference(): Theme {
       : "light";
 }
 
+// eslint-disable-next-line @typescript-eslint/unbound-method -- This is OK
 const { targets, getTarget } = defineTargets({ input: "input" });
 
-let THEME = {
+const THEME = {
   value: getColorPreference(),
 };
 
@@ -41,7 +43,7 @@ export class ThemeToggleController extends Controller<HTMLLabelElement> {
   static targets = targets;
   getTarget = getTarget;
 
-  connect() {
+  connect(): void {
     const $themeInput = this.getTarget("input");
 
     this.reflectPreference(THEME.value);
@@ -61,13 +63,13 @@ export class ThemeToggleController extends Controller<HTMLLabelElement> {
       });
   }
 
-  private setPreference(theme: Theme) {
+  private setPreference(theme: Theme): void {
     THEME.value = theme;
     localStorage.setItem(STORAGE_KEY, theme);
     this.reflectPreference(theme);
   }
 
-  private reflectPreference(theme: Theme) {
+  private reflectPreference(theme: Theme): void {
     document.documentElement.setAttribute("data-theme", THEME_MAP[theme]);
     this.element.title = THEME_TITLE_MAP[theme];
     this.getTarget("input").checked = theme === "dark";

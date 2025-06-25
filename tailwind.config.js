@@ -1,3 +1,5 @@
+import daisyuiPlugin from "daisyui";
+
 const darkMode = "night";
 
 /** @type {import('daisyui').Config} */
@@ -11,6 +13,6 @@ export default {
   darkMode: ["selector", `[data-theme="${darkMode}"]`],
   content: ["templates/**/*.html", "src/**/*.rs"],
   theme: { extend: {} },
-  plugins: [require("daisyui")],
+  plugins: [daisyuiPlugin],
   daisyui,
 };

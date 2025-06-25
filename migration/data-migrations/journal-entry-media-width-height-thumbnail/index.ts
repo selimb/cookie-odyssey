@@ -8,16 +8,17 @@
  * migration/data-migrations/journal-entry-media-width-height-thumbnail/index.ts
  * ```
  */
-import { Database } from "bun:sqlite";
-import { $ } from "bun";
-import fs from "fs";
-import { z } from "zod";
+import fs from "node:fs";
+import path from "node:path";
+
 import {
   BlobServiceClient,
   StorageSharedKeyCredential,
 } from "@azure/storage-blob";
-import path from "path";
+import { $ } from "bun";
+import { Database } from "bun:sqlite";
 import sharp from "sharp";
+import { z } from "zod";
 
 const MEDIA_DOWNLOAD_DIR = "tmp/media/";
 fs.mkdirSync(MEDIA_DOWNLOAD_DIR, { recursive: true });
@@ -32,9 +33,9 @@ const zEnv = z.object({
 });
 const env = zEnv.parse(process.env);
 
-console.info(process.cwd());
-console.info(env);
 const db = new Database(env["APP.DATABASE_FILE"], { strict: true });
+
+const logger = console;
 
 const storage = new BlobServiceClient(
   `https://${env["APP.STORAGE.AZURE_STORAGE_ACCOUNT"]}.blob.core.windows.net`,
@@ -66,13 +67,13 @@ const zFile = z.object({
 });
 type FileDb = z.infer<typeof zFile>;
 
-async function queryMedia(): Promise<JournalEntryMedia[]> {
-  const raw = await db.query("SELECT * FROM journal_entry_media").all();
+function queryMedia(): JournalEntryMedia[] {
+  const raw = db.query("SELECT * FROM journal_entry_media").all();
   const rows = z.array(zJournalEntryMedia).parse(raw);
   return rows;
 }
 
-async function queryFile(fileId: number): Promise<FileDb> {
+function queryFile(fileId: number): FileDb {
   const raw = db.query("SELECT * FROM file WHERE id = $fileId").all({ fileId });
   const rows = z.array(zFile).parse(raw);
   const row = rows.at(0);
@@ -88,7 +89,7 @@ async function downloadFile(fileId: number): Promise<string> {
     return filePath;
   }
 
-  const fileDb = await queryFile(fileId);
+  const fileDb = queryFile(fileId);
   const blobClient = containerClient.getBlobClient(fileDb.key);
   await blobClient.downloadToFile(filePath);
 
@@ -118,7 +119,7 @@ async function extractFirstFrame(
   videoPath: string,
   outputPath: string,
 ): Promise<void> {
-  console.info(`Extracting first frame from video ${videoPath}`);
+  logger.info(`Extracting first frame from video ${videoPath}`);
 
   // Need to ensure `outputPath` does not exist, otherwise ffmpeg hangs.
   fs.rmSync(outputPath, { force: true });
@@ -133,7 +134,7 @@ async function generateThumbnail(
     return;
   }
 
-  console.info(`Generating thumbnail for image ${inputImagePath}`);
+  logger.info(`Generating thumbnail for image ${inputImagePath}`);
 
   await sharp(inputImagePath)
     .jpeg({ quality: 80 })
@@ -145,9 +146,9 @@ async function setThumbnailForMedia(
   media: JournalEntryMedia,
   thumbnailPath: string,
 ): Promise<void> {
-  const fileDb = await queryFile(media.file_id);
+  const fileDb = queryFile(media.file_id);
   const thumbnailKey = `${fileDb.key.split(".")[0]}-thumbnail.jpeg`;
-  console.info("uploading", thumbnailKey);
+  logger.info("uploading", thumbnailKey);
   await containerClient
     .getBlobClient(thumbnailKey)
     .getBlockBlobClient()
@@ -178,10 +179,10 @@ async function setThumbnailForMedia(
   });
 }
 
-async function main() {
-  const mediaList = await queryMedia();
+async function main(): Promise<void> {
+  const mediaList = queryMedia();
   for (const [index, media] of mediaList.entries()) {
-    console.info(`Processing media ${index + 1}/${mediaList.length}`);
+    logger.info(`Processing media ${index + 1}/${mediaList.length}`);
 
     const shouldInferDimensions = media.width === 0 || media.height === 0;
     const shouldGenerateThumbnail = media.thumbnail_file_id === media.file_id;
