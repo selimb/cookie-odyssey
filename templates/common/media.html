@@ -1,12 +1,6 @@
 {% macro media_tag(media, class) %}
   {% if media.media_type == "image" %}
-    <a
-      href="{{ media.url_original }}"
-      data-fancybox="gallery"
-      data-pswp-width="{{ media.width_original }}"
-      data-pswp-height="{{ media.height_original }}"
-      target="_blank"
-    >
+    <a href="{{ media.url_original }}" target="_blank">
       <img src="{{ media.url_thumbnail }}" alt="media" class="{{ class }}" />
     </a>
   {% else %}

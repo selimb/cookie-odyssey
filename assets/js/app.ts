@@ -13,8 +13,7 @@ import { EditCommentController } from "./comment/edit-comment";
 
 const stimulus = Stimulus.Application.start();
 
-// XXX
-stimulus.debug = true;
+// stimulus.debug = true;
 
 for (const controller of [
   DatetimeController,

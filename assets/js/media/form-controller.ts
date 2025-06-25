@@ -95,9 +95,6 @@ export class JournalEntryMediaFormController extends Controller {
       return;
     }
 
-    // XXX
-    console.info("uploadParamsList", uploadParamsList);
-
     const commitItems: JournalEntryMediaCommitItem[] = new Array(
       uploadParamsList.length,
     );
