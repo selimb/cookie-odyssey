@@ -1,8 +1,8 @@
 import { Controller } from "@hotwired/stimulus";
 import htmx from "htmx.org";
 
-import { defineTargets, defineValues } from "../stimulus-utils";
 import { toast } from "../toast";
+import { defineTargets, defineValues } from "../utils/stimulus-utils";
 import {
   THUMBNAIL_EXT,
   type ThumbnailFromAnyResult,

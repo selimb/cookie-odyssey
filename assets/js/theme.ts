@@ -4,7 +4,7 @@
 
 import { Controller } from "@hotwired/stimulus";
 
-import { defineTargets } from "./stimulus-utils";
+import { defineTargets } from "./utils/stimulus-utils";
 
 const STORAGE_KEY = "theme-preference";
 

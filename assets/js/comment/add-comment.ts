@@ -1,8 +1,8 @@
 import { Controller } from "@hotwired/stimulus";
 
 import type { HtmxAfterRequestEvent } from "../htmx-types";
-import { jsUtils } from "../js-utils";
-import { defineTargets } from "../stimulus-utils";
+import { jsUtils } from "../utils/js-utils";
+import { defineTargets } from "../utils/stimulus-utils";
 
 // eslint-disable-next-line @typescript-eslint/unbound-method -- This is fine.
 const { targets, getTarget } = defineTargets({
