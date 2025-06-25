@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use axum::{
-    routing::{delete, get, post, put},
+    routing::{get, post, put},
     Router,
 };
 use axum_login::{login_required, permission_required};
@@ -42,7 +42,7 @@ pub enum Route<'a> {
         entry_id: Option<i32>,
     },
     JournalDayGet(Option<&'a journal::JournalDayGetPath>),
-    JournalEntryMediaCommitPost(Option<&'a journal::JournalEntryMediaCommitParams>),
+    JournalEntryMediaCommitPost,
     JournalEntryMediaEditCaptionPost,
     JournalEntryMediaDelete,
     JournalEntryMediaReorder,
@@ -52,7 +52,8 @@ pub enum Route<'a> {
     LoginGet,
     LoginPost,
     LogoutPost,
-    MediaUploadUrlGet,
+    MediaUploadUrlPost,
+    // TODO: Why do we need this?
     MediaUploadProxyPut(Option<&'a storage::MediaUploadProxyParams>),
     RegisterGet,
     RegisterPost,
@@ -70,13 +71,13 @@ impl<'a> Route<'a> {
             Route::ForgotPasswordPost => "/forgot-password".into(),
             Route::JournalDetailGet { slug } => match slug {
                 Some(slug) => format!("/journal/{slug}").into(),
-                None => "/journal/:slug".into(),
+                None => "/journal/{slug}".into(),
             },
             Route::JournalListGet => "/".into(),
             Route::JournalNewGet => "/new-journal".into(),
             Route::JournalNewPost => "/new-journal".into(),
             Route::JournalEntryNewGet(params) => match params {
-                None => "/journal/:slug/new-entry".into(),
+                None => "/journal/{slug}/new-entry".into(),
                 Some((path, query)) => {
                     let slug = &path.slug;
                     let qs = serde_qs::to_string(query).expect(EXPECT_QS);
@@ -85,23 +86,23 @@ impl<'a> Route<'a> {
             },
             Route::JournalEntryNewPost { slug } => match slug {
                 Some(slug) => format!("/journal/{slug}/new-entry").into(),
-                None => "/journal/:slug/new-entry".into(),
+                None => "/journal/{slug}/new-entry".into(),
             },
             Route::JournalEntryEditGet { entry_id } => match entry_id {
                 // Giving up on "pretty URLs"
                 Some(entry_id) => format!("/entry/{entry_id}/edit").into(),
-                None => "/entry/:entry_id/edit".into(),
+                None => "/entry/{entry_id}/edit".into(),
             },
             Route::JournalEntryEditPost { entry_id } => match entry_id {
                 Some(entry_id) => format!("/entry/{entry_id}/edit").into(),
-                None => "/entry/:entry_id/edit".into(),
+                None => "/entry/{entry_id}/edit".into(),
             },
             Route::JournalEntryPublishPost { entry_id } => match entry_id {
                 Some(entry_id) => format!("/entry/{entry_id}/publish").into(),
-                None => "/entry/:entry_id/publish".into(),
+                None => "/entry/{entry_id}/publish".into(),
             },
             Route::JournalDayGet(params) => match params {
-                None => "/journal/:slug/entry/:date".into(),
+                None => "/journal/{slug}/entry/{date}".into(),
                 Some(params) => format!("/journal/{}/entry/{}", params.slug, params.date).into(),
             },
             Route::JournalCommentAddPost(params) => match params {
@@ -128,7 +129,7 @@ impl<'a> Route<'a> {
             Route::LoginGet => "/login".into(),
             Route::LoginPost => "/login".into(),
             Route::LogoutPost => "/logout".into(),
-            Route::MediaUploadUrlGet => "/api/media-upload-url".into(),
+            Route::MediaUploadUrlPost => "/api/media-upload-url".into(),
             Route::MediaUploadProxyPut(params) => match params {
                 Some(params) => {
                     let qs = serde_qs::to_string(params).expect(EXPECT_QS);
@@ -136,13 +137,7 @@ impl<'a> Route<'a> {
                 }
                 None => "/api/media-upload".into(),
             },
-            Route::JournalEntryMediaCommitPost(params) => match params {
-                Some(params) => {
-                    let qs = serde_qs::to_string(params).expect(EXPECT_QS);
-                    format!("/api/entry-commit?{qs}").into()
-                }
-                None => "/api/entry-commit".into(),
-            },
+            Route::JournalEntryMediaCommitPost => "/api/entry-commit".into(),
             Route::JournalEntryMediaEditCaptionPost => "/api/media-caption-edit".into(),
             Route::JournalEntryMediaDelete => "/api/media-delete".into(),
             Route::JournalEntryMediaReorder => "/api/media-reorder".into(),
@@ -214,7 +209,7 @@ fn get_protected_routes() -> Router<AppState> {
             admin!(post(journal::journal_entry_publish_post)),
         )
         .route(
-            &Route::JournalEntryMediaCommitPost(None).as_path(),
+            &Route::JournalEntryMediaCommitPost.as_path(),
             admin!(post(journal::journal_entry_media_commit_post)),
         )
         .route(
@@ -223,15 +218,15 @@ fn get_protected_routes() -> Router<AppState> {
         )
         .route(
             &Route::JournalEntryMediaDelete.as_path(),
-            admin!(delete(journal::journal_entry_media_delete)),
+            admin!(post(journal::journal_entry_media_delete)),
         )
         .route(
             &Route::JournalEntryMediaReorder.as_path(),
             admin!(post(journal::journal_entry_media_reorder)),
         )
         .route(
-            &Route::MediaUploadUrlGet.as_path(),
-            admin!(get(storage::media_upload_url_get)),
+            &Route::MediaUploadUrlPost.as_path(),
+            admin!(post(storage::media_upload_url_post)),
         )
         .route(
             &Route::MediaUploadProxyPut(None).as_path(),

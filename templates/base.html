@@ -4,14 +4,12 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content="Travel blog" />
+
     <meta name="keywords" content="Travel" />
-    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
-    <script src="https://unpkg.com/htmx.org@1.9.12/dist/ext/response-targets.js"></script>
-    {% include "common/js_utils.html" %}
-    {% include "common/datetime.html" %}
 
     {# FIXME proper url #}
     <link rel="stylesheet" href="/_assets/app.css" />
+    <script src="/_assets/app.js" defer></script>
     {% block head %}
       <title>Cookie Odyssey</title>
     {% endblock head %}
@@ -19,17 +17,17 @@
 
   {# NOTE: We need response-targets, otherwise HTMX completely ignores error responses! #}
   <body hx-boost="true" hx-ext="response-targets">
+    {% set wrapper_class = "md:w-[600px]" %}
     {% if wide_layout %}
-    <div class="m-2 md:mx-auto">
-    {% else %}
-    <div class="m-2 md:mx-auto md:w-[600px]">
+      {% set wrapper_class = "" %}
     {% endif %}
+
+    <div class="{{ wrapper_class }} m-2 md:mx-auto">
       {% include "common/navbar.html" %}
       {% block content %}
       {% endblock content %}
     </div>
+
     {% include "common/toast.html" %}
-    {% include "common/confetti.html" %}
-    {% include "common/error_handling.html" %}
   </body>
 </html>

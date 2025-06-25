@@ -1,11 +1,11 @@
 {
-  "include": ["assets/**/*.ts", "templates/**/*.html", "templates/**/*.js"],
-  "exclude": ["node_modules", "assets/dist"],
   "compilerOptions": {
     // Enable latest features
-    "lib": ["dom", "DOM.Iterable", "esnext"],
+    "lib": ["ESNext", "DOM"],
     "target": "ESNext",
+    "module": "ESNext",
     "moduleDetection": "force",
+    "jsx": "react-jsx",
     "allowJs": true,
 
     // Bundler mode

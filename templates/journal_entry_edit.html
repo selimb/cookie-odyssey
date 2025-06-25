@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% import "common/form.html" as form %}
-{% import "common/media_tag.html" as media_tag %}
+{% import "common/media.html" as m %}
 
 {% macro icon_check() %}
   <!-- https://flowbite.com/icons/ check -->
@@ -52,7 +52,7 @@
       <span> - </span>
       <span>Edit Entry</span>
     </h1>
-    <form hx-post="" id="journal_entry_new_form">
+    <form hx-post="">
       {{ form.form_error(error="") }}
 
       {{ form.input("title", "Title", value=entry.title) }}
@@ -98,278 +98,119 @@
 
     <hr class="my-8 h-px border-0 bg-gray-200 dark:bg-gray-700" />
 
-    {% block fragment_media_list %}
-      <div id="media-container" class="w-full space-y-4">
-        {% for media in media_list %}
-          {# FIXME Handle video #}
-          <div class="w-full">
-            <div>{{ media_tag.media_tag(media, "w-full") }}</div>
-            <form class="form-caption" data-mode="view">
-              <div class="mt-2 flex justify-between gap-2">
-                <input
-                  type="text"
-                  name="caption"
-                  disabled
-                  placeholder="Caption..."
-                  value="{{ media.caption }}"
-                  class="flex-1"
-                />
-                {# [onclick-caption-edit] #}
-                <button
-                  type="submit"
-                  class="btn btn-circle btn-ghost"
-                  hx-on::after-request="toggleCaptionEdit(this, 'view')"
-                  hx-post="{{ href_caption_edit }}"
-                  hx-vals='{ "media_id": "{{ media.id }}" }'
-                >
-                  {{ icon_check() }}
-                </button>
+    <div
+      class="w-full"
+      data-controller="media--form"
+      data-media--form-get-upload-url-value="{{ href_get_upload_url }}"
+      data-media--form-commit-upload-url-value="{{ href_commit_upload }}"
+      data-media--form-entry-id-value="{{ entry.id }}"
+    >
+      {% block fragment_media_list %}
+        <div
+          id="media-container"
+          data-media--form-target="mediaContainer"
+          class="w-full space-y-4"
+        >
+          {% for media in media_list %}
+            <div class="w-full">
+              <div>{{ m.media_tag(media, "w-full") }}</div>
+              <form
+                class="form-caption"
+                data-mode="view"
+                hx-post="{{ href_caption_edit }}"
+                hx-vals='{ "media_id": "{{ media.id }}" }'
+                hx-on::after-request="toggleCaptionEdit(this, 'view')"
+              >
+                <div class="mt-2 flex justify-between gap-2">
+                  <input
+                    type="text"
+                    name="caption"
+                    disabled
+                    placeholder="Caption..."
+                    value="{{ media.caption }}"
+                    class="flex-1"
+                  />
+                  {# [onclick-caption-edit] #}
+                  <button type="submit" class="btn btn-circle btn-ghost">
+                    {{ icon_check() }}
+                  </button>
 
-                {# [onclick-caption-edit] #}
-                {% set onclick %}
-                  onclick="toggleCaptionEdit(this, 'edit')"'
-                {% endset %}
+                  {# [onclick-caption-edit] #}
+                  <button
+                    type="button"
+                    class="btn btn-circle btn-ghost"
+                    onclick="toggleCaptionEdit(this, 'edit')"
+                  >
+                    {{ icon_edit() }}
+                  </button>
+                </div>
+              </form>
+              <div class="flex w-full justify-between">
                 <button
                   type="button"
-                  class="btn btn-circle btn-ghost"
-                  {{ onclick | safe }}
+                  hx-post="{{ href_reorder }}"
+                  hx-vals='{ "media_id": "{{ media.id }}", "entry_id": "{{ entry_id }}", "order": {{ media.order }}, "direction": "up"}'
+                  hx-target="#media-container"
+                  hx-swap="outerHTML"
+                  class="btn btn-secondary"
+                  {% if loop.first %}
+                    disabled
+                  {% endif %}
                 >
-                  {{ icon_edit() }}
+                  Up
+                </button>
+                <button
+                  type="button"
+                  hx-post="{{ href_reorder }}"
+                  hx-vals='{ "media_id": "{{ media.id }}", "entry_id": "{{ entry_id }}", "order": {{ media.order }}, "direction": "down"}'
+                  hx-target="#media-container"
+                  hx-swap="outerHTML"
+                  class="btn btn-secondary"
+                  {% if loop.last %}
+                    disabled
+                  {% endif %}
+                >
+                  Down
+                </button>
+                <button
+                  type="button"
+                  hx-post="{{ href_delete }}"
+                  hx-vals='{ "media_id": "{{ media.id }}", "entry_id": "{{ entry_id }}"}'
+                  hx-target="#media-container"
+                  hx-swap="outerHTML"
+                  hx-confirm="Are you sure you wish to delete this?"
+                  class="btn btn-error"
+                >
+                  Delete
                 </button>
               </div>
-            </form>
-            <div class="flex w-full justify-between">
-              <button
-                type="button"
-                hx-post="{{ href_reorder }}"
-                hx-vals='{ "media_id": "{{ media.id }}", "entry_id": "{{ entry_id }}", "order": {{ media.order }}, "direction": "up"}'
-                hx-target="#media-container"
-                hx-swap="outerHTML"
-                class="btn btn-secondary"
-                {% if loop.first %}
-                  disabled
-                {% endif %}
-              >
-                Up
-              </button>
-              <button
-                type="button"
-                hx-post="{{ href_reorder }}"
-                hx-vals='{ "media_id": "{{ media.id }}", "entry_id": "{{ entry_id }}", "order": {{ media.order }}, "direction": "down"}'
-                hx-target="#media-container"
-                hx-swap="outerHTML"
-                class="btn btn-secondary"
-                {% if loop.last %}
-                  disabled
-                {% endif %}
-              >
-                Down
-              </button>
-              <button
-                type="button"
-                hx-delete="{{ href_delete }}"
-                hx-vals='{ "media_id": "{{ media.id }}", "entry_id": "{{ entry_id }}"}'
-                hx-target="#media-container"
-                hx-swap="outerHTML"
-                hx-confirm="Are you sure you wish to delete this?"
-                class="btn btn-error"
-              >
-                Delete
-              </button>
             </div>
-          </div>
-        {% endfor %}
-      </div>
-    {% endblock fragment_media_list %}
-    <button
-      type="button"
-      id="media-btn"
-      class="btn btn-primary my-4 w-full"
-      data-get-upload-url="{{ href_upload }}"
-      data-entry-id="{{ entry.id }}"
-    >
-      Add
-    </button>
-    <input
-      id="media-input"
-      class="hidden"
-      type="file"
-      accept="image/*,video/*"
-    />
+          {% endfor %}
+        </div>
+      {% endblock fragment_media_list %}
+      <button
+        type="button"
+        data-media--form-target="addMediaButton"
+        class="btn btn-primary my-4 w-full"
+      >
+        <span class="loading loading-spinner hidden"></span>
+        Add
+      </button>
+      <input
+        data-media--form-target="fileInput"
+        class="hidden"
+        type="file"
+        accept="image/*,video/*"
+        multiple
+      />
+    </div>
   </div>
 
   <script>
     // @ts-check
-    /// <reference path="./common/toast.d.ts" />
-
-    //
-    // Add Media
-    //
-    (() => {
-      const ID_MEDIA_CONTAINER = "media-container";
-
-      function findElems() {
-        const $mediaContainer = document.getElementById(ID_MEDIA_CONTAINER);
-
-        const $mediaBtn = /** @type {HTMLButtonElement | null} */ (
-          document.getElementById("media-btn")
-        );
-        const dataGetUploadUrl = $mediaBtn.getAttribute("data-get-upload-url");
-        const dataEntryId = $mediaBtn.getAttribute("data-entry-id");
-
-        const $mediaInput = /** @type {HTMLInputElement | null} */ (
-          document.getElementById("media-input")
-        );
-
-        return {
-          $mediaContainer,
-          dataGetUploadUrl,
-          dataEntryId,
-          $mediaBtn,
-          $mediaInput,
-        };
-      }
-
-      /**
-       * SYNC
-       * @typedef MediaType
-       * @type {'image' | 'video'}
-       */
-      /**
-       * SYNC
-       * @typedef MediaUploadUrlQuery
-       * @type {object}
-       * @property {string} filename
-       * @property {string} entry_id
-       * @property {MediaType} media_type
-       */
-      /**
-       * SYNC
-       * @typedef MediaUploadUrlResult
-       * @type {object}
-       * @property {string} upload_url
-       * @property {string} upload_method
-       * @property {Record<string, string>} upload_headers
-       * @property {string} commit_url
-       * @property {string} commit_method
-       */
-
-      /**
-       * @param {File} file
-       * @param {string} getUploadUrl
-       * @param {string} entryId
-       * @param {MediaType} mediaType
-       * @return {Promise<MediaUploadUrlResult>}
-       */
-      async function fetchUploadUrl(file, getUploadUrl, entryId, mediaType) {
-        /** @type {MediaUploadUrlQuery} */
-        const params = {
-          entry_id: entryId,
-          filename: file.name,
-          media_type: mediaType,
-        };
-        const qs = new URLSearchParams(params).toString();
-        const reqUrl = `${getUploadUrl}?${qs}`;
-        const resp = await fetch(reqUrl);
-        if (!resp.ok) {
-          throw new Error(`Request failed with status ${resp.status}`);
-        }
-        const body = await resp?.json();
-        return body;
-      }
-
-      /**
-       * @param {File} file
-       * @param {MediaUploadUrlResult} uploadUrlParams
-       */
-      async function doUpload(file, uploadUrlParams) {
-        const resp = await fetch(uploadUrlParams.upload_url, {
-          method: uploadUrlParams.upload_method,
-          headers: uploadUrlParams.upload_headers,
-          body: file,
-        });
-        if (!resp.ok) {
-          throw new Error(`Request failed with status ${resp.status}`);
-        }
-      }
-
-      /**
-       * @param {MediaUploadUrlResult} uploadUrlParams
-       */
-      async function doCommit(uploadUrlParams) {
-        // @ts-ignore
-        htmx.ajax(uploadUrlParams.commit_method, uploadUrlParams.commit_url, {
-          target: `#${ID_MEDIA_CONTAINER}`,
-          swap: "outerHTML",
-        });
-      }
-
-      const {
-        $mediaBtn,
-        dataGetUploadUrl,
-        dataEntryId,
-        $mediaContainer,
-        $mediaInput,
-      } = findElems();
-
-      $mediaBtn.addEventListener("click", (evt) => {
-        $mediaInput.click();
-        evt.preventDefault();
-      });
-      $mediaInput.addEventListener("change", async () => {
-        const files = $mediaInput.files;
-        if (!files || files.length === 0) {
-          return;
-        }
-        const file = files[0];
-        const mimeType = file.type;
-        const mediaType = mimeType.startsWith("image/") ? "image" : "video";
-
-        try {
-          var uploadUrlParams = await fetchUploadUrl(
-            file,
-            dataGetUploadUrl,
-            dataEntryId,
-            mediaType,
-          );
-        } catch (err) {
-          window.toast({
-            message: "Failed to request upload URL",
-            detail: err.message,
-            variant: "error",
-          });
-          return;
-        }
-        console.info("uploadUrl", uploadUrlParams);
-
-        try {
-          await doUpload(file, uploadUrlParams);
-        } catch (err) {
-          window.toast({
-            message: "Failed to upload file",
-            detail: err.message,
-            variant: "error",
-          });
-          return;
-        }
-        try {
-          await doCommit(uploadUrlParams);
-        } catch (err) {
-          window.toast({
-            message: "Failed to commit file",
-            detail: err.message,
-            variant: "error",
-          });
-          return;
-        }
-      });
-    })();
-
-    //
-    // Caption Editing
-    //
 
     /**
+     * [onclick-caption-edit]
      * @param {HTMLButtonElement} $button
      * @param {"edit" | "view"} mode
      */

@@ -4,6 +4,7 @@
   "type": "module",
   "devDependencies": {
     "@types/bun": "latest",
+    "@types/canvas-confetti": "^1.9.0",
     "daisyui": "^4.11.1",
     "prettier": "^3.2.5",
     "prettier-plugin-jinja-template": "^1.4.0",
@@ -12,5 +13,11 @@
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@hotwired/stimulus": "^3.2.2",
+    "canvas-confetti": "^1.9.3",
+    "htmx-ext-response-targets": "^2.0.3",
+    "htmx.org": "^2.0.5"
   }
 }

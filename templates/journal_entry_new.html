@@ -36,8 +36,11 @@
       <button type="submit" class="btn btn-primary my-8 w-full">Create</button>
     </form>
 
-    <script>
-      htmx.onLoad(() => {
+    <script type="module">
+      // @ts-check
+
+      // @ts-ignore
+      window.htmx.onLoad(() => {
         const $form = document.getElementById("journal_entry_new_form");
         /** @type {HTMLInputElement | undefined} */
         const $inputDate = $form?.querySelector(`input[name="date"]`);

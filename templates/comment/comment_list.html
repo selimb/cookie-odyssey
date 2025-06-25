@@ -46,7 +46,7 @@
   {% block fragment_comment_list %}
     <div id="comment-list" class="mb-2 space-y-2">
       {% for comment in comments %}
-        <div data-comment-edit-root="">
+        <div data-controller="edit-comment">
           <div class="flex flex-row items-center justify-between text-sm">
             <div class="flex flex-col md:flex-row md:gap-2">
               <span class="font-semibold">
@@ -57,14 +57,10 @@
             </div>
             {% if comment.created_by.id == user.id %}
               <div>
-                {# For some reason having an onclick confuses TS (no more type-checking in script below #}
-                {# [onclick-comment-edit] #}
-                {% set onclick = 'onclick="commentEditClick(this)"' %}
                 <button
                   type="button"
+                  data-edit-comment-target="editButton"
                   title="Edit"
-                  {{ onclick | safe }}
-                  data-mode="view"
                   class="btn-ghost px-2"
                 >
                   {{ icon_edit() }}
@@ -84,29 +80,37 @@
               </div>
             {% endif %}
           </div>
-          <p data-comment-edit-target="view">{{ comment.text }}</p>
+          <p data-edit-comment-target="view">{{ comment.text }}</p>
           <form
-            data-comment-edit-target="edit"
+            data-edit-comment-target="editForm"
             class="hidden"
             hx-post="{{ href_edit_comment }}"
             hx-vals='{ "comment_id": "{{ comment.id }}" }'
             hx-target="#comment-list"
             hx-swap="outerHTML"
           >
-            {% set onkeydown = 'onkeydown="commentEditKeydown(event, this)"' %}
             <textarea
+              data-edit-comment-target="editTextarea"
               name="text"
               class="textarea textarea-bordered w-full"
-              {{ onkeydown | safe }}
             >
 {{ comment.text }}</textarea
             >
             <div class="mt-1 flex items-center justify-end gap-2">
-              {% set oncancel = 'onclick="commentEditCancel(this)"' %}
-              <button type="button" class="btn btn-sm" {{ oncancel | safe }}>
+              <button
+                type="button"
+                data-edit-comment-target="cancelButton"
+                class="btn btn-sm"
+              >
                 Cancel
               </button>
-              <button type="submit" class="btn btn-primary btn-sm">Edit</button>
+              <button
+                type="submit"
+                data-edit-comment-target="submit"
+                class="btn btn-primary btn-sm"
+              >
+                Edit
+              </button>
             </div>
           </form>
         </div>
@@ -115,129 +119,25 @@
   {% endblock fragment_comment_list %}
 
   <form
-    id="add-comment-form"
+    data-controller="add-comment"
     hx-post="{{ href_add_comment }}"
     hx-target="#comment-list"
     hx-swap="outerHTML"
-    hx-on::after-request="resetTextarea(this)"
   >
     <textarea
+      data-add-comment-target="textarea"
       name="text"
       class="textarea textarea-bordered w-full"
       placeholder="Let us know what you think..."
     ></textarea>
     <div class="mt-2 flex items-center justify-end">
-      <button type="submit" class="btn btn-primary hidden">Post</button>
+      <button
+        type="submit"
+        data-add-comment-target="submit"
+        class="btn btn-primary hidden"
+      >
+        Post
+      </button>
     </div>
   </form>
 </div>
-
-<script>
-  // @ts-check
-  /// <reference path="../common/js_utils.d.ts" />
-  (() => {
-    const $form = document.getElementById("add-comment-form");
-    const $textarea = $form.querySelector("textarea");
-    const $button = $form.querySelector("button");
-
-    function updateButtonVisibility() {
-      const text = $textarea.value;
-      const cl = $button.classList;
-      if (text.trim().length > 0) {
-        window.jsUtils.show($button);
-        return true;
-      } else {
-        window.jsUtils.hide($button);
-        return false;
-      }
-    }
-
-    $textarea.addEventListener("keydown", (evt) => {
-      const visible = updateButtonVisibility();
-      if (visible && evt.ctrlKey && evt.key == "Enter") {
-        $button.click();
-      }
-    });
-
-    $form.addEventListener("htmx:afterRequest", (evt) => {
-      // @ts-ignore
-      const ok = evt.detail.successful;
-      console.info("afterRequest", ok);
-    });
-
-    updateButtonVisibility();
-
-    /** @param {HTMLFormElement} $form */
-    function resetTextarea($form) {
-      $form.reset();
-      $textarea.blur();
-      updateButtonVisibility();
-    }
-
-    // @ts-ignore
-    window.resetTextarea = resetTextarea;
-  })();
-</script>
-
-<script>
-  // @ts-check
-  /// <reference path="../common/js_utils.d.ts" />
-  window.jsUtils.once("comment-edit", () => {
-    const DATA_MODE = "data-mode";
-
-    // [onclick-comment-edit]
-    /** @param {Element} $button */
-    function commentEditClick($button) {
-      console.info("commentEditClick", $button);
-      const $commentRoot = $button.closest("[data-comment-edit-root]");
-      const $view = /** @type {HTMLElement} */ (
-        $commentRoot.querySelector('[data-comment-edit-target="view"]')
-      );
-      const $edit = /** @type {HTMLElement} */ (
-        $commentRoot.querySelector('[data-comment-edit-target="edit"]')
-      );
-      const mode = $button.getAttribute(DATA_MODE);
-      if (mode === "view") {
-        $button.setAttribute(DATA_MODE, "edit");
-        window.jsUtils.hide($view);
-        window.jsUtils.show($edit);
-        const $textarea = $commentRoot.querySelector("textarea");
-        $textarea.value = $view.textContent;
-        $textarea.focus();
-      } else {
-        $button.setAttribute(DATA_MODE, "view");
-        window.jsUtils.show($view);
-        window.jsUtils.hide($edit);
-      }
-    }
-
-    /** @param {Element} $button */
-    function commentEditCancel($button) {
-      const $commentRoot = $button.closest("[data-comment-edit-root]");
-      console.info("commentEditCancel", $button, $commentRoot);
-      const $editButton = $commentRoot.querySelector("button[data-mode]");
-      commentEditClick($editButton);
-    }
-
-    /**
-     * @param {KeyboardEvent} evt
-     * @param {Element} $textarea
-     */
-    function commentEditKeydown(evt, $textarea) {
-      if (evt.ctrlKey && evt.key == "Enter") {
-        const $form = $textarea.closest("form");
-        const $submit = /** @type {HTMLButtonElement} */ (
-          $form.querySelector('button[type="submit"]')
-        );
-        $submit.click();
-      }
-    }
-
-    // @ts-ignore
-    window.commentEditClick = commentEditClick;
-    // @ts-ignore
-    window.commentEditCancel = commentEditCancel;
-    // @ts-ignore
-    window.commentEditKeydown = commentEditKeydown;
-  });
-</script>

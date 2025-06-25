@@ -1,14 +1,13 @@
 {# https://daisyui.com/components/theme-controller/#theme-controller-using-a-swap #}
 {% macro theme_toggle() %}
   <label
+    data-controller="theme-toggle"
     class="btn btn-circle btn-ghost swap swap-rotate"
     title=""
-    id="theme-toggle"
   >
     <!-- this hidden checkbox controls the state -->
-    <input type="checkbox" onClick="onThemeChange()" />
+    <input type="checkbox" data-theme-toggle-target="input" />
 
-    {# XXX check rendered depending on state #}
     <!-- sun icon -->
     <svg
       class="swap-off h-6 w-6 fill-current"
@@ -35,79 +34,4 @@
       />
     </svg>
   </label>
-
-  {# [todo-bundle #}
-  {# Inspired by https://web.dev/patterns/theming/theme-switch #}
-  <script>
-    var onThemeChange = (() => {
-      const storageKey = "theme-preference";
-      const $themeToggle = document.querySelector("#theme-toggle");
-      const $themeInput = $themeToggle.querySelector("input");
-
-      // Matches [daisyui-themes]
-      const themeMap = {
-        light: "nord",
-        dark: "night",
-      };
-      const themeTitleMap = {
-        light: "Toggle dark mode",
-        dark: "Toggle light mode",
-      };
-
-      const onThemeChange = () => {
-        // flip current value
-        theme.value = theme.value === "light" ? "dark" : "light";
-
-        setPreference();
-      };
-
-      /**
-       * @returns {"light" | "dark"}
-       */
-      const getColorPreference = () => {
-        const stored = localStorage.getItem(storageKey);
-        if (stored) return stored;
-        else
-          return window.matchMedia("(prefers-color-scheme: dark)").matches
-            ? "dark"
-            : "light";
-      };
-
-      const setPreference = () => {
-        localStorage.setItem(storageKey, theme.value);
-        reflectPreference();
-      };
-
-      const reflectPreference = () => {
-        document.documentElement.setAttribute(
-          "data-theme",
-          themeMap[theme.value],
-        );
-        $themeToggle.title = themeTitleMap[theme.value];
-        $themeInput.checked = theme.value === "dark";
-      };
-
-      const theme = {
-        value: getColorPreference(),
-      };
-
-      // set early so no page flashes / CSS is made aware
-      reflectPreference();
-
-      window.onload = () => {
-        // set on load so screen readers can see latest value on the button
-        reflectPreference();
-      };
-
-      // sync with system changes
-      window
-        .matchMedia("(prefers-color-scheme: dark)")
-        .addEventListener("change", ({ matches: isDark }) => {
-          theme.value = isDark ? "dark" : "light";
-          setPreference();
-        });
-
-      return onThemeChange;
-    })();
-  </script>
 {% endmacro %}

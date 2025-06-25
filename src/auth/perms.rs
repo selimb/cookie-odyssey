@@ -1,5 +1,5 @@
 use anyhow::Context as _;
-use axum::async_trait;
+use async_trait::async_trait;
 use axum_login::AuthzBackend as _;
 use sea_orm::{ColumnTrait as _, QueryFilter as _, Select};
 use std::collections::HashSet;

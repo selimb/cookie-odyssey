@@ -12,10 +12,12 @@ pub struct FormError {
 }
 
 impl FormError {
+    pub const STATUS: StatusCode = StatusCode::UNPROCESSABLE_ENTITY;
+
     pub fn new(msg: impl Into<String>) -> Self {
         Self {
             msg: msg.into(),
-            status: StatusCode::UNPROCESSABLE_ENTITY,
+            status: FormError::STATUS,
         }
     }
 

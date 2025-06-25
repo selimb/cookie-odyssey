@@ -1,15 +1,12 @@
 use std::collections::HashMap;
 
 use axum::{
-    extract::{Query, State},
+    extract::State,
     response::{IntoResponse, Response},
     Json,
 };
 
-use crate::{
-    journal::routes::JournalEntryMediaCommitParams, storage::store::Bucket, AppState, Route,
-    RouteError,
-};
+use crate::{storage::Bucket, AppState, RouteError};
 use entities::{prelude::*, *};
 use nanoid::nanoid;
 use sea_orm::EntityTrait;
@@ -17,60 +14,78 @@ use serde::{Deserialize, Serialize};
 
 // SYNC
 #[derive(Deserialize, Debug)]
-pub struct MediaUploadUrlQuery {
-    filename: String,
-    entry_id: i32,
-    media_type: journal_entry_media::MediaType,
+pub struct MediaUploadUrlBody {
+    filenames: Vec<String>,
+    thumbnail_extension: String,
 }
 
 // SYNC
 #[derive(Serialize, Debug)]
-pub struct MediaUploadUrlResult {
-    upload_url: String,
+pub struct MediaUploadUrlResultItem {
     upload_method: String,
-    upload_headers: HashMap<String, String>,
-    commit_url: String,
-    commit_method: String,
+    upload_url_original: String,
+    upload_url_thumbnail: String,
+    upload_headers_original: HashMap<String, String>,
+    upload_headers_thumbnail: HashMap<String, String>,
+    file_id_original: i32,
+    file_id_thumbnail: i32,
 }
 
-pub async fn media_upload_url_get(
+pub async fn media_upload_url_post(
     state: State<AppState>,
-    query: Query<MediaUploadUrlQuery>,
+    Json(body): Json<MediaUploadUrlBody>,
 ) -> Result<Response, RouteError> {
-    let ext = match query.filename.rsplit_once('.') {
-        Some((_, ext)) => format!(".{ext}"),
-        None => "".to_string(),
-    };
-    let basename = nanoid!();
-    let filename = format!("{basename}{ext}");
+    let ext_thumbnail = body.thumbnail_extension;
 
-    let upload_params = state
-        .storage
-        .get_upload_url(Bucket::Media, filename)
-        .await?;
+    // Note the most efficient algorithm (inserts could be batched), but good enough.
+    let mut result: Vec<MediaUploadUrlResultItem> = Vec::with_capacity(body.filenames.len());
+    for filename in body.filenames {
+        let ext_original = match filename.rsplit_once('.') {
+            Some((_, ext)) => format!(".{ext}"),
+            None => "".to_string(),
+        };
+        // Since the files will often come from a Photos library, the filenames
+        // are usually meaningless. Only the extension matters (for referential purposes).
+        let basename = nanoid!();
+        let filename_original = format!("{basename}{ext_original}");
+        let filename_thumbnail = format!("{basename}_thumbnail{ext_thumbnail}");
 
-    let file_data = file::ActiveModel {
-        bucket: sea_orm::ActiveValue::Set(upload_params.bucket),
-        key: sea_orm::ActiveValue::Set(upload_params.key),
-        ..Default::default()
-    };
-    let file_db = File::insert(file_data).exec(&state.db).await?;
-    let file_id = file_db.last_insert_id;
+        let upload_params_original = state
+            .storage
+            .get_upload_url(Bucket::Media, filename_original)
+            .await?;
+        let upload_params_thumbnail = state
+            .storage
+            .get_upload_url(Bucket::Media, filename_thumbnail)
+            .await?;
 
-    let commit_url = Route::JournalEntryMediaCommitPost(Some(&JournalEntryMediaCommitParams {
-        file_id,
-        entry_id: query.entry_id,
-        media_type: query.media_type,
-    }))
-    .as_path();
+        let file_data_original = file::ActiveModel {
+            bucket: sea_orm::ActiveValue::Set(upload_params_original.bucket),
+            key: sea_orm::ActiveValue::Set(upload_params_original.key),
+            ..Default::default()
+        };
+        let file_db_original = File::insert(file_data_original).exec(&state.db).await?;
+        let file_id_original = file_db_original.last_insert_id;
 
-    let resp_body = MediaUploadUrlResult {
-        upload_method: upload_params.method,
-        upload_url: upload_params.url,
-        upload_headers: upload_params.headers,
-        commit_url: commit_url.to_string(),
-        commit_method: "POST".to_string(),
-    };
-    let resp = Json(resp_body).into_response();
+        let file_data_thumbnail = file::ActiveModel {
+            bucket: sea_orm::ActiveValue::Set(upload_params_thumbnail.bucket),
+            key: sea_orm::ActiveValue::Set(upload_params_thumbnail.key),
+            ..Default::default()
+        };
+        let file_db_thumbnail = File::insert(file_data_thumbnail).exec(&state.db).await?;
+        let file_id_thumbnail = file_db_thumbnail.last_insert_id;
+
+        result.push(MediaUploadUrlResultItem {
+            upload_method: upload_params_original.method,
+            upload_url_original: upload_params_original.url,
+            upload_url_thumbnail: upload_params_thumbnail.url,
+            upload_headers_original: upload_params_original.headers,
+            upload_headers_thumbnail: upload_params_thumbnail.headers,
+            file_id_original,
+            file_id_thumbnail,
+        });
+    }
+
+    let resp = Json(result).into_response();
     Ok(resp)
 }

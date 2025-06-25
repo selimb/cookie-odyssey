@@ -4,7 +4,6 @@ use std::{borrow::Cow, ops::Deref};
 use anyhow::{anyhow, Context};
 use axum::http::HeaderMap;
 use axum::{
-    async_trait,
     extract::{FromRef, FromRequestParts},
     response::Html,
     RequestPartsExt,
@@ -135,7 +134,6 @@ struct TemplContext<'a> {
     wide_layout: bool,
 }
 
-#[async_trait]
 impl<S> FromRequestParts<S> for Templ
 where
     AppState: FromRef<S>,

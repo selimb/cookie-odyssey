@@ -40,10 +40,10 @@
   <div class="mt-4 flex justify-between">
     <div></div>
     <div class="join max-md:grow max-md:justify-between">
-      {% set onclick = 'onclick="comingSoon(this)"' %}
       {# TODO #}
       {# [toast-fn] #}
       <button
+        data-controller="coming-soon"
         class="btn join-item border-neutral max-md:flex-grow"
         {{ onclick | safe }}
       >
@@ -51,6 +51,7 @@
       </button>
       {# TODO #}
       <button
+        data-controller="coming-soon"
         class="btn join-item border-neutral max-md:flex-grow"
         {{ onclick | safe }}
       >
@@ -59,6 +60,7 @@
       {# TODO #}
       {# [toast-fn] #}
       <button
+        data-controller="coming-soon"
         class="btn join-item border-neutral max-md:flex-grow"
         {{ onclick | safe }}
       >
@@ -71,37 +73,4 @@
   {# Comments #}
   <hr class="my-8 h-px border-0 bg-gray-200 dark:bg-gray-700" />
   <div class="mb-8">{{ comments_fragment | safe }}</div>
-
-  <script>
-    // @ts-check
-    /// <reference path="./common/js_utils.d.ts" />
-    /// <reference path="./common/toast.d.ts" />
-
-    window.jsUtils.once("coming-soon", () => {
-      const MESSAGES = [
-        "Coming soon!",
-        "I said coming soon!",
-        "Seriously?",
-        "Press it again, I dare you",
-        "I double dare you",
-      ];
-      const ATTR_COUNTER = "data-counter";
-
-      /** @param {HTMLButtonElement} $button */
-      function comingSoon($button) {
-        const counter = Number($button.getAttribute(ATTR_COUNTER) || "0");
-        const msg = MESSAGES[counter];
-        if (msg == null) {
-          window.jsUtils.hide($button);
-        } else {
-          // @ts-ignore
-          window.toast({ message: msg, variant: "success", auto_close: true });
-          $button.setAttribute(ATTR_COUNTER, (counter + 1).toString());
-        }
-      }
-
-      // @ts-ignore
-      window.comingSoon = comingSoon;
-    });
-  </script>
 {% endblock content %}
