@@ -4,16 +4,23 @@ Idea inspired by https://themurph.hashnode.dev/go-beyond-the-basics-mastering-to
 
 <div
   class="toast max-h-full max-w-full overflow-x-auto overflow-y-auto max-md:toast-top max-md:w-full"
-  id="toast-container"
+  data-controller="toast"
 >
-  <template>
-    <div class="alert flex items-center justify-between" role="alert">
+  <template data-toast-target="template">
+    <div
+      role="alert"
+      class="alert flex items-center justify-between"
+      data-error-class="alert-error"
+      data-success-class="alert-success"
+    >
       {# Don't use whitespace-pre on mobile to prevent overflow #}
       <div id="message" class="app-toast-text whitespace-pre-wrap"></div>
       <!-- https://flowbite.com/docs/components/toast/#default-toast -->
       <button
         type="button"
         class="btn btn-circle btn-outline btn-sm"
+        data-error-class="border-error-content text-error-content hover:bg-error-content hover:border-error hover:text-error"
+        data-success-class="border-success-content text-success-content hover:bg-success-content hover:border-success hover:text-success"
         aria-label="Close"
       >
         <span class="sr-only">Close</span>
@@ -48,86 +55,3 @@ Idea inspired by https://themurph.hashnode.dev/go-beyond-the-basics-mastering-to
     overflow-wrap: anywhere;
   }
 </style>
-
-{% if not hx_boosted %}
-  <script>
-    // @ts-check
-    /// <reference path="./js_utils.d.ts" />
-    /// <reference path="./toast.d.ts" />
-
-    window.jsUtils.once("toast", () => {
-      // Keep in sync with [toast]
-      const TOAST_EVT = "app.toast";
-
-      /** @type {Record<Toast["variant"], {alert: string[], button: string[]}>} */
-      const variants = {
-        error: {
-          alert: "alert-error".split(" "),
-          button:
-            "border-error-content text-error-content hover:bg-error-content hover:border-error hover:text-error".split(
-              " ",
-            ),
-        },
-        success: {
-          alert: "alert-success".split(" "),
-          button:
-            "border-success-content text-success-content hover:bg-success-content hover:border-success hover:text-success".split(
-              " ",
-            ),
-        },
-      };
-
-      /**
-       * @param data {Toast}
-       * @param $template {HTMLTemplateElement}
-       */
-      function makeToast(data, $template) {
-        const clone = /** @type {DocumentFragment} */ (
-          $template.content.cloneNode(true)
-        );
-        const $toast = clone.querySelector("div");
-        if (!$toast) throw new Error("Could not find toast div");
-        const classNames = variants[data.variant];
-        $toast.classList.add(...classNames.alert);
-
-        const $message = $toast.querySelector("#message");
-        if (!$message) throw new Error("Could not find #message");
-        $message.textContent = data.message;
-
-        const $button = $toast.querySelector("button");
-        if (!$button) throw new Error("Could not find button");
-        $button.classList.add(...classNames.button);
-
-        return [$toast, $button];
-      }
-
-      // [toast-fn]
-      window.toast = (data) => {
-        const $toastContainer = document.getElementById("toast-container");
-        if (!$toastContainer)
-          throw new Error("Could not find #toast-container");
-        const $template = $toastContainer.getElementsByTagName("template")[0];
-
-        console.debug("toast", data);
-
-        const [$toast, $button] = makeToast(data, $template);
-        $toastContainer.appendChild($toast);
-
-        const remove = () => {
-          $toast.remove();
-        };
-
-        if (data.auto_close) {
-          setTimeout(remove, 5000);
-        }
-        $button.addEventListener("click", remove);
-      };
-
-      document.body.addEventListener(TOAST_EVT, (evt) => {
-        // @ts-ignore
-        const detail = evt.detail;
-        window.toast(detail);
-      });
-    });
-  </script>
-{% endif %}

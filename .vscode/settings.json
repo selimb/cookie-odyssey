@@ -5,5 +5,7 @@
   "[rust]": {
     "editor.rulers": [80]
   },
+  // Use `.*class` to support Stimulus classes!
+  "tailwindCSS.classAttributes": ["class", ".*class"],
   "vim.textwidth": 80
 }

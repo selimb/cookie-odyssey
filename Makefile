@@ -32,6 +32,12 @@ azurite:
 dev:
 	cargo watch --quiet --watch src --watch templates --exec "run server"
 
+bundle-js:
+	bun run tools/bundle-js.ts
+
+bundle-js-dev:
+	cargo watch --quiet --watch assets/js -- make bundle-js
+
 tw:
 	bun run tailwindcss -i ./assets/app.css -o ./assets/dist/app.css
 

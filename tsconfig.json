@@ -1,7 +1,9 @@
 {
+  "include": ["assets/**/*.ts", "templates/**/*.html", "templates/**/*.js"],
+  "exclude": ["node_modules", "assets/dist"],
   "compilerOptions": {
     // Enable latest features
-    "lib": ["dom", "esnext"],
+    "lib": ["dom", "DOM.Iterable", "esnext"],
     "target": "ESNext",
     "moduleDetection": "force",
     "allowJs": true,
@@ -21,6 +23,5 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noPropertyAccessFromIndexSignature": false
-  },
-  "include": ["templates/**/*.d.ts", "templates/**/*.html", "templates/**/*.js"]
+  }
 }

@@ -52,7 +52,7 @@
       <span> - </span>
       <span>Edit Entry</span>
     </h1>
-    <form hx-post="" id="journal_entry_new_form">
+    <form hx-post="">
       {{ form.form_error(error="") }}
 
       {{ form.input("title", "Title", value=entry.title) }}
@@ -98,556 +98,119 @@
 
     <hr class="my-8 h-px border-0 bg-gray-200 dark:bg-gray-700" />
 
-    {% block fragment_media_list %}
-      <div id="media-container" data-fancybox-gallery class="w-full space-y-4">
-        {% for media in media_list %}
-          <div class="w-full">
-            <div>{{ m.media_tag(media, "w-full") }}</div>
-            <form class="form-caption" data-mode="view">
-              <div class="mt-2 flex justify-between gap-2">
-                <input
-                  type="text"
-                  name="caption"
-                  disabled
-                  placeholder="Caption..."
-                  value="{{ media.caption }}"
-                  class="flex-1"
-                />
-                {# [onclick-caption-edit] #}
-                <button
-                  type="submit"
-                  class="btn btn-circle btn-ghost"
-                  hx-on::after-request="toggleCaptionEdit(this, 'view')"
-                  hx-post="{{ href_caption_edit }}"
-                  hx-vals='{ "media_id": "{{ media.id }}" }'
-                >
-                  {{ icon_check() }}
-                </button>
+    <div
+      class="w-full"
+      data-controller="media--form"
+      data-media--form-get-upload-url-value="{{ href_get_upload_url }}"
+      data-media--form-commit-upload-url-value="{{ href_commit_upload }}"
+      data-media--form-entry-id-value="{{ entry.id }}"
+    >
+      {% block fragment_media_list %}
+        <div
+          id="media-container"
+          data-media--form-target="mediaContainer"
+          class="w-full space-y-4"
+        >
+          {% for media in media_list %}
+            <div class="w-full">
+              <div>{{ m.media_tag(media, "w-full") }}</div>
+              <form
+                class="form-caption"
+                data-mode="view"
+                hx-post="{{ href_caption_edit }}"
+                hx-vals='{ "media_id": "{{ media.id }}" }'
+                hx-on::after-request="toggleCaptionEdit(this, 'view')"
+              >
+                <div class="mt-2 flex justify-between gap-2">
+                  <input
+                    type="text"
+                    name="caption"
+                    disabled
+                    placeholder="Caption..."
+                    value="{{ media.caption }}"
+                    class="flex-1"
+                  />
+                  {# [onclick-caption-edit] #}
+                  <button type="submit" class="btn btn-circle btn-ghost">
+                    {{ icon_check() }}
+                  </button>
 
-                {# [onclick-caption-edit] #}
-                {% set onclick %}
-                  onclick="toggleCaptionEdit(this, 'edit')"'
-                {% endset %}
+                  {# [onclick-caption-edit] #}
+                  <button
+                    type="button"
+                    class="btn btn-circle btn-ghost"
+                    onclick="toggleCaptionEdit(this, 'edit')"
+                  >
+                    {{ icon_edit() }}
+                  </button>
+                </div>
+              </form>
+              <div class="flex w-full justify-between">
                 <button
                   type="button"
-                  class="btn btn-circle btn-ghost"
-                  {{ onclick | safe }}
+                  hx-post="{{ href_reorder }}"
+                  hx-vals='{ "media_id": "{{ media.id }}", "entry_id": "{{ entry_id }}", "order": {{ media.order }}, "direction": "up"}'
+                  hx-target="#media-container"
+                  hx-swap="outerHTML"
+                  class="btn btn-secondary"
+                  {% if loop.first %}
+                    disabled
+                  {% endif %}
                 >
-                  {{ icon_edit() }}
+                  Up
+                </button>
+                <button
+                  type="button"
+                  hx-post="{{ href_reorder }}"
+                  hx-vals='{ "media_id": "{{ media.id }}", "entry_id": "{{ entry_id }}", "order": {{ media.order }}, "direction": "down"}'
+                  hx-target="#media-container"
+                  hx-swap="outerHTML"
+                  class="btn btn-secondary"
+                  {% if loop.last %}
+                    disabled
+                  {% endif %}
+                >
+                  Down
+                </button>
+                <button
+                  type="button"
+                  hx-post="{{ href_delete }}"
+                  hx-vals='{ "media_id": "{{ media.id }}", "entry_id": "{{ entry_id }}"}'
+                  hx-target="#media-container"
+                  hx-swap="outerHTML"
+                  hx-confirm="Are you sure you wish to delete this?"
+                  class="btn btn-error"
+                >
+                  Delete
                 </button>
               </div>
-            </form>
-            <div class="flex w-full justify-between">
-              <button
-                type="button"
-                hx-post="{{ href_reorder }}"
-                hx-vals='{ "media_id": "{{ media.id }}", "entry_id": "{{ entry_id }}", "order": {{ media.order }}, "direction": "up"}'
-                hx-target="#media-container"
-                hx-swap="outerHTML"
-                class="btn btn-secondary"
-                {% if loop.first %}
-                  disabled
-                {% endif %}
-              >
-                Up
-              </button>
-              <button
-                type="button"
-                hx-post="{{ href_reorder }}"
-                hx-vals='{ "media_id": "{{ media.id }}", "entry_id": "{{ entry_id }}", "order": {{ media.order }}, "direction": "down"}'
-                hx-target="#media-container"
-                hx-swap="outerHTML"
-                class="btn btn-secondary"
-                {% if loop.last %}
-                  disabled
-                {% endif %}
-              >
-                Down
-              </button>
-              <button
-                type="button"
-                hx-post="{{ href_delete }}"
-                hx-vals='{ "media_id": "{{ media.id }}", "entry_id": "{{ entry_id }}"}'
-                hx-target="#media-container"
-                hx-swap="outerHTML"
-                hx-confirm="Are you sure you wish to delete this?"
-                class="btn btn-error"
-              >
-                Delete
-              </button>
             </div>
-          </div>
-        {% endfor %}
-      </div>
-    {% endblock fragment_media_list %}
-    <button
-      type="button"
-      id="media-btn"
-      class="btn btn-primary my-4 w-full"
-      data-get-upload-url="{{ href_get_upload_url }}"
-      data-commit-upload-url="{{ href_commit_upload }}"
-      data-entry-id="{{ entry.id }}"
-    >
-      Add
-    </button>
-    <input
-      id="media-input"
-      class="hidden"
-      type="file"
-      accept="image/*,video/*"
-      multiple
-    />
+          {% endfor %}
+        </div>
+      {% endblock fragment_media_list %}
+      <button
+        type="button"
+        data-media--form-target="addMediaButton"
+        class="btn btn-primary my-4 w-full"
+      >
+        <span class="loading loading-spinner hidden"></span>
+        Add
+      </button>
+      <input
+        data-media--form-target="fileInput"
+        class="hidden"
+        type="file"
+        accept="image/*,video/*"
+        multiple
+      />
+    </div>
   </div>
 
   <script>
     // @ts-check
-    /// <reference path="./common/toast.d.ts" />
-
-    //
-    // Add Media
-    //
-    (() => {
-      const ID_MEDIA_CONTAINER = "media-container";
-
-      function findElems() {
-        const $mediaContainer = document.getElementById(ID_MEDIA_CONTAINER);
-
-        const $mediaBtn = /** @type {HTMLButtonElement | null} */ (
-          document.getElementById("media-btn")
-        );
-        const dataGetUploadUrl = $mediaBtn.getAttribute("data-get-upload-url");
-        const dataCommitUploadUrl = $mediaBtn.getAttribute(
-          "data-commit-upload-url",
-        );
-        const dataEntryId = $mediaBtn.getAttribute("data-entry-id");
-
-        const $mediaInput = /** @type {HTMLInputElement | null} */ (
-          document.getElementById("media-input")
-        );
-
-        return {
-          $mediaContainer,
-          dataGetUploadUrl,
-          dataCommitUploadUrl,
-          dataEntryId,
-          $mediaBtn,
-          $mediaInput,
-        };
-      }
-
-      const THUMBNAIL_WIDTH = 320;
-      const THUMBNAIL_QUALITY = 0.5;
-      const THUMBNAIL_EXT = ".jpeg";
-      const THUMBNAIL_MIME_TYPE = "image/jpeg";
-
-      /**
-       * @typedef GenerateThumbnailResult
-       * @type {object}
-       * @property {Blob} blob
-       * @property {number} width
-       * @property {number} height
-       */
-
-      /**
-       * @typedef ThumbnailFromAnyResult
-       * @type {object}
-       * @property {Blob} thumbnail
-       * @property {number} widthOriginal
-       * @property {number} heightOriginal
-       * @property {number} widthThumbnail
-       * @property {number} heightThumbnail
-       */
-
-      /**
-       * Generates a thumbnail from the given media element.
-       *
-       * @param {HTMLVideoElement | HTMLImageElement} elem
-       * @param {number} width Width of the original video/image.
-       * @param {number} height Height of the original video/image.
-       * @returns {Promise<GenerateThumbnailResult>}
-       */
-      async function generateThumbnail(elem, width, height) {
-        const canvas = document.createElement("canvas");
-        try {
-          const aspectRatio = width / height;
-          const thumbnailWidth = THUMBNAIL_WIDTH;
-          const thumbnailHeight = Math.round(thumbnailWidth / aspectRatio);
-
-          canvas.width = thumbnailWidth;
-          canvas.height = thumbnailHeight;
-          const ctx = canvas.getContext("2d");
-          ctx.drawImage(elem, 0, 0, thumbnailWidth, thumbnailHeight);
-
-          const blob = await new Promise((resolve) => {
-            canvas.toBlob(
-              (blob) => {
-                resolve(blob);
-              },
-              THUMBNAIL_MIME_TYPE,
-              THUMBNAIL_QUALITY,
-            );
-          });
-          return { blob, width: thumbnailWidth, height: thumbnailHeight };
-        } finally {
-          canvas.remove();
-        }
-      }
-
-      /**
-       * Extracts a thumbnail from a video's first frame.
-       *
-       * @param {File} file
-       * @returns {Promise<ThumbnailFromAnyResult>}
-       */
-      async function thumbnailFromVideo(file) {
-        /** @type {Array<() => void>} */
-        const cleanup = [];
-        try {
-          const video = document.createElement("video");
-          cleanup.push(() => {
-            video.remove();
-          });
-          const objectUrl = URL.createObjectURL(file);
-          cleanup.push(() => {
-            URL.revokeObjectURL(objectUrl);
-          });
-
-          video.src = objectUrl;
-          video.muted = true;
-          video.playsInline = true;
-
-          // Wait until metadata is loaded (duration, dimensions).
-          await new Promise((resolve) => {
-            video.addEventListener("loadeddata", resolve, { once: true });
-          });
-
-          // Seek to beginning and wait for the seek.
-          video.currentTime = 0;
-          await new Promise((resolve) => {
-            video.addEventListener("seeked", resolve, { once: true });
-          });
-
-          const widthOriginal = video.videoWidth;
-          const heightOriginal = video.videoHeight;
-          const result = await generateThumbnail(
-            video,
-            widthOriginal,
-            heightOriginal,
-          );
-
-          return {
-            heightOriginal,
-            widthOriginal,
-            thumbnail: result.blob,
-            widthThumbnail: result.width,
-            heightThumbnail: result.height,
-          };
-        } finally {
-          for (const fn of cleanup) {
-            fn();
-          }
-        }
-      }
-
-      /**
-       * Extracts a thumbnail from an image.
-       *
-       * @param {File} file
-       * @returns {Promise<ThumbnailFromAnyResult>}
-       */
-      async function thumbnailFromImage(file) {
-        /** @type {Array<() => void>} */
-        const cleanup = [];
-        try {
-          const img = document.createElement("img");
-          cleanup.push(() => {
-            img.remove();
-          });
-          const objectUrl = URL.createObjectURL(file);
-          cleanup.push(() => {
-            URL.revokeObjectURL(objectUrl);
-          });
-
-          img.src = objectUrl;
-          // Wait until the image is loaded.
-          await img.decode();
-
-          const widthOriginal = img.naturalWidth;
-          const heightOriginal = img.naturalHeight;
-          const result = await generateThumbnail(
-            img,
-            widthOriginal,
-            heightOriginal,
-          );
-
-          return {
-            heightOriginal,
-            widthOriginal,
-            thumbnail: result.blob,
-            widthThumbnail: result.width,
-            heightThumbnail: result.height,
-          };
-        } finally {
-          for (const fn of cleanup) {
-            fn();
-          }
-        }
-      }
-
-      /**
-       * SYNC
-       * @typedef MediaType
-       * @type {'image' | 'video'}
-       */
-      /**
-       * SYNC
-       * @typedef MediaUploadUrlBody
-       * @type {object}
-       * @property {string} thumbnail_extension
-       * @property {string[]} filenames
-       */
-      /**
-       * SYNC
-       * @typedef MediaUploadUrlResultItem
-       * @type {object}
-       * @property {string} upload_method
-       * @property {string} upload_url_original
-       * @property {string} upload_url_thumbnail
-       * @property {Record<string, string>} upload_headers_original
-       * @property {Record<string, string>} upload_headers_thumbnail
-       * @property {number} file_id_original
-       * @property {number} file_id_thumbnail
-       */
-      /**
-       * SYNC
-       * @typedef JournalEntryMediaCommitItem
-       * @type {object}
-       * @property {MediaType} media_type
-       * @property {number} file_id_original
-       * @property {number} width_original
-       * @property {number} height_original
-       * @property {number} file_id_thumbnail
-       * @property {number} width_thumbnail
-       * @property {number} height_thumbnail
-       */
-      /**
-       * SYNC
-       * @typedef JournalEntryMediaCommitBody
-       * @type {object}
-       * @property {number} entry_id
-       * @property {JournalEntryMediaCommitItem[]} items
-       */
-
-      /**
-       * @param {File[]} files
-       * @param {string} getUploadUrl
-       * @return {Promise<MediaUploadUrlResultItem[]>}
-       */
-      async function fetchUploadUrls(files, getUploadUrl) {
-        /** @type {MediaUploadUrlBody} */
-        const body = {
-          thumbnail_extension: THUMBNAIL_EXT,
-          filenames: files.map((file) => file.name),
-        };
-        const resp = await fetch(getUploadUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(body),
-        });
-        if (!resp.ok) {
-          throw new Error(`Request failed with status ${resp.status}`);
-        }
-        return await resp.json();
-      }
-
-      /**
-       * @param {File | Blob} file
-       * @param {string} method
-       * @param {string} url
-       * @param {Record<string, string>} headers
-       */
-      async function uploadOne(file, method, url, headers) {
-        const resp = await fetch(url, {
-          method,
-          body: file,
-          headers,
-        });
-        if (!resp.ok) {
-          throw new Error(`Request failed with status ${resp.status}`);
-        }
-      }
-
-      /**
-       * @param {File} file
-       * @param {Promise<ThumbnailFromAnyResult>} thumbnailPromise
-       * @param {MediaUploadUrlResultItem} uploadUrlParams
-       * @returns {Promise<ThumbnailFromAnyResult>}
-       */
-      async function uploadOriginalAndThumbnail(
-        file,
-        thumbnailPromise,
-        uploadUrlParams,
-      ) {
-        // This is a bit complicated, but the goal is to kick off the upload of the original file
-        // as fast as possible, i.e. not wait for thumbnail generation.
-        /** @type {Promise[]} */
-        const promises = [];
-
-        // Original
-        promises.push(
-          uploadOne(
-            file,
-            uploadUrlParams.upload_method,
-            uploadUrlParams.upload_url_original,
-            uploadUrlParams.upload_headers_original,
-          ),
-        );
-
-        // Thumbnail
-        const thumbnailResult = await thumbnailPromise;
-        promises.push(
-          uploadOne(
-            thumbnailResult.thumbnail,
-            uploadUrlParams.upload_method,
-            uploadUrlParams.upload_url_thumbnail,
-            uploadUrlParams.upload_headers_thumbnail,
-          ),
-        );
-
-        await Promise.all(promises);
-        return thumbnailResult;
-      }
-
-      /**
-       * @param {string} commitUrl
-       * @param {JournalEntryMediaCommitBody} body
-       */
-      async function doCommit(commitUrl, body) {
-        // @ts-ignore
-        htmx.ajax("post", commitUrl, {
-          target: `#${ID_MEDIA_CONTAINER}`,
-          swap: "outerHTML",
-          values: { json: body },
-        });
-      }
-
-      const {
-        $mediaBtn,
-        dataGetUploadUrl,
-        dataCommitUploadUrl,
-        dataEntryId,
-        $mediaContainer,
-        $mediaInput,
-      } = findElems();
-
-      $mediaBtn.addEventListener("click", (evt) => {
-        $mediaInput.click();
-        evt.preventDefault();
-      });
-      $mediaInput.addEventListener("change", async () => {
-        const files = [...$mediaInput.files];
-        if (files.length === 0) {
-          return;
-        }
-
-        /** @type {MediaType[]} */
-        const mediaTypes = files.map((file) =>
-          file.type.startsWith("video/") ? "video" : "image",
-        );
-
-        // Kick off thumbnail generation in the background while we wait for upload URLs.
-        const thumbnailPromises = files.map(async (file, index) => {
-          const mediaType = mediaTypes[index];
-          switch (mediaType) {
-            case "video":
-              return await thumbnailFromVideo(file);
-            case "image":
-              return await thumbnailFromImage(file);
-            default:
-              // Should never happen, thanks to the `accept` attribute on the input.
-              throw new Error(
-                `Unsupported media type ${mediaType} for file ${file.name}`,
-              );
-          }
-        });
-
-        try {
-          var uploadParamsList = await fetchUploadUrls(files, dataGetUploadUrl);
-        } catch (error) {
-          window.toast({
-            message: "Failed to request upload URLs",
-            error,
-            variant: "error",
-          });
-          return;
-        }
-        console.info("uploadParamsList", uploadParamsList);
-
-        /** @type {JournalEntryMediaCommitItem[]} */
-        const commitItems = new Array(uploadParamsList.length);
-
-        let hasError = false;
-        await Promise.all(
-          uploadParamsList.map(async (uploadParams, index) => {
-            const file = files[index];
-            const mediaType = mediaTypes[index];
-
-            try {
-              var thumbnailResult = await uploadOriginalAndThumbnail(
-                file,
-                thumbnailPromises[index],
-                uploadParams,
-              );
-            } catch (error) {
-              window.toast({
-                message: `Failed to upload ${file.name}`,
-                error,
-                variant: "error",
-              });
-              hasError = true;
-              return;
-            }
-
-            commitItems[index] = {
-              media_type: mediaType,
-              file_id_original: uploadParams.file_id_original,
-              width_original: thumbnailResult.widthOriginal,
-              height_original: thumbnailResult.heightOriginal,
-              file_id_thumbnail: uploadParams.file_id_thumbnail,
-              width_thumbnail: thumbnailResult.widthThumbnail,
-              height_thumbnail: thumbnailResult.heightThumbnail,
-            };
-          }),
-        );
-        if (hasError) {
-          return;
-        }
-
-        /** @type {JournalEntryMediaCommitBody} */
-        const commitBody = {
-          entry_id: Number(dataEntryId),
-          items: commitItems,
-        };
-        try {
-          await doCommit(dataCommitUploadUrl, commitBody);
-        } catch (error) {
-          window.toast({
-            message: "Failed to commit files",
-            error,
-            variant: "error",
-          });
-          return;
-        }
-      });
-    })();
-
-    //
-    // Caption Editing
-    //
 
     /**
+     * [onclick-caption-edit]
      * @param {HTMLButtonElement} $button
      * @param {"edit" | "view"} mode
      */

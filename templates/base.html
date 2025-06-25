@@ -4,25 +4,12 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content="Travel blog" />
-    <meta name="keywords" content="Travel" />
-    <script
-      src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.5/dist/htmx.min.js"
-      integrity="sha384-t4DxZSyQK+0Uv4jzy5B0QyHyWQD2GFURUmxKMBVww9+e2EJ0ei/vCvv7+79z0fkr"
-      crossorigin="anonymous"
-    ></script>
-    <script
-      src="https://cdn.jsdelivr.net/npm/htmx-ext-response-targets@2.0.2"
-      crossorigin="anonymous"
-    ></script>
-    {% include "common/js_utils.html" %}
-    {% include "common/datetime.html" %}
 
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/@fancyapps/ui@6.0/dist/fancybox/fancybox.css"
-    />
+    <meta name="keywords" content="Travel" />
+
     {# FIXME proper url #}
     <link rel="stylesheet" href="/_assets/app.css" />
+    <script src="/_assets/app.js" defer></script>
     {% block head %}
       <title>Cookie Odyssey</title>
     {% endblock head %}
@@ -40,11 +27,7 @@
       {% block content %}
       {% endblock content %}
     </div>
+
     {% include "common/toast.html" %}
-    {% include "common/confetti.html" %}
-    {% include "common/error_handling.html" %}
-    <!-- This is pretty heavy, so stick at the bottom. -->
-    <script src="https://cdn.jsdelivr.net/npm/@fancyapps/ui@6.0/dist/fancybox/fancybox.umd.js"></script>
-    {% include "common/media.html" %}
   </body>
 </html>
