@@ -1,6 +1,4 @@
-import { Controller } from "@hotwired/stimulus";
-
-import { defineTargets } from "./utils/stimulus-utils";
+import { TypedController } from "./utils/stimulus-typed";
 
 export type ToastVariant = "error" | "success";
 
@@ -17,16 +15,11 @@ export type ToastData = {
 // Keep in sync with [toast]
 const TOAST_EVT = "app.toast" as const;
 
-// eslint-disable-next-line @typescript-eslint/unbound-method -- This is fine.
-const { targets, getTarget } = defineTargets({
-  template: "template",
-});
-
-export class ToastController extends Controller {
-  public static identifier = "toast";
-  static targets = targets;
-  getTarget = getTarget;
-
+export class ToastController extends TypedController("toast", "element", {
+  targets: {
+    template: "template",
+  },
+}) {
   override connect(): void {
     document.body.addEventListener(TOAST_EVT, this.onToastEvent);
   }

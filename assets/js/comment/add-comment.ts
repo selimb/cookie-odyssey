@@ -1,20 +1,17 @@
-import { Controller } from "@hotwired/stimulus";
-
 import type { HtmxAfterRequestEvent } from "../htmx-types";
 import { jsUtils } from "../utils/js-utils";
-import { defineTargets } from "../utils/stimulus-utils";
+import { TypedController } from "../utils/stimulus-typed";
 
-// eslint-disable-next-line @typescript-eslint/unbound-method -- This is fine.
-const { targets, getTarget } = defineTargets({
-  textarea: "textarea",
-  submit: "button",
-});
-
-export class AddCommentController extends Controller<HTMLFormElement> {
-  public static identifier = "add-comment";
-  public static targets = targets;
-  getTarget = getTarget;
-
+export class AddCommentController extends TypedController(
+  "add-comment",
+  "form",
+  {
+    targets: {
+      textarea: "textarea",
+      submit: "button",
+    },
+  },
+) {
   override connect(): void {
     const $form = this.element;
     const $textarea = this.getTarget("textarea");

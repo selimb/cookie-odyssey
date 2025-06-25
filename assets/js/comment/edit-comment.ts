@@ -1,23 +1,20 @@
-import { Controller } from "@hotwired/stimulus";
-
 import { jsUtils } from "../utils/js-utils";
-import { defineTargets } from "../utils/stimulus-utils";
+import { TypedController } from "../utils/stimulus-typed";
 
-// eslint-disable-next-line @typescript-eslint/unbound-method -- This is fine.
-const { targets, getTarget } = defineTargets({
-  editButton: "button",
-  submit: "button",
-  view: "p",
-  editForm: "form",
-  editTextarea: "textarea",
-  cancelButton: "button",
-});
-
-export class EditCommentController extends Controller<HTMLDivElement> {
-  public static identifier = "edit-comment";
-  public static targets = targets;
-  getTarget = getTarget;
-
+export class EditCommentController extends TypedController(
+  "edit-comment",
+  "div",
+  {
+    targets: {
+      editButton: "button",
+      submit: "button",
+      view: "p",
+      editForm: "form",
+      editTextarea: "textarea",
+      cancelButton: "button",
+    },
+  },
+) {
   override connect(): void {
     const $submit = this.getTarget("submit");
     const $editButton = this.getTarget("editButton");

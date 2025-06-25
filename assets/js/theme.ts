@@ -2,9 +2,7 @@
  * Inspired by https://web.dev/patterns/theming/theme-switch
  */
 
-import { Controller } from "@hotwired/stimulus";
-
-import { defineTargets } from "./utils/stimulus-utils";
+import { TypedController } from "./utils/stimulus-typed";
 
 const STORAGE_KEY = "theme-preference";
 
@@ -30,19 +28,17 @@ function getColorPreference(): Theme {
       : "light";
 }
 
-// eslint-disable-next-line @typescript-eslint/unbound-method -- This is OK
-const { targets, getTarget } = defineTargets({ input: "input" });
-
 const THEME = {
   value: getColorPreference(),
 };
 
-export class ThemeToggleController extends Controller<HTMLLabelElement> {
-  public static identifier = "theme-toggle";
-
-  static targets = targets;
-  getTarget = getTarget;
-
+export class ThemeToggleController extends TypedController(
+  "theme-toggle",
+  "label",
+  {
+    targets: { input: "input" },
+  },
+) {
   connect(): void {
     const $themeInput = this.getTarget("input");
 

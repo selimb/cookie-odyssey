@@ -1,8 +1,7 @@
-import { Controller } from "@hotwired/stimulus";
 import htmx from "htmx.org";
 
 import { toast } from "../toast";
-import { defineTargets, defineValues } from "../utils/stimulus-utils";
+import { TypedController } from "../utils/stimulus-typed";
 import {
   THUMBNAIL_EXT,
   type ThumbnailFromAnyResult,
@@ -10,29 +9,22 @@ import {
   thumbnailFromVideo,
 } from "./thumbnail";
 
-// eslint-disable-next-line @typescript-eslint/unbound-method -- This is OK.
-const { targets, getTarget } = defineTargets({
-  mediaContainer: "div",
-  addMediaButton: "button",
-  fileInput: "input",
-});
-
-// eslint-disable-next-line @typescript-eslint/unbound-method -- This is OK.
-const { values, getValue } = defineValues({
-  getUploadUrl: "string",
-  commitUploadUrl: "string",
-  entryId: "number",
-});
-
-export class JournalEntryMediaFormController extends Controller {
-  static identifier = "media--form";
-
-  static targets = targets;
-  getTarget = getTarget;
-
-  static values = values;
-  getValue = getValue;
-
+export class JournalEntryMediaFormController extends TypedController(
+  "media--form",
+  "form",
+  {
+    targets: {
+      mediaContainer: "div",
+      addMediaButton: "button",
+      fileInput: "input",
+    },
+    values: {
+      getUploadUrl: "string",
+      commitUploadUrl: "string",
+      entryId: "number",
+    },
+  },
+) {
   connect(): void {
     const $mediaButton = this.getTarget("addMediaButton");
     const $mediaButtonSpinner = $mediaButton.querySelector(".loading");
