@@ -51,7 +51,7 @@ dev-server:
     cargo watch --quiet --watch src --watch templates --exec "run server"
 
 build-css *ARGS:
-    bun run tailwindcss -i ./assets/app.css -o ./assets/dist/app.css {{ ARGS }}
+    bun run tailwindcss -i ./assets/css/app.css -o ./assets/dist/css/app.css {{ ARGS }}
 
 dev-css: (build-css "--watch")
 

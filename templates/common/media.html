@@ -1,7 +1,16 @@
 {% macro media_tag(media, class) %}
   {% if media.media_type == "image" %}
-    <a href="{{ media.url_original }}" target="_blank">
-      <img src="{{ media.url_thumbnail }}" alt="media" class="{{ class }}" />
+    <a
+      href="{{ media.url_original }}"
+      target="_blank"
+      data-media--gallery-target="item"
+      data-lg-size="{{ media.width_original }}-{{ media.height_original }}"
+    >
+      <img
+        src="{{ media.url_thumbnail }}"
+        alt="{{ media.caption }}"
+        class="{{ class }}"
+      />
     </a>
   {% else %}
     <!-- XXX -->

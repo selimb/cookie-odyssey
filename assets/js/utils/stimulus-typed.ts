@@ -33,23 +33,17 @@ type InferValueDef<T extends ValueDef> = T extends "string"
       ? boolean
       : never;
 
-type TypedControllerMethods<
-  TTarget extends TargetDefs,
-  TValue extends ValueDefs,
-> = {
-  getTarget<K extends keyof TTarget>(name: K): InferTargetDef<TTarget[K]>;
-  getValue<K extends keyof TValue>(name: K): InferValueDef<TValue[K]>;
-};
-
-type TypedControllerConstructor<
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- Hush.
+declare class ITypedController<
   TElement extends TargetDef,
   TTarget extends TargetDefs,
   TValue extends ValueDefs,
-> = new (
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- This is the way.
-  ...args: any[]
-) => Controller<InferTargetDef<TElement>> &
-  TypedControllerMethods<TTarget, TValue>;
+> extends Controller<InferTargetDef<TElement>> {
+  declare static identifier: string;
+
+  getTarget<K extends keyof TTarget>(name: K): InferTargetDef<TTarget[K]>;
+  getValue<K extends keyof TValue>(name: K): InferValueDef<TValue[K]>;
+}
 
 export function TypedController<
   TElement extends TargetDef,
@@ -62,7 +56,7 @@ export function TypedController<
     targets?: TTarget;
     values?: TValue;
   },
-): TypedControllerConstructor<TElement, TTarget, TValue> {
+): typeof ITypedController<TElement, TTarget, TValue> {
   const targets = Object.keys(options.targets ?? []);
   const valueDefs = options.values;
   const stimulusValueDefs: StimulusValueDefs = Object.fromEntries(
