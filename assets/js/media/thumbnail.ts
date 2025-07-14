@@ -1,5 +1,5 @@
-export const THUMBNAIL_WIDTH = 320;
-export const THUMBNAIL_QUALITY = 0.5;
+export const THUMBNAIL_WIDTH = 640;
+export const THUMBNAIL_QUALITY = 0.8;
 export const THUMBNAIL_EXT = ".jpeg";
 export const THUMBNAIL_MIME_TYPE = "image/jpeg";
 

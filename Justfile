@@ -59,7 +59,7 @@ build-js:
     bun run tools/build-js.ts
 
 dev-js:
-    cargo watch --quiet --watch assets/js -- just build-js
+    cargo watch --quiet --watch assets/js --watch assets/css -- just build-js
 
 # Build it all
 build: build-server build-css build-js

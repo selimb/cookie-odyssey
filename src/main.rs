@@ -1,10 +1,11 @@
-use std::io::Write;
+use std::{io::Write, sync::Arc};
 
 use anyhow::Context;
 use clap::{Parser, Subcommand};
 use cookie_odyssey::{
     auth::sessions::AuthBackend,
     server::{init_db, init_state},
+    storage::StorageCleanup,
 };
 use sea_orm::EntityTrait;
 use tracing::info;
@@ -60,6 +61,10 @@ struct CliArgs {
 enum Commands {
     Conf,
     CreateAdmin,
+    CleanupStorage {
+        #[arg(long)]
+        dry_run: bool,
+    },
     Server,
     Check,
 }
@@ -74,6 +79,7 @@ impl Cli {
         match self.args.command {
             Commands::Conf => self.print_conf(),
             Commands::CreateAdmin => self.create_admin().await,
+            Commands::CleanupStorage { dry_run } => self.cleanup_storage(dry_run).await,
             Commands::Server => self.server().await,
             Commands::Check => self.check().await,
         }
@@ -126,6 +132,22 @@ impl Cli {
 
         info!("Created user: '{}'", email);
         Ok(())
+    }
+
+    async fn cleanup_storage(&self, dry_run: bool) -> Result<(), anyhow::Error> {
+        let (state, _) = init_state(&self.conf).await?;
+        let cleanup = StorageCleanup {
+            dry_run,
+            storage: Arc::into_inner(state.storage).unwrap(),
+            db: state.db,
+        };
+        let confirm = || {
+            dialoguer::Confirm::new()
+                .with_prompt("Proceed?")
+                .interact()
+                .unwrap()
+        };
+        cleanup.run(confirm).await
     }
 
     async fn check(&self) -> Result<(), anyhow::Error> {

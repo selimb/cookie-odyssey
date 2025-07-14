@@ -1,14 +1,17 @@
 //! Abstraction for object storage.
 //! Mostly uses the S3 terminology because that's what I started with.
 //!
-use anyhow::Context as _;
+use anyhow::Context;
 use axum::body::Bytes;
 use azure_storage::{
     shared_access_signature::service_sas::BlobSasPermissions, CloudLocation, StorageCredentials,
 };
 use azure_storage_blobs::prelude::{BlobServiceClient, ClientBuilder, ContainerClient};
 use futures::stream::StreamExt as _;
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 
 use app_config::{AppConfig, StorageConfig};
 
@@ -49,7 +52,7 @@ pub enum Bucket {
 }
 
 impl Bucket {
-    fn to_name<'a>(&self, conf: &'a StorageConfig) -> &'a String {
+    pub fn to_name<'a>(&self, conf: &'a StorageConfig) -> &'a String {
         match self {
             Bucket::Media => &conf.container_media,
         }
@@ -57,11 +60,12 @@ impl Bucket {
 }
 
 pub type SignedUrl = String;
+pub type FileKey = String;
 
 #[derive(Debug)]
 pub struct UploadUrl {
     pub bucket: String,
-    pub key: String,
+    pub key: FileKey,
     pub url: SignedUrl,
     pub method: String,
     pub headers: HashMap<String, String>,
@@ -70,7 +74,7 @@ pub struct UploadUrl {
 #[derive(Debug)]
 pub struct FileStore {
     client: BlobServiceClient,
-    conf: StorageConfig,
+    pub conf: StorageConfig,
 }
 
 impl FileStore {
@@ -87,10 +91,38 @@ impl FileStore {
         Ok(containers)
     }
 
+    pub async fn list_files(&self, bucket: &Bucket) -> Result<HashSet<FileKey>, anyhow::Error> {
+        let bucket = bucket.to_name(&self.conf).to_owned();
+        let container_client = self.client.container_client(bucket);
+        let mut file_stream = container_client.list_blobs().into_stream();
+
+        let mut files: HashSet<FileKey> = HashSet::new();
+        while let Some(page) = file_stream.next().await {
+            let page = page.context("Failed to list files")?;
+            for blob in page.blobs.blobs() {
+                files.insert(blob.name.clone());
+            }
+        }
+
+        Ok(files)
+    }
+
+    pub async fn delete_file(&self, bucket: &Bucket, key: &str) -> Result<(), anyhow::Error> {
+        let bucket = bucket.to_name(&self.conf).to_owned();
+        let container_client = self.client.container_client(&bucket);
+        let blob_client = container_client.blob_client(key);
+        blob_client
+            .delete()
+            .await
+            .with_context(|| format!("Failed to delete file: {bucket}/{key}"))?;
+
+        Ok(())
+    }
+
     pub async fn get_upload_url(
         &self,
         bucket: Bucket,
-        key: String,
+        key: FileKey,
     ) -> Result<UploadUrl, anyhow::Error> {
         let bucket = bucket.to_name(&self.conf).to_owned();
         if self.conf.emulator {
@@ -140,7 +172,7 @@ impl FileStore {
     pub async fn upload(
         &self,
         bucket: String,
-        key: String,
+        key: FileKey,
         body: Bytes,
     ) -> Result<(), UploadError> {
         if !self.conf.emulator {

@@ -8,7 +8,7 @@
  * migration/data-migrations/journal-entry-media-width-height-thumbnail/index.ts
  * ```
  */
-import fs from "node:fs";
+import fs, { readFileSync } from "node:fs";
 import path from "node:path";
 
 import {
@@ -29,7 +29,6 @@ const zEnv = z.object({
   "APP.STORAGE.CONTAINER_MEDIA": z.string(),
   "APP.STORAGE.AZURE_STORAGE_ACCOUNT": z.string(),
   "APP.STORAGE.AZURE_STORAGE_ACCESS_KEY": z.string(),
-  "APP.STORAGE.AZURE_STORAGE_ENDPOINT": z.string(),
 });
 const env = zEnv.parse(process.env);
 
@@ -138,7 +137,7 @@ async function generateThumbnail(
 
   await sharp(inputImagePath)
     .jpeg({ quality: 80 })
-    .resize(320)
+    .resize(640)
     .toFile(outputPath);
 }
 
@@ -148,13 +147,18 @@ async function setThumbnailForMedia(
 ): Promise<void> {
   const fileDb = queryFile(media.file_id);
   const thumbnailKey = `${fileDb.key.split(".")[0]}-thumbnail.jpeg`;
-  logger.info("uploading", thumbnailKey);
+  logger.info("Uploading", thumbnailKey);
+  // For some reason `.uploadFile` does not work for some files :facepalm:
+  const thumbnailContent = readFileSync(thumbnailPath);
   await containerClient
     .getBlobClient(thumbnailKey)
     .getBlockBlobClient()
-    .uploadFile(thumbnailPath, {
+    .upload(thumbnailContent, thumbnailContent.length, {
       blobHTTPHeaders: { blobContentType: "image/jpeg" },
     });
+  // .uploadFile(thumbnailPath, {
+  //   blobHTTPHeaders: { blobContentType: "image/jpeg" },
+  // });
 
   const thumbnailDimensions = await inferDimensions(thumbnailPath);
   const raw = db
