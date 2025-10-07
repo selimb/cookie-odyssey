@@ -11,9 +11,7 @@ pub struct Model {
     pub journal_id: i32,
     pub user_id: i32,
     pub created_at: i64,
-    #[sea_orm(column_type = "Text", nullable)]
-    pub date: Option<String>,
-    #[sea_orm(column_type = "Text")]
+    pub date: Option<Date>,
     pub text: String,
 }
 

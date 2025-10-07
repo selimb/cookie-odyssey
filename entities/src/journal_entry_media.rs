@@ -10,9 +10,7 @@ pub struct Model {
     pub id: i32,
     pub journal_entry_id: i32,
     pub order: i32,
-    #[sea_orm(column_type = "Text")]
     pub caption: String,
-    #[sea_orm(column_type = "Text")]
     // KEEP ME
     pub media_type: MediaType,
     pub width: i32,

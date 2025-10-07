@@ -8,14 +8,12 @@ use serde::{Deserialize, Serialize};
 pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
-    #[sea_orm(column_type = "Text", unique)]
+    #[sea_orm(unique)]
     pub name: String,
-    #[sea_orm(column_type = "Text", unique)]
+    #[sea_orm(unique)]
     pub slug: String,
-    #[sea_orm(column_type = "Text")]
-    pub start_date: String,
-    #[sea_orm(column_type = "Text", nullable)]
-    pub end_date: Option<String>,
+    pub start_date: Date,
+    pub end_date: Option<Date>,
     pub cover_id: Option<i32>,
 }
 
