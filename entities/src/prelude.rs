@@ -6,3 +6,4 @@ pub use super::journal_comment::Entity as JournalComment;
 pub use super::journal_entry::Entity as JournalEntry;
 pub use super::journal_entry_media::Entity as JournalEntryMedia;
 pub use super::user::Entity as User;
+pub use super::video_transcode_task::Entity as VideoTranscodeTask;

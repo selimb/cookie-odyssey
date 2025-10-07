@@ -16,11 +16,19 @@ pub struct Model {
 pub enum Relation {
     #[sea_orm(has_many = "super::journal::Entity")]
     Journal,
+    #[sea_orm(has_many = "super::video_transcode_task::Entity")]
+    VideoTranscodeTask,
 }
 
 impl Related<super::journal::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Journal.def()
+    }
+}
+
+impl Related<super::video_transcode_task::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::VideoTranscodeTask.def()
     }
 }
 
