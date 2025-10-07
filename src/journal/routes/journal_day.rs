@@ -10,7 +10,6 @@ use crate::{
         routes::{JournalEntryNewPath, JournalEntryNewQuery},
     },
     storage::FileStore,
-    utils::date_utils::{date_from_sqlite, date_to_sqlite, time_from_sqlite},
     AppState, AuthSession, Route, RouteResult, Templ,
 };
 use entities::{prelude::*, *};
@@ -105,15 +104,15 @@ async fn query_entries_for_day(
 ) -> Result<Vec<Entry>, anyhow::Error> {
     let mut q = JournalEntry::find()
         .filter(journal_entry::Column::JournalId.eq(journal.id))
-        .filter(journal_entry::Column::Date.eq(date_to_sqlite(*date)));
+        .filter(journal_entry::Column::Date.eq(*date));
     q = auth.backend.filter_journal_entries(auth, q).await?;
     let entries_db = q.all(db).await?;
 
     // TODO: Avoid N+1 query, but in this case `N` should not be greater than 5, so meh.
     let mut entries: Vec<Entry> = Vec::new();
     for e in entries_db {
-        let date = date_from_sqlite(e.date).unwrap();
-        let time = time_from_sqlite(e.time).unwrap();
+        let date = e.date;
+        let time = e.time;
         let datetime = chrono::NaiveDateTime::new(date, time);
 
         let href_edit = Route::JournalEntryEditGet {
@@ -153,17 +152,17 @@ async fn query_surrounding_days(
 
     let q_prev = q_base
         .clone()
-        .filter(journal_entry::Column::Date.lt(date_to_sqlite(*date)))
+        .filter(journal_entry::Column::Date.lt(*date))
         .order_by_desc(journal_entry::Column::Date);
     let q_next = q_base
-        .filter(journal_entry::Column::Date.gt(date_to_sqlite(*date)))
+        .filter(journal_entry::Column::Date.gt(*date))
         .order_by_asc(journal_entry::Column::Date);
 
     let entry_prev = q_prev.one(db).await?;
     let entry_next = q_next.one(db).await?;
 
-    let day_prev = entry_prev.map(|entry| date_from_sqlite(entry.date).unwrap());
-    let day_next = entry_next.map(|entry| date_from_sqlite(entry.date).unwrap());
+    let day_prev = entry_prev.map(|entry| entry.date);
+    let day_next = entry_next.map(|entry| entry.date);
 
     Ok((day_prev, day_next))
 }

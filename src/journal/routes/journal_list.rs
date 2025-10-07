@@ -4,7 +4,7 @@ use sea_orm::{EntityTrait, QueryOrder};
 use serde::Serialize;
 use url::Url;
 
-use crate::{utils::date_utils::date_from_sqlite, AppState, Route, RouteResult, Templ};
+use crate::{AppState, Route, RouteResult, Templ};
 use entities::{prelude::*, *};
 
 #[derive(Serialize, Debug)]
@@ -26,13 +26,10 @@ pub async fn journal_list(State(state): State<AppState>, templ: Templ) -> RouteR
     let journals = journals
         .into_iter()
         .map(|(journal, _cover)| {
-            let start_date = chrono::NaiveDateTime::new(
-                date_from_sqlite(journal.start_date).unwrap(),
-                Default::default(),
-            );
-            let end_date = journal.end_date.map(|d| {
-                chrono::NaiveDateTime::new(date_from_sqlite(d).unwrap(), Default::default())
-            });
+            let start_date = chrono::NaiveDateTime::new(journal.start_date, Default::default());
+            let end_date = journal
+                .end_date
+                .map(|d| chrono::NaiveDateTime::new(d, Default::default()));
             JournalListItem {
                 id: journal.id,
                 name: journal.name,
