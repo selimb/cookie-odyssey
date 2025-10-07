@@ -8,8 +8,7 @@ use sea_orm::EntityTrait;
 use serde::Deserialize;
 
 use crate::{
-    utils::{date_utils::date_to_sqlite, serde_utils::string_trim},
-    AppState, FormError, Route, RouteError, RouteResult, Templ,
+    utils::serde_utils::string_trim, AppState, FormError, Route, RouteError, RouteResult, Templ,
 };
 use entities::{prelude::*, *};
 
@@ -42,8 +41,8 @@ pub async fn journal_new_post(
     let data = journal::ActiveModel {
         name: sea_orm::ActiveValue::Set(form.name.clone()),
         slug: sea_orm::ActiveValue::Set(form.slug.clone()),
-        start_date: sea_orm::ActiveValue::Set(date_to_sqlite(form.start_date)),
-        end_date: sea_orm::ActiveValue::Set(form.end_date.map(date_to_sqlite)),
+        start_date: sea_orm::ActiveValue::Set(form.start_date),
+        end_date: sea_orm::ActiveValue::Set(form.end_date),
         ..Default::default()
     };
     // TODO: Handle conflict (can't use on_conflict, since we have two unique constraints).

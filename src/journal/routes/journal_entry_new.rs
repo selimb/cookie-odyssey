@@ -10,12 +10,8 @@ use sea_orm::EntityTrait;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    journal::queries::query_journal_by_slug,
-    utils::{
-        date_utils::{date_to_sqlite, time_to_sqlite},
-        serde_utils::string_trim,
-    },
-    AppState, FormError, Route, RouteError, RouteResult, Templ,
+    journal::queries::query_journal_by_slug, utils::serde_utils::string_trim, AppState, FormError,
+    Route, RouteError, RouteResult, Templ,
 };
 use entities::{prelude::*, *};
 
@@ -87,8 +83,8 @@ pub async fn journal_entry_new_post(
             let data = journal_entry::ActiveModel {
                 journal_id: sea_orm::ActiveValue::Set(journal_id),
                 title: sea_orm::ActiveValue::Set(title),
-                date: sea_orm::ActiveValue::Set(date_to_sqlite(date)),
-                time: sea_orm::ActiveValue::Set(time_to_sqlite(time)),
+                date: sea_orm::ActiveValue::Set(date),
+                time: sea_orm::ActiveValue::Set(time),
                 ..Default::default()
             };
             let entry = JournalEntry::insert(data).exec(&state.db).await?;

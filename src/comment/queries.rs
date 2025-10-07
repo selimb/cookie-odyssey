@@ -4,8 +4,6 @@ use sea_orm::{
 };
 use serde::Serialize;
 
-use crate::utils::date_utils::date_to_sqlite;
-
 pub struct AddCommentToJournal {
     pub journal_id: i32,
     pub user_id: i32,
@@ -20,7 +18,7 @@ pub async fn add_comment_to_journal(
     let created_at = chrono::Utc::now().timestamp();
     let data = entities::journal_comment::ActiveModel {
         created_at: sea_orm::ActiveValue::Set(created_at),
-        date: sea_orm::ActiveValue::Set(params.date.map(date_to_sqlite)),
+        date: sea_orm::ActiveValue::Set(params.date),
         journal_id: sea_orm::ActiveValue::Set(params.journal_id),
         user_id: sea_orm::ActiveValue::Set(params.user_id),
         text: sea_orm::ActiveValue::Set(params.text),
@@ -57,7 +55,7 @@ pub async fn query_comments_for_journal(
         .filter(entities::journal_comment::Column::JournalId.eq(journal_id))
         .order_by_asc(entities::journal_comment::Column::CreatedAt);
     q = match date {
-        Some(date) => q.filter(entities::journal_comment::Column::Date.eq(date_to_sqlite(date))),
+        Some(date) => q.filter(entities::journal_comment::Column::Date.eq(date)),
         None => q.filter(entities::journal_comment::Column::Date.is_null()),
     };
     let comments = q.all(db).await?;

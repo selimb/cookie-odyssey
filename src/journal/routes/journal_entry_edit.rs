@@ -12,10 +12,7 @@ use crate::{
         append_journal_entry_media, delete_journal_entry_media, query_journal_entry_by_id,
         query_media_for_journal_entry, reorder_journal_entry_media, MediaFull,
     },
-    utils::{
-        date_utils::{date_to_sqlite, time_to_sqlite},
-        serde_utils::string_trim,
-    },
+    utils::serde_utils::string_trim,
     AppState, FormError, Route, RouteError, RouteResult, Templ, Toast,
 };
 use entities::{prelude::*, *};
@@ -92,8 +89,8 @@ pub async fn journal_entry_edit_post(
                 id: sea_orm::ActiveValue::Set(entry_id),
                 title: sea_orm::ActiveValue::Set(title),
                 address: sea_orm::ActiveValue::Set(address),
-                date: sea_orm::ActiveValue::Set(date_to_sqlite(date)),
-                time: sea_orm::ActiveValue::Set(time_to_sqlite(time)),
+                date: sea_orm::ActiveValue::Set(date),
+                time: sea_orm::ActiveValue::Set(time),
                 text: sea_orm::ActiveValue::Set(text),
                 ..Default::default()
             };

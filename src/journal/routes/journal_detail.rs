@@ -9,10 +9,8 @@ use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QuerySe
 use serde::Serialize;
 
 use crate::{
-    comment::routes::CommentList,
-    journal::queries::query_journal_by_slug,
-    utils::date_utils::{date_from_sqlite, time_from_sqlite},
-    AppState, AuthSession, Route, RouteResult, Templ,
+    comment::routes::CommentList, journal::queries::query_journal_by_slug, AppState, AuthSession,
+    Route, RouteResult, Templ,
 };
 use entities::{prelude::*, *};
 
@@ -95,8 +93,8 @@ async fn query_entries_by_day(
     let entries = entries
         .into_iter()
         .map(|e| {
-            let date = date_from_sqlite(e.date).unwrap();
-            let time = time_from_sqlite(e.time).unwrap();
+            let date = e.date;
+            let time = e.time;
             let datetime = chrono::NaiveDateTime::new(date, time);
             EntrySlim {
                 id: e.id,
@@ -108,10 +106,10 @@ async fn query_entries_by_day(
         })
         .sorted_by_key(|e| e.datetime);
 
-    let journal_start = date_from_sqlite(&journal.start_date).unwrap();
+    let journal_start = &journal.start_date;
     let mut entries_by_day: Vec<Day> = Vec::new();
     for (date, chunk) in &entries.into_iter().chunk_by(|e| e.date) {
-        let day_number = (date - journal_start).num_days() + 1;
+        let day_number = (date - *journal_start).num_days() + 1;
         let href = Route::JournalDayGet(Some(&JournalDayGetPath {
             slug: journal.slug.clone(),
             date,
