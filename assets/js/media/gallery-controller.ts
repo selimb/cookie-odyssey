@@ -16,14 +16,13 @@ export class JournalEntryMediaGalleryController extends TypedController(
 
   connect(): void {
     this.gallery = lightGallery(this.element, {
-      plugins: [lgZoom, lgThumbnail, lgVideo],
+      plugins: [lgVideo, lgThumbnail],
       supportLegacyBrowser: false,
       speed: 100,
       // Matches `targets#item` above.
       selector: "[data-media--gallery-target=item]",
       enableDrag: false,
       enableThumbDrag: false,
-      // XXX
       hideScrollbar: true,
     });
   }
