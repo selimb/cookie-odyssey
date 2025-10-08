@@ -4,7 +4,7 @@ use anyhow::Context;
 
 /// Transcodes a video file to a universal format (H.264 video codec, AAC audio codec).
 /// We do this because user-uploaded videos can be in weird formats, e.g. some Android
-/// phones H.265 and don't include the video length in the metadata.
+/// phones use H.265 and don't include the video length in the metadata.
 pub fn transcode_video(input_path: &Path, output_path: &Path) -> anyhow::Result<()> {
     // Example implementation using ffmpeg command line tool
     let output = std::process::Command::new("ffmpeg")

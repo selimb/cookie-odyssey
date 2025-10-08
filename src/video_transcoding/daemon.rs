@@ -68,7 +68,7 @@ impl VideoTranscodeDaemon {
     }
 
     pub async fn shutdown(self) -> anyhow::Result<()> {
-        // TODO: Is the cleanest way of doing this?
+        // TODO: Is this the cleanest way?
         self.channel
             .send(Message::Shutdown)
             .await
