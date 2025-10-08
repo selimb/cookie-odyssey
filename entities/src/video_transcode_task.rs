@@ -25,7 +25,7 @@ pub enum TaskStatus {
     Pending,
     #[sea_orm(string_value = "completed")]
     Completed,
-    #[sea_orm(string_value = "Failed")]
+    #[sea_orm(string_value = "failed")]
     Failed,
 }
 

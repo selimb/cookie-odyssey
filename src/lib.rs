@@ -7,6 +7,7 @@ pub mod state;
 pub mod storage;
 pub mod template_engine;
 pub mod utils;
+pub mod video_transcoding;
 
 pub use auth::sessions::{AuthSession, AuthUser};
 pub use router::Route;

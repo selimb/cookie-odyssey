@@ -8,7 +8,9 @@ use sea_orm::{
 use entities::{prelude::*, *};
 use serde::Serialize;
 
-use crate::{storage::FileStore, NotFound, RouteError};
+use crate::{
+    storage::FileStore, video_transcoding::daemon::VideoTranscodeDaemon, NotFound, RouteError,
+};
 
 use super::routes::{Direction, JournalEntryMediaCommitBody, JournalEntryMediaReorder};
 
@@ -138,18 +140,20 @@ pub async fn append_journal_entry_media(
     // Don't like referencing upper layers here, but this is easier.
     input: &JournalEntryMediaCommitBody,
     db: &DatabaseConnection,
-) -> Result<(), DbErr> {
+    video_transcoder: &VideoTranscodeDaemon,
+) -> anyhow::Result<()> {
     let next_order = JournalEntryMedia::find()
         .filter(journal_entry_media::Column::JournalEntryId.eq(input.entry_id))
         .count(db)
         .await?;
     let next_order = next_order as usize;
 
-    let data = input
-        .items
-        .iter()
-        .enumerate()
-        .map(|(index, item)| journal_entry_media::ActiveModel {
+    let mut need_transcode = false;
+
+    let mut data: Vec<journal_entry_media::ActiveModel> = Vec::with_capacity(input.items.len());
+
+    for (index, item) in input.items.iter().enumerate() {
+        data.push(journal_entry_media::ActiveModel {
             journal_entry_id: sea_orm::ActiveValue::Set(input.entry_id),
             media_type: sea_orm::ActiveValue::Set(item.media_type),
             order: sea_orm::ActiveValue::Set((next_order + index) as i32),
@@ -161,8 +165,20 @@ pub async fn append_journal_entry_media(
             thumbnail_height: sea_orm::ActiveValue::Set(item.height_thumbnail),
             caption: sea_orm::ActiveValue::NotSet,
             id: sea_orm::ActiveValue::NotSet, // Auto-incremented.
-        })
-        .collect::<Vec<_>>();
+        });
+        match item.media_type {
+            journal_entry_media::MediaType::Image => {}
+            journal_entry_media::MediaType::Video => {
+                need_transcode = true;
+                video_transcoder.enqueue_task(item.file_id_original).await?;
+            }
+        };
+    }
+
+    if need_transcode {
+        video_transcoder.notify().await?;
+    }
+
     JournalEntryMedia::insert_many(data).exec(db).await?;
 
     Ok(())

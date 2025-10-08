@@ -85,6 +85,8 @@ export class ToastController extends TypedController("toast", "element", {
 }
 
 export function toast(data: ToastData): void {
+  console.info("toast", data);
+
   document.body.dispatchEvent(
     new CustomEvent<ToastData>(TOAST_EVT, { detail: data }),
   );

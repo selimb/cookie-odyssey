@@ -1,5 +1,6 @@
 //! Abstraction for object storage.
-//! Mostly uses the S3 terminology because that's what I started with.
+//! Mostly uses the S3 terminology because that's what I started with, even though
+//! this now uses Azure Blob Storage.
 //!
 use anyhow::Context;
 use axum::body::Bytes;
@@ -10,8 +11,10 @@ use azure_storage_blobs::prelude::{BlobServiceClient, ClientBuilder, ContainerCl
 use futures::stream::StreamExt as _;
 use std::{
     collections::{HashMap, HashSet},
+    path::PathBuf,
     sync::Arc,
 };
+use tokio::io::AsyncWriteExt;
 
 use app_config::{AppConfig, StorageConfig};
 
@@ -107,6 +110,32 @@ impl FileStore {
         Ok(files)
     }
 
+    pub async fn download_to_file(
+        &self,
+        bucket: String,
+        key: String,
+        path: &PathBuf,
+    ) -> Result<(), anyhow::Error> {
+        let container_client = self.client.container_client(bucket);
+        let blob_client = container_client.blob_client(key);
+
+        let mut file = tokio::fs::File::create(path)
+            .await
+            .with_context(|| format!("Failed to create file: {:?}", path))?;
+
+        let mut stream = blob_client.get().into_stream();
+
+        // Adapted from https://github.com/Azure/azure-sdk-for-rust/blob/25ebe5a599a88f311e28a0b63102ce318998f8b6/sdk/storage_blobs/examples/stream_blob_00.rs
+        while let Some(value) = stream.next().await {
+            let mut body = value?.data;
+            while let Some(value) = body.next().await {
+                let chunk = value?;
+                file.write_all(&chunk).await?;
+            }
+        }
+        Ok(())
+    }
+
     pub async fn delete_file(&self, bucket: &Bucket, key: &str) -> Result<(), anyhow::Error> {
         let bucket = bucket.to_name(&self.conf).to_owned();
         let container_client = self.client.container_client(&bucket);
@@ -169,16 +198,7 @@ impl FileStore {
         })
     }
 
-    pub async fn upload(
-        &self,
-        bucket: String,
-        key: FileKey,
-        body: Bytes,
-    ) -> Result<(), UploadError> {
-        if !self.conf.emulator {
-            return Err(UploadError::NotSupported);
-        }
-
+    pub async fn upload(&self, bucket: String, key: FileKey, body: Bytes) -> anyhow::Result<()> {
         let client = &self.client;
         let container_client = client.container_client(bucket);
         self.ensure_container_exists(&container_client)
@@ -188,6 +208,35 @@ impl FileStore {
         let blob_client = container_client.blob_client(key);
         blob_client
             .put_block_blob(body)
+            .await
+            .context("Failed to upload blob")?;
+        Ok(())
+    }
+
+    pub async fn upload_file(
+        &self,
+        bucket: String,
+        key: FileKey,
+        path: &PathBuf,
+    ) -> anyhow::Result<()> {
+        let file = tokio::fs::File::open(path)
+            .await
+            .with_context(|| format!("Failed to open file: {:?}", path))?;
+        let client = &self.client;
+        let container_client = client.container_client(bucket);
+        self.ensure_container_exists(&container_client)
+            .await
+            .context("Failed to ensure container exists")?;
+
+        let blob_client = container_client.blob_client(key);
+
+        // Adapted from https://github.com/Azure/azure-sdk-for-rust/blob/25ebe5a599a88f311e28a0b63102ce318998f8b6/sdk/storage_blobs/examples/stream_blob_02.rs
+        let stream = azure_core::tokio::fs::FileStreamBuilder::new(file)
+            .build()
+            .await
+            .context("Failed to build file stream")?;
+        blob_client
+            .put_block_blob(stream)
             .await
             .context("Failed to upload blob")?;
         Ok(())
@@ -245,12 +294,4 @@ impl FileStore {
             Ok(_) => Ok(()),
         }
     }
-}
-
-#[derive(thiserror::Error, Debug)]
-pub enum UploadError {
-    #[error("{0}")]
-    Other(#[from] anyhow::Error),
-    #[error("Direct upload is not supported")]
-    NotSupported,
 }

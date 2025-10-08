@@ -91,7 +91,8 @@ impl Cli {
     }
 
     async fn server(&self) -> Result<(), anyhow::Error> {
-        let app = cookie_odyssey::server::mkapp(&self.conf).await?;
+        let (state, pool) = init_state(&self.conf).await?;
+        let app = cookie_odyssey::server::mkapp(state, &pool).await?;
 
         // FIXME Run migrations
         let port = 4444;
@@ -100,6 +101,8 @@ impl Cli {
             .context("Failed to bind TCP listener")?;
         info!("Starting server on http://localhost:{port}");
         axum::serve(listener, app).await?;
+        // TODO: Graceful shutdown.
+        // video_transcoder.shutdown().await?;
         Ok(())
     }
 
