@@ -12,8 +12,9 @@ async-trait = { workspace = true }
 app-config = { path = "app_config" }
 axum = "0.8.4"
 axum-login = "0.17.0"
-azure_storage = "0.20.0"
-azure_storage_blobs = "0.20.0"
+azure_core = { version="0.21.0", features = ["tokio-fs"] }
+azure_storage = "0.21.0"
+azure_storage_blobs = "0.21.0"
 chrono = { workspace = true, features = ["serde"] }
 clap = { workspace = true }
 entities = { path = "entities" }

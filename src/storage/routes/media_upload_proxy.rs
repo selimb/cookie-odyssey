@@ -6,7 +6,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::{storage::store::UploadError, AppState, RouteError};
+use crate::{AppState, RouteError};
 
 #[derive(Deserialize, Serialize)]
 pub struct MediaUploadProxyParams {
@@ -20,8 +20,7 @@ pub async fn media_upload_proxy(
     body: Bytes,
 ) -> Result<Response, RouteError> {
     match state.storage.upload(params.bucket, params.key, body).await {
-        Err(UploadError::Other(err)) => Err(RouteError::from(err)),
-        Err(UploadError::NotSupported) => Ok((StatusCode::NOT_IMPLEMENTED).into_response()),
+        Err(err) => Err(RouteError::from(err)),
         Ok(_) => Ok((StatusCode::CREATED).into_response()),
     }
 }

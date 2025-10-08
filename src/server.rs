@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{env::temp_dir, sync::Arc};
 
 use anyhow::Context;
 use app_config::{AppConfig, AppEnv};
@@ -6,14 +6,16 @@ use axum::Router;
 use tower_http::{catch_panic::CatchPanicLayer, services::ServeDir};
 
 use crate::{
-    auth::sessions::init_session, state::AppState, storage::init_storage,
+    auth::sessions::init_session,
+    state::AppState,
+    storage::{init_storage, FileStore},
     template_engine::init_templates,
+    video_transcoding::{daemon::VideoTranscodeDaemon, manager::VideoTranscoder},
 };
 
-pub async fn mkapp(conf: &AppConfig) -> Result<Router, anyhow::Error> {
+pub async fn mkapp(state: AppState, pool: &sqlx::SqlitePool) -> Result<Router, anyhow::Error> {
     // FIXME customize 404
-    let (state, pool) = init_state(conf).await?;
-    let auth_layer = init_session(&pool, &state.db)
+    let auth_layer = init_session(pool, &state.db)
         .await
         .context("Failed to initialize session store")?;
 
@@ -28,12 +30,18 @@ pub async fn mkapp(conf: &AppConfig) -> Result<Router, anyhow::Error> {
 
 pub async fn init_state(conf: &AppConfig) -> Result<(AppState, sqlx::SqlitePool), anyhow::Error> {
     let template_engine = init_templates();
+
     let (pool, db) = init_db(conf).await?;
+
     let storage = init_storage(conf).await?;
+
+    let video_transcoder = init_video_transcoder(&db, storage.clone()).await?;
+
     let state = AppState {
         template_engine: Arc::new(template_engine),
         db,
         storage,
+        video_transcoder: Arc::new(video_transcoder),
         dev: conf.env == AppEnv::Dev,
     };
     Ok((state, pool))
@@ -54,4 +62,25 @@ pub async fn init_db(
         .context("Failed to connect to database")?;
     let db = sea_orm::SqlxSqliteConnector::from_sqlx_sqlite_pool(pool.clone());
     Ok((pool, db))
+}
+
+async fn init_video_transcoder(
+    db: &sea_orm::DatabaseConnection,
+    storage: Arc<FileStore>,
+) -> anyhow::Result<VideoTranscodeDaemon> {
+    let work_dir = temp_dir().join("cookie-odyssey-video-transcode");
+    tokio::fs::create_dir_all(&work_dir)
+        .await
+        .context("Failed to create work directory for video transcoder")?;
+
+    let video_transcoder = VideoTranscodeDaemon::start(
+        db.clone(),
+        VideoTranscoder {
+            db: db.clone(),
+            storage: storage.clone(),
+            work_dir: work_dir.to_string_lossy().to_string(),
+        },
+    )
+    .await;
+    Ok(video_transcoder)
 }

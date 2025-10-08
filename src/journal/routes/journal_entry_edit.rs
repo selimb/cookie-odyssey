@@ -152,7 +152,7 @@ pub async fn journal_entry_media_commit_post(
             return Ok((FormError::STATUS, err.to_string()).into_response());
         }
     };
-    append_journal_entry_media(&body, &state.db).await?;
+    append_journal_entry_media(&body, &state.db, &state.video_transcoder).await?;
 
     let html = render_media_list(body.entry_id, &state, &templ).await?;
     Ok(html.into_response())

@@ -8,3 +8,4 @@ pub mod journal_comment;
 pub mod journal_entry;
 pub mod journal_entry_media;
 pub mod user;
+pub mod video_transcode_task;
