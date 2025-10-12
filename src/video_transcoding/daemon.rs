@@ -41,7 +41,7 @@ impl VideoTranscodeDaemon {
             select! {
                 _ = ticker.tick() => {
                     if let Err(e) = manager.process_pending().await {
-                        error!("Transcode (interval) error: {e}");
+                        error!("Transcode (interval) error: {e:#?}");
                     }
                 }
                 message = rx.recv() => {
@@ -50,7 +50,7 @@ impl VideoTranscodeDaemon {
                             match message {
                                 Message::Process => {
                                     if let Err(e) = manager.process_pending().await {
-                                        error!("Transcode (message) error: {e}");
+                                        error!("Transcode (message) error: {e:#?}");
                                     }
                                 }
                                 Message::Shutdown => {

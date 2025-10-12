@@ -75,7 +75,7 @@ impl VideoTranscoder {
         let mut task: entities::video_transcode_task::ActiveModel = task.into();
 
         if let Err(err) = result {
-            error!("Transcoding failed for task {}: {}", task_id, err);
+            error!("Transcoding failed for task {task_id}: {err:#?}");
             task.updated_at = sea_orm::ActiveValue::Set(Some(chrono::Utc::now()));
             task.status =
                 sea_orm::ActiveValue::Set(entities::video_transcode_task::TaskStatus::Failed);
