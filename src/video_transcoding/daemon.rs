@@ -12,13 +12,12 @@ enum Message {
 
 #[derive(Debug)]
 pub struct VideoTranscodeDaemon {
-    db: sea_orm::DatabaseConnection,
     channel: mpsc::Sender<Message>,
     worker_handle: JoinHandle<()>,
 }
 
 impl VideoTranscodeDaemon {
-    pub async fn start(db: sea_orm::DatabaseConnection, manager: VideoTranscoder) -> Self {
+    pub async fn start(manager: VideoTranscoder) -> Self {
         let (tx, rx) = mpsc::channel(32);
 
         let handle = tokio::spawn(async move {
@@ -26,7 +25,6 @@ impl VideoTranscodeDaemon {
         });
 
         Self {
-            db,
             channel: tx,
             worker_handle: handle,
         }
@@ -74,14 +72,6 @@ impl VideoTranscodeDaemon {
             .await
             .context("Failed to send shutdown message")?;
         self.worker_handle.await.context("Failed to join worker")?;
-        Ok(())
-    }
-
-    pub async fn enqueue_task(&self, file_id: i32) -> anyhow::Result<()> {
-        VideoTranscoder::enqueue_task(&self.db, file_id)
-            .await
-            .context("Failed to enqueue task")?;
-
         Ok(())
     }
 

@@ -11,7 +11,7 @@ pub struct AppState {
     pub template_engine: Arc<TemplateEngine>,
     pub db: sea_orm::DatabaseConnection,
     pub storage: Arc<FileStore>,
-    pub video_transcoder: Arc<VideoTranscodeDaemon>,
+    pub video_transcoder: Arc<Option<VideoTranscodeDaemon>>,
     pub dev: bool,
 }
 

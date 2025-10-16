@@ -35,7 +35,11 @@ pub async fn init_state(conf: &AppConfig) -> Result<(AppState, sqlx::SqlitePool)
 
     let storage = init_storage(conf).await?;
 
-    let video_transcoder = init_video_transcoder(&db, storage.clone()).await?;
+    let video_transcoder: Option<VideoTranscodeDaemon> = if conf.video_transcoding.in_process {
+        Some(init_video_transcoder(&db, storage.clone()).await?)
+    } else {
+        None
+    };
 
     let state = AppState {
         template_engine: Arc::new(template_engine),
@@ -73,14 +77,11 @@ async fn init_video_transcoder(
         .await
         .context("Failed to create work directory for video transcoder")?;
 
-    let video_transcoder = VideoTranscodeDaemon::start(
-        db.clone(),
-        VideoTranscoder {
-            db: db.clone(),
-            storage: storage.clone(),
-            work_dir: work_dir.to_string_lossy().to_string(),
-        },
-    )
+    let video_transcoder = VideoTranscodeDaemon::start(VideoTranscoder {
+        db: db.clone(),
+        storage: storage.clone(),
+        work_dir: work_dir.to_string_lossy().to_string(),
+    })
     .await;
     Ok(video_transcoder)
 }

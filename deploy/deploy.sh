@@ -10,8 +10,7 @@ set -eux
 rm -rf dist
 mkdir dist
 
-cargo build --release
-make tw
+just build
 
 cp target/release/cookie-odyssey dist/
 mkdir dist/assets

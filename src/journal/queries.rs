@@ -9,7 +9,9 @@ use entities::{prelude::*, *};
 use serde::Serialize;
 
 use crate::{
-    storage::FileStore, video_transcoding::daemon::VideoTranscodeDaemon, NotFound, RouteError,
+    storage::FileStore,
+    video_transcoding::{daemon::VideoTranscodeDaemon, manager::VideoTranscoder},
+    NotFound, RouteError,
 };
 
 use super::routes::{Direction, JournalEntryMediaCommitBody, JournalEntryMediaReorder};
@@ -140,7 +142,7 @@ pub async fn append_journal_entry_media(
     // Don't like referencing upper layers here, but this is easier.
     input: &JournalEntryMediaCommitBody,
     db: &DatabaseConnection,
-    video_transcoder: &VideoTranscodeDaemon,
+    video_transcoder: &Option<VideoTranscodeDaemon>,
 ) -> anyhow::Result<()> {
     let next_order = JournalEntryMedia::find()
         .filter(journal_entry_media::Column::JournalEntryId.eq(input.entry_id))
@@ -170,13 +172,15 @@ pub async fn append_journal_entry_media(
             journal_entry_media::MediaType::Image => {}
             journal_entry_media::MediaType::Video => {
                 need_transcode = true;
-                video_transcoder.enqueue_task(item.file_id_original).await?;
+                VideoTranscoder::enqueue_task(db, item.file_id_original).await?;
             }
         };
     }
 
     if need_transcode {
-        video_transcoder.notify().await?;
+        if let Some(video_transcoder) = video_transcoder {
+            video_transcoder.notify().await?;
+        }
     }
 
     JournalEntryMedia::insert_many(data).exec(db).await?;
