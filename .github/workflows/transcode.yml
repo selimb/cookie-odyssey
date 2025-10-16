@@ -1,0 +1,32 @@
+name: Video Transcode
+
+on:
+  workflow_dispatch:
+    inputs:
+      blob_url:
+        description: "Azure Blob Storage URL (unsigned)"
+        required: true
+        type: string
+
+jobs:
+  transcode:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      # XXX Echo inputs?
+
+      - name: Install dependencies
+        run: apt install azcopy ffmpeg
+
+      - name: Download blob
+        run: |
+          azcopy copy '${{ github.event.inputs.blob_url }}' -o input_video
+
+      - name: Transcode
+        run: |
+          ffmpeg -i input_video -c:v libx264 -crf 23 -preset slow -c:a aac -b:a 128k -y output_video.mp4
+
+      - name: Upload
+        run: |
+          azcopy copy output_video.mp4 '${{ github.event.inputs.blob_url }}'
