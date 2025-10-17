@@ -85,6 +85,7 @@ export class ToastController extends TypedController("toast", "element", {
 }
 
 export function toast(data: ToastData): void {
+  // eslint-disable-next-line no-console -- For troubleshooting.
   console.info("toast", data);
 
   document.body.dispatchEvent(

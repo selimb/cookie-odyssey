@@ -34,5 +34,7 @@ jobs:
           bun-version-file: .tool-versions
 
       - run: bun install
+      - run: bun install
+        working-directory: migration/data-migrations/journal-entry-media-width-height-thumbnail
 
       - run: just lint-js

@@ -4,16 +4,14 @@ await Bun.build({
   splitting: false,
   format: "esm",
   target: "browser",
-  // XXX naming
-  // XXX minify
+  // TODO [#16] naming/minify
 });
 
 await Bun.build({
   entrypoints: ["assets/css/vendor/lightgallery.css"],
   outdir: "assets/dist/vendor",
   target: "browser",
-  // XXX naming
-  // XXX minify
+  // TODO [#16] naming/minify
 });
 
 export {};

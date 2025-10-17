@@ -23,7 +23,6 @@ export class JournalEntryMediaGalleryController extends TypedController(
       selector: "[data-media--gallery-target=item]",
       enableDrag: false,
       enableThumbDrag: false,
-      // XXX
       hideScrollbar: true,
     });
   }
