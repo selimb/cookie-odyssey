@@ -1,0 +1,83 @@
+name: Video Transcode
+
+on:
+  workflow_dispatch:
+    # [gh-transcode-inputs]
+    inputs:
+      input_url:
+        description: "Azure Blob Storage URL (signed)"
+        required: true
+        type: string
+      output_url:
+        description: "Azure Blob Storage URL (signed)"
+        required: true
+        type: string
+      task_id:
+        description: "Task ID"
+        required: true
+        type: string
+      callback_url:
+        description: "Callback URL to notify when done"
+        required: false
+        type: string
+
+jobs:
+  transcode:
+    runs-on: ubuntu-latest
+    container: linuxserver/ffmpeg
+    timeout-minutes: 15
+
+    steps:
+      - name: Mask SAS
+        # Inspired by https://github.com/orgs/community/discussions/12764#discussioncomment-11342721
+        run: |
+          input_url=$(jq -r '.inputs.input_url' ${GITHUB_EVENT_PATH})
+          output_url=$(jq -r '.inputs.output_url' ${GITHUB_EVENT_PATH})
+
+          input_query="$(echo "$input_url" | cut -d'?' -f2)"
+          output_query="$(echo "$output_url" | cut -d'?' -f2)"
+
+          echo "::add-mask::$input_query"
+          echo "::add-mask::$output_query"
+
+      - name: Echo inputs
+        run: |
+          echo "input_url: ${{ github.event.inputs.input_url }}"
+          echo "output_url: ${{ github.event.inputs.output_url }}"
+          echo "task_id: ${{ github.event.inputs.task_id }}"
+          echo "callback_url: ${{ github.event.inputs.callback_url }}"
+
+      - name: Download
+        run: >
+          curl
+          --output input_video
+          '${{ github.event.inputs.input_url }}'
+
+      - name: Transcode
+        # [ffmpeg-video-transcode-options] Keep this in sync.
+        run: >
+          ffmpeg
+          -i input_video
+          -c:v libx264
+          -crf 23
+          -preset slow
+          -c:a aac
+          -b:a 128k
+          -y
+          output_video.mp4
+
+      - name: Upload
+        run: >
+          curl
+          -X PUT
+          -H 'x-ms-blob-type: BlockBlob'
+          --upload-file output_video.mp4
+          '${{ github.event.inputs.output_url }}'
+
+      - name: Callback
+        if: ${{ github.event.inputs.callback_url != '' }}
+        run: >
+          curl
+          -X POST
+          -H "X-Github-Action-Client-Key: ${{ secrets.VIDEO_TRANSCODING_CALLBACK_TOKEN }}"
+          '${{ github.event.inputs.callback_url }}'

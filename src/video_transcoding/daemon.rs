@@ -1,69 +1,78 @@
 use anyhow::Context;
-use std::time::Duration;
+use entities::video_transcode_task;
+use std::{sync::Arc, time::Duration};
 use tokio::{select, sync::mpsc, task::JoinHandle, time};
-use tracing::{debug, error};
+use tracing::{debug, error, info};
 
-use crate::video_transcoding::manager::VideoTranscoder;
+use crate::video_transcoding::{
+    backend::traits::VideoTranscodingBackend, manager::VideoTranscodingManager,
+};
 
 enum Message {
-    Process,
+    Process(Vec<video_transcode_task::Model>),
     Shutdown,
 }
 
 #[derive(Debug)]
-pub struct VideoTranscodeDaemon {
+pub struct VideoTranscoder {
+    daemon: Option<VideoTranscodeDaemon>,
     db: sea_orm::DatabaseConnection,
+    // NOTE: We only require an Arc here to allow starting the daemon after construction,
+    // and we only need *that* because we use init_state in many commands.
+    backend: Arc<dyn VideoTranscodingBackend>,
+}
+
+impl VideoTranscoder {
+    pub fn new(db: sea_orm::DatabaseConnection, backend: Arc<dyn VideoTranscodingBackend>) -> Self {
+        Self {
+            daemon: None,
+            db,
+            backend,
+        }
+    }
+
+    pub async fn start(&mut self) {
+        let daemon = VideoTranscodeDaemon::start(self.backend.clone(), self.db.clone()).await;
+        self.daemon = Some(daemon);
+    }
+
+    pub async fn process(&self, tasks: Vec<video_transcode_task::Model>) -> anyhow::Result<()> {
+        if let Some(daemon) = &self.daemon {
+            daemon.process(tasks).await
+        } else {
+            Ok(())
+        }
+    }
+
+    pub async fn shutdown(self) -> anyhow::Result<()> {
+        if let Some(daemon) = self.daemon {
+            daemon.shutdown().await
+        } else {
+            Ok(())
+        }
+    }
+}
+
+#[derive(Debug)]
+struct VideoTranscodeDaemon {
     channel: mpsc::Sender<Message>,
     worker_handle: JoinHandle<()>,
 }
 
 impl VideoTranscodeDaemon {
-    pub async fn start(db: sea_orm::DatabaseConnection, manager: VideoTranscoder) -> Self {
+    pub async fn start(
+        backend: Arc<dyn VideoTranscodingBackend>,
+        db: sea_orm::DatabaseConnection,
+    ) -> Self {
         let (tx, rx) = mpsc::channel(32);
 
         let handle = tokio::spawn(async move {
-            VideoTranscodeDaemon::run(manager, rx).await;
+            run(backend, db, rx).await;
         });
 
         Self {
-            db,
             channel: tx,
             worker_handle: handle,
-        }
-    }
-
-    async fn run(manager: VideoTranscoder, mut rx: mpsc::Receiver<Message>) -> () {
-        let poll_interval = Duration::from_secs(30);
-        let mut ticker = time::interval(poll_interval);
-        ticker.set_missed_tick_behavior(time::MissedTickBehavior::Delay);
-
-        loop {
-            select! {
-                _ = ticker.tick() => {
-                    if let Err(e) = manager.process_pending().await {
-                        error!("Transcode (interval) error: {e}");
-                    }
-                }
-                message = rx.recv() => {
-                    match message {
-                        Some(message) => {
-                            match message {
-                                Message::Process => {
-                                    if let Err(e) = manager.process_pending().await {
-                                        error!("Transcode (message) error: {e}");
-                                    }
-                                }
-                                Message::Shutdown => {
-                                    break;
-                                }
-                            }
-                        },
-                        None => {
-                            break;
-                        }
-                    }
-                }
-            }
         }
     }
 
@@ -77,22 +86,103 @@ impl VideoTranscodeDaemon {
         Ok(())
     }
 
-    pub async fn enqueue_task(&self, file_id: i32) -> anyhow::Result<()> {
-        VideoTranscoder::enqueue_task(&self.db, file_id)
-            .await
-            .context("Failed to enqueue task")?;
-
-        Ok(())
-    }
-
-    pub async fn notify(&self) -> anyhow::Result<()> {
-        debug!("Notifying transcode worker");
+    pub async fn process(&self, tasks: Vec<video_transcode_task::Model>) -> anyhow::Result<()> {
+        debug!("Asking transcode daemon to process {} tasks", tasks.len());
 
         self.channel
-            .send(Message::Process)
+            .send(Message::Process(tasks))
             .await
             .context("Failed to send message to transcode worker")?;
 
         Ok(())
+    }
+}
+
+async fn run(
+    backend: Arc<dyn VideoTranscodingBackend>,
+    db: sea_orm::DatabaseConnection,
+    mut rx: mpsc::Receiver<Message>,
+) -> () {
+    let poll_interval = Duration::from_secs(30);
+    let mut ticker = time::interval(poll_interval);
+    ticker.set_missed_tick_behavior(time::MissedTickBehavior::Delay);
+    let backend = backend.as_ref();
+
+    if let Err(e) = process_pending(backend, &db).await {
+        error!("Transcode (startup) error: {e:#?}");
+    };
+
+    loop {
+        select! {
+            _ = ticker.tick(), if !backend.is_delayed() => {
+                // XXX
+                if let Err(e) = process_pending(backend, &db).await {
+                    error!("Transcode (interval) error: {e:#?}");
+                }
+            }
+            message = rx.recv() => {
+                match message {
+                    Some(message) => {
+                        match message {
+                            Message::Process(tasks) => {
+                                process_tasks(backend, &db, tasks).await;
+                            }
+                            Message::Shutdown => {
+                                break;
+                            }
+                        }
+                    },
+                    None => {
+                        break;
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Polls for pending tasks and processes them all.
+async fn process_pending(
+    backend: &dyn VideoTranscodingBackend,
+    db: &sea_orm::DatabaseConnection,
+) -> anyhow::Result<()> {
+    let pending = VideoTranscodingManager::list_pending(db).await?;
+    debug!("Found {} pending video transcoding tasks.", pending.len());
+
+    process_tasks(backend, db, pending).await;
+    Ok(())
+}
+
+async fn process_tasks(
+    backend: &dyn VideoTranscodingBackend,
+    db: &sea_orm::DatabaseConnection,
+    tasks: Vec<video_transcode_task::Model>,
+) {
+    for task in tasks {
+        let task_id = task.id;
+        info!("Processing task {task_id}");
+        match backend.transcode(&task).await {
+            Err(err) => {
+                error!("Failed task {task_id}: {err:#?}");
+                VideoTranscodingManager::mark_task_error(db, task.id, err.to_string())
+                    .await
+                    .unwrap_or_else(|err| {
+                        error!("Failed to mark task {task_id} as error: {err:#?}");
+                    });
+            }
+            Ok(_) => {
+                if backend.is_delayed() {
+                    info!("Delayed task {task_id}");
+                    // Do nothing, leave it as pending.
+                } else {
+                    info!("Completed task {task_id}");
+                    VideoTranscodingManager::mark_task_completed(db, task.id)
+                        .await
+                        .unwrap_or_else(|err| {
+                            error!("Failed to mark task {task_id} as completed: {err:#?}");
+                        });
+                }
+            }
+        }
     }
 }

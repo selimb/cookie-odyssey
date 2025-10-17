@@ -14,6 +14,7 @@ use std::{
     path::PathBuf,
     sync::Arc,
 };
+use time::OffsetDateTime;
 use tokio::io::AsyncWriteExt;
 
 use app_config::{AppConfig, StorageConfig};
@@ -136,9 +137,8 @@ impl FileStore {
         Ok(())
     }
 
-    pub async fn delete_file(&self, bucket: &Bucket, key: &str) -> Result<(), anyhow::Error> {
-        let bucket = bucket.to_name(&self.conf).to_owned();
-        let container_client = self.client.container_client(&bucket);
+    pub async fn delete_file(&self, bucket: &str, key: &str) -> Result<(), anyhow::Error> {
+        let container_client = self.client.container_client(bucket);
         let blob_client = container_client.blob_client(key);
         blob_client
             .delete()
@@ -242,16 +242,12 @@ impl FileStore {
         Ok(())
     }
 
+    /// Signs a URL for reading the blob from a web browser.
     pub async fn sign_url(
         &self,
         bucket: impl AsRef<str>,
         key: impl AsRef<str>,
     ) -> Result<SignedUrl, anyhow::Error> {
-        let client = &self.client;
-        let blob_client = client
-            .container_client(bucket.as_ref())
-            .blob_client(key.as_ref());
-
         // Use a semi-constant expiry to leverage browser caches.
         let start = time::OffsetDateTime::now_utc()
             .replace_day(1)
@@ -263,6 +259,23 @@ impl FileStore {
             read: true,
             ..Default::default()
         };
+
+        self.sign_url2(bucket, key, perms, expiry).await
+    }
+
+    /// Like [`sign_url`], but more customizable.
+    pub async fn sign_url2(
+        &self,
+        bucket: impl AsRef<str>,
+        key: impl AsRef<str>,
+        perms: BlobSasPermissions,
+        expiry: OffsetDateTime,
+    ) -> Result<SignedUrl, anyhow::Error> {
+        let client = &self.client;
+        let blob_client = client
+            .container_client(bucket.as_ref())
+            .blob_client(key.as_ref());
+
         let sas = blob_client
             .shared_access_signature(perms, expiry)
             .await

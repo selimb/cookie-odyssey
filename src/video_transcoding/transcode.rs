@@ -5,9 +5,10 @@ use anyhow::Context;
 /// Transcodes a video file to a universal format (H.264 video codec, AAC audio codec).
 /// We do this because user-uploaded videos can be in weird formats, e.g. some Android
 /// phones use H.265 and don't include the video length in the metadata.
-pub fn transcode_video(input_path: &Path, output_path: &Path) -> anyhow::Result<()> {
+pub async fn transcode_video(input_path: &Path, output_path: &Path) -> anyhow::Result<()> {
     // Example implementation using ffmpeg command line tool
-    let output = std::process::Command::new("ffmpeg")
+    let output = tokio::process::Command::new("ffmpeg")
+        // [ffmpeg-video-transcode-options] Keep this in sync.
         .args([
             "-i",
             &input_path.to_string_lossy(),
@@ -34,6 +35,7 @@ pub fn transcode_video(input_path: &Path, output_path: &Path) -> anyhow::Result<
         .stderr(Stdio::piped())
         .stdout(Stdio::piped())
         .output()
+        .await
         .context("Failed to run ffmpeg")?;
 
     let status = output.status;
@@ -55,14 +57,14 @@ mod tests {
 
     const ANDROID_VIDEO_PATH: &str = "test_data/video_transcoding/android_video.mp4";
 
-    #[test]
-    fn test_transcode_video() {
+    #[tokio::test]
+    async fn test_transcode_video() {
         // Add your test implementation here
         let input_path = Path::new(ANDROID_VIDEO_PATH);
         assert!(input_path.is_file());
 
         let output_path = Path::new("tmp").join(input_path.file_name().unwrap());
 
-        transcode_video(input_path, &output_path).unwrap();
+        transcode_video(input_path, &output_path).await.unwrap();
     }
 }

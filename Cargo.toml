@@ -40,6 +40,7 @@ tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 url = { workspace = true }
 dialoguer = { version = "0.11.0", features = [] }
+reqwest = { version = "0.12.24", features = ["json"] }
 
 [workspace]
 members = ["app_config", "entities", "migration"]
