@@ -10,7 +10,7 @@ use serde::Serialize;
 
 use crate::{
     storage::FileStore,
-    video_transcoding::{daemon::VideoTranscodeDaemon, manager::VideoTranscodingManager},
+    video_transcoding::{daemon::VideoTranscoder, manager::VideoTranscodingManager},
     NotFound, RouteError,
 };
 
@@ -142,7 +142,7 @@ pub async fn append_journal_entry_media(
     // Don't like referencing upper layers here, but this is easier.
     input: &JournalEntryMediaCommitBody,
     db: &DatabaseConnection,
-    video_transcoder: &VideoTranscodeDaemon,
+    video_transcoder: &VideoTranscoder,
 ) -> anyhow::Result<()> {
     let next_order = JournalEntryMedia::find()
         .filter(journal_entry_media::Column::JournalEntryId.eq(input.entry_id))

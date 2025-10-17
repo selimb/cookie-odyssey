@@ -1,5 +1,7 @@
+use std::fmt::Debug;
+
 #[async_trait::async_trait]
-pub trait VideoTranscodingBackend: Send + Sync + 'static {
+pub trait VideoTranscodingBackend: Send + Sync + 'static + Debug {
     /// Returns whether [`transcode`] is delayed (e.g., queued in an external system).
     fn is_delayed(&self) -> bool;
 

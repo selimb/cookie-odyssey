@@ -11,6 +11,7 @@ use crate::{
     },
 };
 
+#[derive(Debug)]
 pub struct InProcessVideoTranscoder {
     pub storage: Arc<FileStore>,
     pub db: sea_orm::DatabaseConnection,

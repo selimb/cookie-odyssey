@@ -1,6 +1,6 @@
 use anyhow::Context;
 use entities::video_transcode_task;
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 use tokio::{select, sync::mpsc, task::JoinHandle, time};
 use tracing::{debug, error, info};
 
@@ -14,14 +14,54 @@ enum Message {
 }
 
 #[derive(Debug)]
-pub struct VideoTranscodeDaemon {
+pub struct VideoTranscoder {
+    daemon: Option<VideoTranscodeDaemon>,
+    db: sea_orm::DatabaseConnection,
+    // NOTE: We only require an Arc here to allow starting the daemon after construction,
+    // and we only need *that* because we use init_state in many commands.
+    backend: Arc<dyn VideoTranscodingBackend>,
+}
+
+impl VideoTranscoder {
+    pub fn new(db: sea_orm::DatabaseConnection, backend: Arc<dyn VideoTranscodingBackend>) -> Self {
+        Self {
+            daemon: None,
+            db,
+            backend,
+        }
+    }
+
+    pub async fn start(&mut self) {
+        let daemon = VideoTranscodeDaemon::start(self.backend.clone(), self.db.clone()).await;
+        self.daemon = Some(daemon);
+    }
+
+    pub async fn process(&self, tasks: Vec<video_transcode_task::Model>) -> anyhow::Result<()> {
+        if let Some(daemon) = &self.daemon {
+            daemon.process(tasks).await
+        } else {
+            Ok(())
+        }
+    }
+
+    pub async fn shutdown(self) -> anyhow::Result<()> {
+        if let Some(daemon) = self.daemon {
+            daemon.shutdown().await
+        } else {
+            Ok(())
+        }
+    }
+}
+
+#[derive(Debug)]
+struct VideoTranscodeDaemon {
     channel: mpsc::Sender<Message>,
     worker_handle: JoinHandle<()>,
 }
 
 impl VideoTranscodeDaemon {
     pub async fn start(
-        backend: Box<dyn VideoTranscodingBackend>,
+        backend: Arc<dyn VideoTranscodingBackend>,
         db: sea_orm::DatabaseConnection,
     ) -> Self {
         let (tx, rx) = mpsc::channel(32);
@@ -59,7 +99,7 @@ impl VideoTranscodeDaemon {
 }
 
 async fn run(
-    backend: Box<dyn VideoTranscodingBackend>,
+    backend: Arc<dyn VideoTranscodingBackend>,
     db: sea_orm::DatabaseConnection,
     mut rx: mpsc::Receiver<Message>,
 ) -> () {

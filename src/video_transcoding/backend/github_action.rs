@@ -14,6 +14,7 @@ use crate::{
     Route,
 };
 
+#[derive(Debug)]
 pub struct GithubActionVideoTranscoder {
     pub storage: Arc<FileStore>,
     pub db: sea_orm::DatabaseConnection,

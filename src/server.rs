@@ -15,7 +15,7 @@ use crate::{
             github_action::GithubActionVideoTranscoder, in_process::InProcessVideoTranscoder,
             traits::VideoTranscodingBackend,
         },
-        daemon::VideoTranscodeDaemon,
+        daemon::VideoTranscoder,
     },
 };
 
@@ -34,14 +34,20 @@ pub async fn mkapp(state: AppState, pool: &sqlx::SqlitePool) -> Result<Router, a
     Ok(router)
 }
 
-pub async fn init_state(conf: &AppConfig) -> Result<(AppState, sqlx::SqlitePool), anyhow::Error> {
+pub async fn init_state(
+    conf: &AppConfig,
+    start: bool,
+) -> Result<(AppState, sqlx::SqlitePool), anyhow::Error> {
     let template_engine = init_templates();
 
     let (pool, db) = init_db(conf).await?;
 
     let storage = init_storage(conf).await?;
 
-    let video_transcoder = init_video_transcoder(conf, &db, storage.clone()).await?;
+    let mut video_transcoder = init_video_transcoder(conf, &db, storage.clone()).await?;
+    if start {
+        video_transcoder.start().await;
+    }
 
     let state = AppState {
         github_client_token: conf.video_transcoding.github_client_token.clone(),
@@ -75,8 +81,8 @@ async fn init_video_transcoder(
     conf: &AppConfig,
     db: &sea_orm::DatabaseConnection,
     storage: Arc<FileStore>,
-) -> anyhow::Result<VideoTranscodeDaemon> {
-    let backend: Box<dyn VideoTranscodingBackend> = match conf.video_transcoding.in_process {
+) -> anyhow::Result<VideoTranscoder> {
+    let backend: Arc<dyn VideoTranscodingBackend> = match conf.video_transcoding.in_process {
         true => {
             let work_dir = temp_dir().join("cookie-odyssey-video-transcode");
             tokio::fs::create_dir_all(&work_dir)
@@ -88,7 +94,7 @@ async fn init_video_transcoder(
                 storage,
                 work_dir: work_dir.to_string_lossy().to_string(),
             };
-            Box::new(backend)
+            Arc::new(backend)
         }
         false => {
             let github_token = conf
@@ -110,10 +116,10 @@ async fn init_video_transcoder(
                 server_name: conf.server_name.clone(),
                 reqwest: reqwest::Client::new(),
             };
-            Box::new(backend)
+            Arc::new(backend)
         }
     };
 
-    let video_transcoder = VideoTranscodeDaemon::start(backend, db.clone()).await;
+    let video_transcoder = VideoTranscoder::new(db.clone(), backend);
     Ok(video_transcoder)
 }

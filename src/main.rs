@@ -91,7 +91,7 @@ impl Cli {
     }
 
     async fn server(&self) -> Result<(), anyhow::Error> {
-        let (state, pool) = init_state(&self.conf).await?;
+        let (state, pool) = init_state(&self.conf, true).await?;
         let app = cookie_odyssey::server::mkapp(state, &pool).await?;
 
         // FIXME Run migrations
@@ -138,7 +138,7 @@ impl Cli {
     }
 
     async fn cleanup_storage(&self, dry_run: bool) -> Result<(), anyhow::Error> {
-        let (state, _) = init_state(&self.conf).await?;
+        let (state, _) = init_state(&self.conf, false).await?;
         let cleanup = StorageCleanup {
             dry_run,
             storage: Arc::into_inner(state.storage).unwrap(),
@@ -154,7 +154,7 @@ impl Cli {
     }
 
     async fn check(&self) -> Result<(), anyhow::Error> {
-        let (state, _) = init_state(&self.conf).await?;
+        let (state, _) = init_state(&self.conf, false).await?;
         let containers = state.storage.list_containers().await?;
 
         info!("Containers: {containers:?}");
