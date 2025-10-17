@@ -4,7 +4,8 @@
     "templates/**/*.html",
     "eslint.config.js",
     "tailwind.config.js",
-    "tools/**/*.ts"
+    "tools/**/*.ts",
+    "deploy/**/*.ts"
   ],
   "exclude": ["node_modules", "assets/dist"],
   "compilerOptions": {
