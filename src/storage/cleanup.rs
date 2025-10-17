@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, sync::Arc};
 
 use crate::storage::{store::FileKey, Bucket, FileStore};
 use anyhow::Context;
@@ -7,7 +7,7 @@ use sea_orm::{EntityTrait, FromQueryResult, Statement};
 use tracing::info;
 
 pub struct StorageCleanup {
-    pub storage: FileStore,
+    pub storage: Arc<FileStore>,
     pub db: sea_orm::DatabaseConnection,
     pub dry_run: bool,
 }

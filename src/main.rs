@@ -1,4 +1,4 @@
-use std::{io::Write, sync::Arc};
+use std::io::Write;
 
 use anyhow::Context;
 use clap::{Parser, Subcommand};
@@ -141,7 +141,7 @@ impl Cli {
         let (state, _) = init_state(&self.conf, false).await?;
         let cleanup = StorageCleanup {
             dry_run,
-            storage: Arc::into_inner(state.storage).unwrap(),
+            storage: state.storage,
             db: state.db,
         };
         let confirm = || {
