@@ -105,15 +105,15 @@ async function sshExecScript(
   // Write script to the remote.
   const result = await sshExec(
     ssh,
-    `tmpfile=$(mktemp) && cat > "$tmpfile" && chmod 777 "$tmpfile" && echo "$tmpfile"`,
+    `tmpfile=$(mktemp) && cat > "$tmpfile" && echo "$tmpfile"`,
     { stdin: script },
   );
 
   const remoteScriptPath = result.stdout.trim();
 
   const command = options?.user
-    ? `su - ${options.user} -c "${remoteScriptPath}"`
-    : `bash "${remoteScriptPath}"`;
+    ? `su - ${options.user} -c "bash '${remoteScriptPath}'"`
+    : `bash '${remoteScriptPath}'`;
   return await sshExec(ssh, command, undefined, script);
 }
 
@@ -129,8 +129,8 @@ async function main(): Promise<void> {
 
   program.command("db-push").action(async () => {
     await sshConnect(async (ssh) => {
-      await ssh.putFile(DB_PATH_LOCAL, DB_PATH_REMOTE);
-      logger.info(`Database pushed to ${DB_PATH_LOCAL}.`);
+      await ssh.putFile(DB_PATH_LOCAL, DB_PATH_BACKUP_REMOTE);
+      logger.info(`Database pushed to ${DB_PATH_BACKUP_REMOTE}.`);
       // TODO: Copy it to the right place, and get rid of `wal`/`shm` files.
     });
   });
