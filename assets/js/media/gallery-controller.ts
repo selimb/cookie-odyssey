@@ -16,7 +16,7 @@ export class JournalEntryMediaGalleryController extends TypedController(
 
   connect(): void {
     this.gallery = lightGallery(this.element, {
-      plugins: [lgVideo, lgThumbnail],
+      plugins: [lgZoom, lgThumbnail, lgVideo],
       supportLegacyBrowser: false,
       speed: 100,
       // Matches `targets#item` above.
