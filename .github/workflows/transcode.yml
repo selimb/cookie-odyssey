@@ -57,7 +57,7 @@ jobs:
 
       - name: Download
         run: |
-          ./azcopy copy '${{ github.event.inputs.input_url }}' input_video
+          ./azcopy copy --from-to BlobLocal '${{ github.event.inputs.input_url }}' input_video
 
       - name: Transcode
         # [ffmpeg-video-transcode-options] Keep this in sync.
@@ -74,7 +74,7 @@ jobs:
 
       - name: Upload
         run: |
-          ./azcopy copy output_video.mp4 '${{ github.event.inputs.output_url }}'
+          ./azcopy copy --from-to LocalBlob output_video.mp4 '${{ github.event.inputs.output_url }}'
 
       - name: Callback
         if: ${{ github.event.inputs.callback_url != '' }}

@@ -33,24 +33,36 @@ impl GithubActionVideoTranscoder {
         task_id: i32,
         callback_url: &str,
     ) -> anyhow::Result<()> {
-        self.reqwest
+        let response = self
+            .reqwest
             .post(&self.github_workflow_url)
             .bearer_auth(&self.github_token)
             .header("X-GitHub-Api-Version", "2022-11-28")
+            // This is REQUIRED by the Github API
+            .header("User-Agent", "cookie-odyssey")
             // Matches [gh-transcode-inputs]
             .json(&serde_json::json!({
                 "ref": "main",
                 "inputs": {
                     "input_url": input_url,
                     "output_url": output_url,
-                    "task_id": task_id,
+                    "task_id": task_id.to_string(),
                     "callback_url": callback_url,
                 }
             }))
             .send()
             .await
-            .context("Failed to send request")?
-            .error_for_status()?;
+            .context("Failed to send request")?;
+
+        if !response.status().is_success() {
+            let url = &self.github_workflow_url;
+            let status = response.status();
+            let headers = format!("{:?}", response.headers());
+            let body = response.text().await.unwrap_or_default();
+            return Err(anyhow::anyhow!(
+                "Request '{url}' failed with status {status}\n# headers:\n{headers}# body:\n{body}",
+            ));
+        }
 
         Ok(())
     }
