@@ -25,7 +25,6 @@ export class ThumbnailDemoController extends TypedController(
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
         this.log("ERROR: " + errorMsg);
-        // this.log("ERROR");
       }
     });
   }
@@ -50,7 +49,7 @@ export class ThumbnailDemoController extends TypedController(
       return;
     }
 
-    this.log(`media type3: ${file.type}`);
+    this.log(`media type: ${file.type}`);
     const mediaType = file.type.startsWith("video/") ? "video" : "image";
 
     const thumbnail =
