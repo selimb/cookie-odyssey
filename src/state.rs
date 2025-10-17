@@ -8,10 +8,11 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub struct AppState {
+    pub github_client_token: Option<String>,
     pub template_engine: Arc<TemplateEngine>,
     pub db: sea_orm::DatabaseConnection,
     pub storage: Arc<FileStore>,
-    pub video_transcoder: Arc<Option<VideoTranscodeDaemon>>,
+    pub video_transcoder: Arc<VideoTranscodeDaemon>,
     pub dev: bool,
 }
 

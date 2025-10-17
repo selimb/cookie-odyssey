@@ -10,7 +10,7 @@ use serde::Serialize;
 
 use crate::{
     storage::FileStore,
-    video_transcoding::{daemon::VideoTranscodeDaemon, manager::VideoTranscoder},
+    video_transcoding::{daemon::VideoTranscodeDaemon, manager::VideoTranscodingManager},
     NotFound, RouteError,
 };
 
@@ -142,7 +142,7 @@ pub async fn append_journal_entry_media(
     // Don't like referencing upper layers here, but this is easier.
     input: &JournalEntryMediaCommitBody,
     db: &DatabaseConnection,
-    video_transcoder: &Option<VideoTranscodeDaemon>,
+    video_transcoder: &VideoTranscodeDaemon,
 ) -> anyhow::Result<()> {
     let next_order = JournalEntryMedia::find()
         .filter(journal_entry_media::Column::JournalEntryId.eq(input.entry_id))
@@ -150,7 +150,7 @@ pub async fn append_journal_entry_media(
         .await?;
     let next_order = next_order as usize;
 
-    let mut need_transcode = false;
+    let mut transcode_tasks = Vec::new();
 
     let mut data: Vec<journal_entry_media::ActiveModel> = Vec::with_capacity(input.items.len());
 
@@ -171,16 +171,14 @@ pub async fn append_journal_entry_media(
         match item.media_type {
             journal_entry_media::MediaType::Image => {}
             journal_entry_media::MediaType::Video => {
-                need_transcode = true;
-                VideoTranscoder::enqueue_task(db, item.file_id_original).await?;
+                let task = VideoTranscodingManager::enqueue_task(db, item.file_id_original).await?;
+                transcode_tasks.push(task);
             }
         };
     }
 
-    if need_transcode {
-        if let Some(video_transcoder) = video_transcoder {
-            video_transcoder.notify().await?;
-        }
+    if !transcode_tasks.is_empty() {
+        video_transcoder.process(transcode_tasks).await?;
     }
 
     JournalEntryMedia::insert_many(data).exec(db).await?;

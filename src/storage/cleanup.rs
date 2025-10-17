@@ -84,7 +84,9 @@ impl StorageCleanup {
 
         for file_key in storage_files_to_delete {
             info!("Deleting storage file: {file_key}");
-            self.storage.delete_file(&bucket, &file_key).await?;
+            self.storage
+                .delete_file(bucket.to_name(&self.storage.conf), &file_key)
+                .await?;
         }
         for db_file_id in db_files_to_delete {
             info!("Deleting database file: {db_file_id}");

@@ -6,10 +6,14 @@ use axum::{
 };
 use axum_login::{login_required, permission_required};
 
-use crate::auth::{perms::Permission, routes as auth, sessions::AuthBackend};
+use crate::auth::{
+    github_action_auth::github_action_auth_middleware, perms::Permission, routes as auth,
+    sessions::AuthBackend,
+};
 use crate::comment::routes as comment;
 use crate::journal::routes as journal;
 use crate::storage::routes as storage;
+use crate::video_transcoding::routes as video_transcoding;
 use crate::AppState;
 
 // Idea stolen from https://github.com/jdevries3133/calcount/blob/main/src/routes.rs
@@ -55,6 +59,7 @@ pub enum Route<'a> {
     MediaUploadUrlPost,
     // TODO: Why do we need this?
     MediaUploadProxyPut(Option<&'a storage::MediaUploadProxyParams>),
+    VideoTranscodeCallbackPost(Option<&'a video_transcoding::VideoTranscodeCallbackQuery>),
     RegisterGet,
     RegisterPost,
     UserListGet,
@@ -131,11 +136,18 @@ impl<'a> Route<'a> {
             Route::LogoutPost => "/logout".into(),
             Route::MediaUploadUrlPost => "/api/media-upload-url".into(),
             Route::MediaUploadProxyPut(params) => match params {
+                None => "/api/media-upload".into(),
                 Some(params) => {
                     let qs = serde_qs::to_string(params).expect(EXPECT_QS);
                     format!("/api/media-upload?{qs}").into()
                 }
-                None => "/api/media-upload".into(),
+            },
+            Route::VideoTranscodeCallbackPost(params) => match params {
+                None => "/api/video-transcode-callback".into(),
+                Some(params) => {
+                    let qs = serde_qs::to_string(params).expect(EXPECT_QS);
+                    format!("/api/video-transcode-callback?{qs}").into()
+                }
             },
             Route::JournalEntryMediaCommitPost => "/api/entry-commit".into(),
             Route::JournalEntryMediaEditCaptionPost => "/api/media-caption-edit".into(),
@@ -147,6 +159,10 @@ impl<'a> Route<'a> {
             Route::UserListApprovePost => "/hx/users/approve".into(),
             Route::UserListDeletePost => "/hx/users/delete".into(),
         }
+    }
+
+    pub fn as_url(&self, server_name: &str) -> String {
+        format!("{}{}", server_name, self.as_path())
     }
 }
 
@@ -262,11 +278,24 @@ fn get_public_routes() -> Router<AppState> {
         )
 }
 
-pub fn init_router() -> Router<AppState> {
+fn get_github_action_routes() -> Router<AppState> {
+    Router::new().route(
+        &Route::VideoTranscodeCallbackPost(None).as_path(),
+        post(video_transcoding::video_transcode_callback_post),
+    )
+}
+
+pub fn init_router(state: AppState) -> Router<AppState> {
     get_protected_routes()
         .route_layer(login_required!(
             AuthBackend,
             login_url = &Route::LoginGet.as_path()
         ))
+        .merge(
+            get_github_action_routes().route_layer(axum::middleware::from_fn_with_state(
+                state,
+                github_action_auth_middleware,
+            )),
+        )
         .merge(get_public_routes())
 }

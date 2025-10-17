@@ -10,7 +10,13 @@ use crate::{
     state::AppState,
     storage::{init_storage, FileStore},
     template_engine::init_templates,
-    video_transcoding::{daemon::VideoTranscodeDaemon, manager::VideoTranscoder},
+    video_transcoding::{
+        backend::{
+            github_action::GithubActionVideoTranscoder, in_process::InProcessVideoTranscoder,
+            traits::VideoTranscodingBackend,
+        },
+        daemon::VideoTranscodeDaemon,
+    },
 };
 
 pub async fn mkapp(state: AppState, pool: &sqlx::SqlitePool) -> Result<Router, anyhow::Error> {
@@ -19,7 +25,7 @@ pub async fn mkapp(state: AppState, pool: &sqlx::SqlitePool) -> Result<Router, a
         .await
         .context("Failed to initialize session store")?;
 
-    let router = crate::router::init_router()
+    let router = crate::router::init_router(state.clone())
         .with_state(state)
         .layer(auth_layer)
         .nest_service("/_assets", ServeDir::new("assets/dist"))
@@ -35,13 +41,10 @@ pub async fn init_state(conf: &AppConfig) -> Result<(AppState, sqlx::SqlitePool)
 
     let storage = init_storage(conf).await?;
 
-    let video_transcoder: Option<VideoTranscodeDaemon> = if conf.video_transcoding.in_process {
-        Some(init_video_transcoder(&db, storage.clone()).await?)
-    } else {
-        None
-    };
+    let video_transcoder = init_video_transcoder(conf, &db, storage.clone()).await?;
 
     let state = AppState {
+        github_client_token: conf.video_transcoding.github_client_token.clone(),
         template_engine: Arc::new(template_engine),
         db,
         storage,
@@ -69,19 +72,48 @@ pub async fn init_db(
 }
 
 async fn init_video_transcoder(
+    conf: &AppConfig,
     db: &sea_orm::DatabaseConnection,
     storage: Arc<FileStore>,
 ) -> anyhow::Result<VideoTranscodeDaemon> {
-    let work_dir = temp_dir().join("cookie-odyssey-video-transcode");
-    tokio::fs::create_dir_all(&work_dir)
-        .await
-        .context("Failed to create work directory for video transcoder")?;
+    let backend: Box<dyn VideoTranscodingBackend> = match conf.video_transcoding.in_process {
+        true => {
+            let work_dir = temp_dir().join("cookie-odyssey-video-transcode");
+            tokio::fs::create_dir_all(&work_dir)
+                .await
+                .context("Failed to create work directory for video transcoder")?;
 
-    let video_transcoder = VideoTranscodeDaemon::start(VideoTranscoder {
-        db: db.clone(),
-        storage: storage.clone(),
-        work_dir: work_dir.to_string_lossy().to_string(),
-    })
-    .await;
+            let backend = InProcessVideoTranscoder {
+                db: db.clone(),
+                storage,
+                work_dir: work_dir.to_string_lossy().to_string(),
+            };
+            Box::new(backend)
+        }
+        false => {
+            let github_token = conf
+                .video_transcoding
+                .github_token
+                .clone()
+                .context("Github token is required")?;
+            let github_workflow_url = conf
+                .video_transcoding
+                .github_url
+                .clone()
+                .context("Github URL is required")?;
+
+            let backend = GithubActionVideoTranscoder {
+                db: db.clone(),
+                storage,
+                github_workflow_url,
+                github_token,
+                server_name: conf.server_name.clone(),
+                reqwest: reqwest::Client::new(),
+            };
+            Box::new(backend)
+        }
+    };
+
+    let video_transcoder = VideoTranscodeDaemon::start(backend, db.clone()).await;
     Ok(video_transcoder)
 }
