@@ -40,8 +40,11 @@ static APP_ENV: std::sync::OnceLock<AppEnv> = std::sync::OnceLock::new();
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct AppConfig {
+    /// Base URL for the server
+    pub server_name: String,
     pub database_file: String,
     pub storage: StorageConfig,
+    pub video_transcoding: VideoTranscodingConfig,
     #[serde(default)]
     pub env: AppEnv,
 }
@@ -54,6 +57,18 @@ pub struct StorageConfig {
     pub azure_storage_endpoint: Option<String>,
     #[serde(default)]
     pub emulator: bool,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct VideoTranscodingConfig {
+    /// Whether to run the video transcoding daemon in-process.
+    #[serde(default)]
+    pub in_process: bool,
+    #[serde(default)]
+    pub github_url: Option<String>,
+    #[serde(default)]
+    pub github_token: Option<String>,
+    pub github_client_token: Option<String>,
 }
 
 impl AppConfig {
