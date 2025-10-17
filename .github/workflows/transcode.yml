@@ -78,5 +78,8 @@ jobs:
 
       - name: Callback
         if: ${{ github.event.inputs.callback_url != '' }}
-        run: |
-          curl -X POST '${{ github.event.inputs.callback_url }}' -H "Authorization: Bearer ${{ secrets.CALLBACK_TOKEN }}"
+        run: >
+          curl
+          -X POST
+          -H "X-Github-Action-Client-Key: ${{ secrets.VIDEO_TRANSCODING_CALLBACK_TOKEN }}"
+          '${{ github.event.inputs.callback_url }}'
