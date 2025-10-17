@@ -1,4 +1,4 @@
-{% macro media_tag(media, class) %}
+{% macro gallery_item(media, class) %}
   {% if media.media_type == "image" %}
     <a
       href="{{ media.url_original }}"
@@ -10,11 +10,50 @@
         src="{{ media.url_thumbnail }}"
         alt="{{ media.caption }}"
         class="{{ class }}"
+        width="{{ media.width_thumbnail }}"
+        height="{{ media.height_thumbnail }}"
       />
     </a>
   {% else %}
-    <video src="{{ media.url_original }}" controls class="{{ class }}">
-      Your browser does not support the video tag.
-    </video>
+    <a
+      href="{{ media.url_original }}"
+      target="_blank"
+      data-media--gallery-target="item"
+      data-lg-size="{{ media.width_original }}-{{ media.height_original }}"
+      data-video='{
+        "source": [{"src":"{{ media.url_original }}"}],
+        "attributes": {"preload": false, "playsinline": true, "controls": true}
+      }'
+    >
+      <img
+        src="{{ media.url_thumbnail }}"
+        alt="{{ media.caption }}"
+        class="{{ class }}"
+        width="{{ media.width_thumbnail }}"
+        height="{{ media.height_thumbnail }}"
+      />
+    </a>
+  {% endif %}
+{% endmacro %}
+
+{% macro standalone_item(media, class) %}
+  {% if media.media_type == "image" %}
+    <img
+      src="{{ media.url_thumbnail }}"
+      alt="{{ media.caption }}"
+      class="{{ class }}"
+      width="{{ media.width_thumbnail }}"
+      height="{{ media.height_thumbnail }}"
+    />
+  {% else %}
+    <video
+      src="{{ media.url_original }}"
+      poster="{{ media.url_thumbnail }}"
+      preload="none"
+      controls
+      class="{{ class }}"
+      width="{{ media.width_thumbnail }}"
+      height="{{ media.height_thumbnail }}"
+    />
   {% endif %}
 {% endmacro %}

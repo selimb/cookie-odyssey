@@ -137,6 +137,8 @@ async function generateThumbnail(
 
   await sharp(inputImagePath)
     .jpeg({ quality: 80 })
+    // Respects EXIF orientation.
+    .rotate()
     .resize(640)
     .toFile(outputPath);
 }

@@ -58,7 +58,7 @@
           <div class="mt-2 space-y-2">
             {% for media in entry.media %}
               <figure class="w-full">
-                {{ m.media_tag(media, "w-full") }}
+                {{ m.gallery_item(media, "w-full") }}
                 <figcaption class="mt-2 text-center text-sm">
                   {{ media.caption }}
                 </figcaption>

@@ -11,6 +11,7 @@ import { fireConfetti } from "./confetti";
 import { DatetimeController } from "./datetime";
 import { JournalEntryMediaFormController } from "./media/form-controller";
 import { JournalEntryMediaGalleryController } from "./media/gallery-controller";
+import { ThumbnailDemoController } from "./media/thumbnail-demo-controller";
 import { ThemeToggleController } from "./theme";
 import { toast, ToastController } from "./toast";
 
@@ -25,6 +26,7 @@ for (const controller of [
   ComingSoonController,
   JournalEntryMediaFormController,
   JournalEntryMediaGalleryController,
+  ThumbnailDemoController,
   AddCommentController,
   EditCommentController,
 ]) {

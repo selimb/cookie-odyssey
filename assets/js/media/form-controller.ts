@@ -11,7 +11,7 @@ import {
 
 export class JournalEntryMediaFormController extends TypedController(
   "media--form",
-  "form",
+  "div",
   {
     targets: {
       mediaContainer: "div",
