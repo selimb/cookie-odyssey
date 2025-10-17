@@ -11,6 +11,7 @@ use crate::auth::{
     sessions::AuthBackend,
 };
 use crate::comment::routes as comment;
+use crate::demo::routes as demo;
 use crate::journal::routes as journal;
 use crate::storage::routes as storage;
 use crate::video_transcoding::routes as video_transcoding;
@@ -65,6 +66,7 @@ pub enum Route<'a> {
     UserListGet,
     UserListApprovePost,
     UserListDeletePost,
+    DemoThumbnailGet,
 }
 
 const EXPECT_QS: &str = "Should be a valid querystring";
@@ -158,6 +160,7 @@ impl<'a> Route<'a> {
             Route::UserListGet => "/users".into(),
             Route::UserListApprovePost => "/hx/users/approve".into(),
             Route::UserListDeletePost => "/hx/users/delete".into(),
+            Route::DemoThumbnailGet => "/demo/thumbnail".into(),
         }
     }
 
@@ -275,6 +278,10 @@ fn get_public_routes() -> Router<AppState> {
         .route(
             &Route::ForgotPasswordPost.as_path(),
             post(auth::forgot_password_post),
+        )
+        .route(
+            &Route::DemoThumbnailGet.as_path(),
+            get(demo::demo_thumbnail_get),
         )
 }
 

@@ -1,3 +1,5 @@
+import { promiseTimeout } from "../utils/promise-timeout";
+
 export const THUMBNAIL_WIDTH = 640;
 export const THUMBNAIL_QUALITY = 0.8;
 export const THUMBNAIL_EXT = ".jpeg";
@@ -30,15 +32,19 @@ async function generateThumbnail(
     }
     ctx.drawImage(elem, 0, 0, thumbnailWidth, thumbnailHeight);
 
-    const blob = await new Promise<Blob | null>((resolve) => {
-      canvas.toBlob(
-        (blob) => {
-          resolve(blob);
-        },
-        THUMBNAIL_MIME_TYPE,
-        THUMBNAIL_QUALITY,
-      );
-    });
+    const blob = await promiseTimeout(
+      new Promise<Blob | null>((resolve) => {
+        canvas.toBlob(
+          (blob) => {
+            resolve(blob);
+          },
+          THUMBNAIL_MIME_TYPE,
+          THUMBNAIL_QUALITY,
+        );
+      }),
+      5000,
+      "canvas.toBlob",
+    );
     if (!blob) {
       throw new Error("Could not create thumbnail blob");
     }
@@ -62,6 +68,7 @@ export type ThumbnailFromAnyResult = {
  */
 export async function thumbnailFromVideo(
   file: File,
+  log?: (msg: string) => void,
 ): Promise<ThumbnailFromAnyResult> {
   const cleanup: Array<() => void> = [];
   try {
@@ -77,20 +84,22 @@ export async function thumbnailFromVideo(
     video.src = objectUrl;
     video.muted = true;
     video.playsInline = true;
-
-    // Wait until metadata is loaded (duration, dimensions).
-    await new Promise((resolve) => {
-      video.addEventListener("loadeddata", resolve, { once: true });
-    });
-
-    // Seek to beginning and wait for the seek.
+    // NOTE: I tried carefully orchestrating loadedmetadata/loadeddata/seek listeners,
+    // but the most reliable way seems to be just calling `.play()`.
+    // We already have the video in-memory, so we don't really need to care about over-loading.
+    await promiseTimeout(video.play(), 5000, "video.play()");
+    // Pause and seek back to beginning.
+    video.pause();
     video.currentTime = 0;
-    await new Promise((resolve) => {
-      video.addEventListener("seeked", resolve, { once: true });
-    });
 
     const widthOriginal = video.videoWidth;
     const heightOriginal = video.videoHeight;
+    if (widthOriginal === 0 || heightOriginal === 0) {
+      throw new Error("Could not get video dimensions");
+    }
+
+    log?.(`video dimensions: ${widthOriginal}x${heightOriginal}`);
+
     const result = await generateThumbnail(
       video,
       widthOriginal,

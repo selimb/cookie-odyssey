@@ -1,5 +1,6 @@
 pub mod auth;
 pub mod comment;
+pub mod demo;
 pub mod journal;
 pub mod router;
 pub mod server;

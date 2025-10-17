@@ -16,8 +16,10 @@
     </a>
   {% else %}
     <a
-      data-lg-size="{{ media.width_original }}-{{ media.height_original }}"
+      href="{{ media.url_original }}"
+      target="_blank"
       data-media--gallery-target="item"
+      data-lg-size="{{ media.width_original }}-{{ media.height_original }}"
       data-video='{
         "source": [{"src":"{{ media.url_original }}"}],
         "attributes": {"preload": false, "playsinline": true, "controls": true}
@@ -36,24 +38,22 @@
 
 {% macro standalone_item(media, class) %}
   {% if media.media_type == "image" %}
-    <a href="{{ media.url_original }}" target="_blank">
-      <img
-        src="{{ media.url_thumbnail }}"
-        alt="{{ media.caption }}"
-        class="{{ class }}"
-        width="{{ media.width_thumbnail }}"
-        height="{{ media.height_thumbnail }}"
-      />
-    </a>
+    <img
+      src="{{ media.url_thumbnail }}"
+      alt="{{ media.caption }}"
+      class="{{ class }}"
+      width="{{ media.width_thumbnail }}"
+      height="{{ media.height_thumbnail }}"
+    />
   {% else %}
-    <a href="{{ media.url_original }}" target="_blank">
-      <img
-        src="{{ media.url_thumbnail }}"
-        alt="{{ media.caption }}"
-        class="{{ class }}"
-        width="{{ media.width_thumbnail }}"
-        height="{{ media.height_thumbnail }}"
-      />
-    </a>
+    <video
+      src="{{ media.url_original }}"
+      poster="{{ media.url_thumbnail }}"
+      preload="none"
+      alt="{{ media.caption }}"
+      class="{{ class }}"
+      width="{{ media.width_thumbnail }}"
+      height="{{ media.height_thumbnail }}"
+    />
   {% endif %}
 {% endmacro %}

@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <div class="w-full space-y-4" data-controller="media--thumbnail-demo">
+    <h1 class="text-2xl">File Input</h1>
+    <input
+      data-media--thumbnail-demo-target="fileInput"
+      class="file-input"
+      type="file"
+      accept="image/*,video/*"
+    />
+    <h1 class="text-2xl">Logs</h1>
+    <ul data-media--thumbnail-demo-target="logs" class="font-mono"></ul>
+    <h1 class="text-2xl">Thumbnail</h1>
+    <img data-media--thumbnail-demo-target="thumbnail" alt="thumbnail" />
+  </div>
+{% endblock content %}
