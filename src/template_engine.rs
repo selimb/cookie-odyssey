@@ -13,16 +13,29 @@ use minijinja::context;
 use once_cell::sync::Lazy;
 use serde::Serialize;
 
+use crate::assets::AssetManifest;
 use crate::{AppState, AuthSession, AuthUser, Route, RouteError};
 
 pub type TemplateEngine = minijinja::Environment<'static>;
 
-pub fn init_templates() -> TemplateEngine {
+pub fn init_templates(assets: AssetManifest) -> TemplateEngine {
     let mut env = minijinja::Environment::new();
     env.set_loader(minijinja::path_loader("templates"));
     env.set_undefined_behavior(minijinja::UndefinedBehavior::Strict);
     env.add_filter("splitlines", splitlines);
     env.add_filter("clsx", clsx);
+    env.add_function(
+        "asset",
+        move |key: String| -> Result<String, minijinja::Error> {
+            match assets.get_href(&key) {
+                Some(path) => Ok(path.clone()),
+                None => Err(minijinja::Error::new(
+                    minijinja::ErrorKind::InvalidOperation,
+                    format!("Asset not found in manifest: {key}"),
+                )),
+            }
+        },
+    );
 
     env
 }

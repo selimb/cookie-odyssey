@@ -6,6 +6,7 @@ use axum::Router;
 use tower_http::{catch_panic::CatchPanicLayer, services::ServeDir};
 
 use crate::{
+    assets::AssetManifest,
     auth::sessions::init_session,
     state::AppState,
     storage::{init_storage, FileStore},
@@ -19,6 +20,8 @@ use crate::{
     },
 };
 
+const ASSETS_URL_BASE: &str = "/_assets";
+
 pub async fn mkapp(state: AppState, pool: &sqlx::SqlitePool) -> Result<Router, anyhow::Error> {
     // FIXME customize 404
     let auth_layer = init_session(pool, &state.db)
@@ -28,7 +31,7 @@ pub async fn mkapp(state: AppState, pool: &sqlx::SqlitePool) -> Result<Router, a
     let router = crate::router::init_router(state.clone())
         .with_state(state)
         .layer(auth_layer)
-        .nest_service("/_assets", ServeDir::new("assets/dist"))
+        .nest_service(ASSETS_URL_BASE, ServeDir::new("assets/dist"))
         // TODO: Propagate error message in AppEnv::Dev
         .layer(CatchPanicLayer::new());
     Ok(router)
@@ -38,7 +41,10 @@ pub async fn init_state(
     conf: &AppConfig,
     start: bool,
 ) -> Result<(AppState, sqlx::SqlitePool), anyhow::Error> {
-    let template_engine = init_templates();
+    let assets = AssetManifest::load(ASSETS_URL_BASE.to_string(), "assets/dist/manifest.json")
+        .await
+        .context("Failed to load asset manifest")?;
+    let template_engine = init_templates(assets);
 
     let (pool, db) = init_db(conf).await?;
 

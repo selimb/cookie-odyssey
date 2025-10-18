@@ -48,21 +48,17 @@ build-server:
     cargo build --release
 
 dev-server:
-    cargo watch --quiet --watch src --watch templates --exec "run server"
-
-build-css *ARGS:
-    bun run tailwindcss -i ./assets/css/app.css -o ./assets/dist/css/app.css {{ ARGS }}
-
-dev-css: (build-css "--watch")
+    cargo watch --quiet --no-vcs-ignores -w src -w templates -w assets/dist/manifest.json --exec "run server"
 
 build-js:
     bun run tools/build-js.ts
 
 dev-js:
-    cargo watch --quiet --watch assets/js --watch assets/css -- just build-js
+    # Need to watch src and templates because of tailwind.
+    cargo watch --quiet -w assets/js -w assets/css -w src -w templates -- just build-js
 
 # Build it all
-build: build-server build-css build-js
+build: build-server build-js
 
 # Run all build tools in watch mode
 dev:

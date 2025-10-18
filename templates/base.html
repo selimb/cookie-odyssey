@@ -7,10 +7,9 @@
 
     <meta name="keywords" content="Travel" />
 
-    {# FIXME proper url #}
-    <link rel="stylesheet" href="/_assets/css/app.css" />
-    <link rel="stylesheet" href="/_assets/vendor/lightgallery.css" />
-    <script src="/_assets/js/app.js" defer></script>
+    <link rel="stylesheet" href="{{ asset('css/app.css') }}" />
+    <link rel="stylesheet" href="{{ asset('vendor/lightgallery.css') }}" />
+    <script src="{{ asset('js/app.js') }}" defer></script>
     {% block head %}
       <title>Cookie Odyssey</title>
     {% endblock head %}
