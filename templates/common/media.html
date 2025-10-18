@@ -15,15 +15,18 @@
       />
     </a>
   {% else %}
+    <!-- IMPORTANT: Set `data-src=""` here, otherwise lightGallery chokes. -->
     <a
       href="{{ media.url_original }}"
+      data-src=""
       target="_blank"
       data-media--gallery-target="item"
       data-lg-size="{{ media.width_original }}-{{ media.height_original }}"
       data-video='{
         "source": [{"src":"{{ media.url_original }}"}],
-        "attributes": {"preload": false, "playsinline": true, "controls": true}
+        "attributes": {"preload": "metadata", "poster": "{{ media.url_thumbnail }}", "playsinline": true, "controls": true}
       }'
+      class="video-indicator-wrapper"
     >
       <img
         src="{{ media.url_thumbnail }}"
@@ -32,6 +35,7 @@
         width="{{ media.width_thumbnail }}"
         height="{{ media.height_thumbnail }}"
       />
+      <span class="video-indicator"></span>
     </a>
   {% endif %}
 {% endmacro %}
