@@ -27,7 +27,7 @@ async fn load_manifest(path: &str) -> Result<ManifestData, anyhow::Error> {
     let raw = tokio::fs::read_to_string(path)
         .await
         .with_context(|| format!("Failed to read manifest file at {path}."))?;
-    let manifest: ManifestData =
-        serde_json::from_str(&raw).with_context(|| "Failed to deserialize manifest:\n{raw}")?;
+    let manifest: ManifestData = serde_json::from_str(&raw)
+        .with_context(|| format!("Failed to deserialize manifest:\n{raw}"))?;
     Ok(manifest)
 }
