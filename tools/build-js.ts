@@ -1,5 +1,8 @@
 /**
  * Builds both JS and CSS, but it's easier to just call it "JS".
+ *
+ * We don't bother with minifying because our assets are relatively small, and not minifying
+ * them makes debugging in the browser way easier (without bothering with source maps).
  */
 import path from "node:path";
 
@@ -26,7 +29,6 @@ let result = await Bun.build({
   format: "esm",
   target: "browser",
   naming: NAMING,
-  // TODO [#16] naming/minify
 });
 accManifest(result);
 
@@ -35,7 +37,6 @@ result = await Bun.build({
   outdir: "assets/dist/vendor",
   target: "browser",
   naming: NAMING,
-  // TODO [#16] naming/minify
 });
 accManifest(result);
 
