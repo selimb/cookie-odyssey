@@ -105,7 +105,7 @@ async function sshExecScript(
   // Write script to the remote.
   const result = await sshExec(
     ssh,
-    `tmpfile=$(mktemp) && cat > "$tmpfile" && echo "$tmpfile"`,
+    `tmpfile=$(mktemp) && chmod a+r "$tmpfile" && cat > "$tmpfile" && echo "$tmpfile"`,
     { stdin: script },
   );
 
