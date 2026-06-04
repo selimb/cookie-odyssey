@@ -34,7 +34,7 @@ pub struct JournalEntryNew {
     time: chrono::NaiveTime,
 }
 
-pub async fn journal_entry_new_get(
+pub async fn page_journal_entry_new_get(
     state: State<AppState>,
     templ: Templ,
     Path(slug): Path<String>,
@@ -65,7 +65,7 @@ fn format_input_date_value(d: chrono::NaiveDate) -> String {
     value
 }
 
-pub async fn journal_entry_new_post(
+pub async fn page_journal_entry_new_post(
     state: State<AppState>,
     form: Result<Form<JournalEntryNew>, FormRejection>,
 ) -> Result<Response, RouteError> {

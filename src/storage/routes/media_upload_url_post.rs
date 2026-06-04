@@ -12,14 +12,14 @@ use nanoid::nanoid;
 use sea_orm::EntityTrait;
 use serde::{Deserialize, Serialize};
 
-// SYNC
+// SYNC MediaUploadUrlBody
 #[derive(Deserialize, Debug)]
 pub struct MediaUploadUrlBody {
     filenames: Vec<String>,
     thumbnail_extension: String,
 }
 
-// SYNC
+// SYNC MediaUploadUrlResultItem
 #[derive(Serialize, Debug)]
 pub struct MediaUploadUrlResultItem {
     upload_method: String,
@@ -31,7 +31,7 @@ pub struct MediaUploadUrlResultItem {
     file_id_thumbnail: i32,
 }
 
-pub async fn media_upload_url_post(
+pub async fn api_media_upload_url_post(
     state: State<AppState>,
     Json(body): Json<MediaUploadUrlBody>,
 ) -> Result<Response, RouteError> {

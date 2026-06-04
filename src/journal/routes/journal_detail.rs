@@ -16,7 +16,7 @@ use entities::{prelude::*, *};
 
 use super::{JournalDayGetPath, JournalEntryNewPath, JournalEntryNewQuery};
 
-pub async fn journal_detail_get(
+pub async fn page_journal_detail_get(
     state: State<AppState>,
     templ: Templ,
     session: AuthSession,

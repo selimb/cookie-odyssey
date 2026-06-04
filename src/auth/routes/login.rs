@@ -17,7 +17,7 @@ pub struct NextUrl {
     next: Option<String>,
 }
 
-pub async fn login_get(templ: Templ, Query(NextUrl { next }): Query<NextUrl>) -> RouteResult {
+pub async fn page_login_get(templ: Templ, Query(NextUrl { next }): Query<NextUrl>) -> RouteResult {
     let ctx = context! {
         href_register => &Route::RegisterGet.as_path(),
         href_forgot_password => &Route::ForgotPasswordGet.as_path(),
@@ -27,7 +27,7 @@ pub async fn login_get(templ: Templ, Query(NextUrl { next }): Query<NextUrl>) ->
     Ok(html.into_response())
 }
 
-pub async fn login_post(
+pub async fn page_login_post(
     mut auth_session: AuthSession,
     state: State<AppState>,
     form: Result<Form<Credentials>, FormRejection>,

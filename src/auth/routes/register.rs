@@ -11,7 +11,7 @@ use super::super::sessions::AuthBackend;
 use crate::{AppState, FormError, RouteError, RouteResult, Templ};
 use entities::{prelude::*, *};
 
-pub async fn register_get(templ: Templ) -> RouteResult {
+pub async fn page_register_get(templ: Templ) -> RouteResult {
     let html = templ.render("register.html")?;
     Ok(html.into_response())
 }
@@ -24,7 +24,7 @@ pub struct Register {
     password: String,
 }
 
-pub async fn register_post(
+pub async fn page_register_post(
     state: State<AppState>,
     form: Result<Form<Register>, FormRejection>,
 ) -> RouteResult {

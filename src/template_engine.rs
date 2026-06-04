@@ -142,6 +142,7 @@ impl Templ {
 struct TemplContext<'a> {
     user: &'a Option<TemplContextUser>,
     links: &'a TemplContextLinks,
+    /// Obsolete, but kept in case we need it in the future.
     hx_boosted: bool,
     /// Can be overriden.
     wide_layout: bool,

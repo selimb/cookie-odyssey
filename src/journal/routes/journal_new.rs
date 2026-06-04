@@ -22,12 +22,12 @@ pub struct JournalNew {
     pub end_date: Option<chrono::NaiveDate>,
 }
 
-pub async fn journal_new_get(templ: Templ) -> RouteResult {
+pub async fn page_journal_new_get(templ: Templ) -> RouteResult {
     let html = templ.render("journal_new.html")?;
     Ok(html.into_response())
 }
 
-pub async fn journal_new_post(
+pub async fn page_journal_new_post(
     state: State<AppState>,
     form: Result<Form<JournalNew>, FormRejection>,
 ) -> Result<Response, RouteError> {

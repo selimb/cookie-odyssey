@@ -25,7 +25,7 @@ pub struct JournalCommentAddForm {
     text: String,
 }
 
-pub async fn journal_comment_add_post(
+pub async fn hx_journal_comment_add_post(
     state: AppState,
     templ: Templ,
     session: AuthSession,
@@ -74,7 +74,7 @@ pub struct JournalCommentEditForm {
     text: String,
 }
 
-pub async fn journal_comment_edit_post(
+pub async fn hx_journal_comment_edit_post(
     state: AppState,
     templ: Templ,
     session: AuthSession,
@@ -119,7 +119,7 @@ pub struct JournalCommentDeleteForm {
     comment_id: i32,
 }
 
-pub async fn journal_comment_delete_post(
+pub async fn hx_journal_comment_delete_post(
     state: AppState,
     templ: Templ,
     session: AuthSession,
