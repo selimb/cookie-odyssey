@@ -1,7 +1,11 @@
 
-# Setup global cargo packages
-setup:
+# Setup global Rust binaries
+setup-rust:
     cargo install cargo-watch sea-orm-cli
+
+# Setup djlint
+setup-djlint:
+    uv tool install djlint
 
 # =============================================================================
 # Database
@@ -31,6 +35,12 @@ admin:
 # Linting (Rust)
 # =============================================================================
 lint-rust:
+    cargo fmt --check
+    cargo check
+    cargo clippy --all-targets
+
+lint-rust-fix:
+    cargo fmt
     cargo fix
     cargo clippy --all-targets --fix
 
@@ -39,6 +49,15 @@ lint-rust:
 # =============================================================================
 lint-js:
     bun run lint
+
+lint-js-fix:
+    bun run lint:fix
+
+# =============================================================================
+# Linting (HTML)
+# =============================================================================
+lint-html:
+    djlint templates
 
 # =============================================================================
 # Build scripts
