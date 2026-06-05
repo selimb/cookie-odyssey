@@ -151,10 +151,10 @@ impl<'a> Route<'a> {
                     format!("/api/video-transcode-callback?{qs}").into()
                 }
             },
-            Route::JournalEntryMediaCommitPost => "/hx/entry-commit".into(),
-            Route::JournalEntryMediaEditCaptionPost => "/hx/media-caption-edit".into(),
-            Route::JournalEntryMediaDelete => "/hx/media-delete".into(),
-            Route::JournalEntryMediaReorder => "/hx/media-reorder".into(),
+            Route::JournalEntryMediaCommitPost => "/api/media-commit".into(),
+            Route::JournalEntryMediaEditCaptionPost => "/api/media-caption".into(),
+            Route::JournalEntryMediaDelete => "/api/media-delete".into(),
+            Route::JournalEntryMediaReorder => "/api/media-reorder".into(),
             Route::RegisterGet => "/register".into(),
             Route::RegisterPost => "/register".into(),
             Route::UserListGet => "/users".into(),
@@ -232,19 +232,19 @@ fn get_protected_routes() -> Router<AppState> {
         )
         .route(
             &Route::JournalEntryMediaCommitPost.as_path(),
-            admin!(post(journal::hx_journal_entry_media_commit_post)),
+            admin!(post(journal::api_journal_entry_media_commit_post)),
         )
         .route(
             &Route::JournalEntryMediaEditCaptionPost.as_path(),
-            admin!(post(journal::hx_journal_entry_media_caption_edit_post)),
+            admin!(post(journal::api_journal_entry_media_caption_post)),
         )
         .route(
             &Route::JournalEntryMediaDelete.as_path(),
-            admin!(post(journal::hx_journal_entry_media_delete_post)),
+            admin!(post(journal::api_journal_entry_media_delete_post)),
         )
         .route(
             &Route::JournalEntryMediaReorder.as_path(),
-            admin!(post(journal::hx_journal_entry_media_reorder_post)),
+            admin!(post(journal::api_journal_entry_media_reorder_post)),
         )
         .route(
             &Route::MediaUploadUrlPost.as_path(),

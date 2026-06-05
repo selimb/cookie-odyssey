@@ -9,7 +9,7 @@ import { AddCommentController } from "./comment/add-comment";
 import { EditCommentController } from "./comment/edit-comment";
 import { fireConfetti } from "./confetti";
 import { DatetimeController } from "./datetime";
-import { JournalEntryMediaFormController } from "./media/form-controller";
+import { MediaEditorController } from "./media/editor-controller";
 import { JournalEntryMediaGalleryController } from "./media/gallery-controller";
 import { ThumbnailDemoController } from "./media/thumbnail-demo-controller";
 import { ThemeToggleController } from "./theme";
@@ -24,7 +24,7 @@ for (const controller of [
   ToastController,
   ThemeToggleController,
   ComingSoonController,
-  JournalEntryMediaFormController,
+  MediaEditorController,
   JournalEntryMediaGalleryController,
   ThumbnailDemoController,
   AddCommentController,
