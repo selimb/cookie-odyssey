@@ -5,7 +5,6 @@ pub fn string_trim<'de, D>(d: D) -> Result<String, D::Error>
 where
     D: serde::de::Deserializer<'de>,
 {
-    let mut ret = String::deserialize(d)?;
-    ret.trim_in_place();
-    Ok(ret)
+    let ret = String::deserialize(d)?;
+    Ok(ret.trim().to_string())
 }
