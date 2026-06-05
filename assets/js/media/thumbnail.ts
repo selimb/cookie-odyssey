@@ -117,8 +117,10 @@ export async function thumbnailFromVideo(
         );
         video.addEventListener(
           "error",
-          (evt) => {
-            const msg = `Failed to load video: ${evt.message}`;
+          () => {
+            // NOTE: Typescript claims there's a `message` on the event parameter (`ErrorEvent`),
+            // but that's a lie.
+            const msg = `Failed to load video:\n${video.error?.message}`;
             log?.(msg);
             reject(new Error(msg));
           },
