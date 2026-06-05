@@ -5,6 +5,7 @@
 - [Rust toolchain](https://rustup.rs/)
 - [just](https://github.com/casey/just)
 - [bun](https://bun.com/)
+- [uv](https://docs.astral.sh/uv/) -- used to install `djlint` for HTML linting
 
 Both `just` and `bun` should be managed with [asdf](https://asdf-vm.com/) -- see [.tool-versions](./.tool-versions).
 

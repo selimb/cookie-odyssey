@@ -35,7 +35,7 @@ jobs:
 
       - run: bun install
 
-      - run: bun run lint
+      - run: just lint-js
 
   lint-html:
     runs-on: ubuntu-latest

@@ -37,12 +37,12 @@ admin:
 lint-rust:
     cargo fmt --check
     cargo check
-    cargo clippy --all-targets
+    cargo clippy --all-targets -- -D warnings
 
 lint-rust-fix:
     cargo fmt
-    cargo fix
-    cargo clippy --all-targets --fix
+    cargo fix --allow-dirty --allow-staged
+    cargo clippy --all-targets --fix --allow-dirty --allow-staged
 
 # =============================================================================
 # Linting (JS)

@@ -42,6 +42,10 @@ pub async fn page_journal_entry_edit_get(
         }
     };
 
+    let href_edit = Route::JournalEntryEditPost {
+        entry_id: Some(entry_id),
+    }
+    .as_path();
     let href_get_upload_url = Route::MediaUploadUrlPost.as_path();
     let href_commit_upload = Route::JournalEntryMediaCommitPost.as_path();
     let href_publish = Route::JournalEntryPublishPost {
@@ -55,6 +59,7 @@ pub async fn page_journal_entry_edit_get(
 
     let ctx = context! {
         ..context! {
+            href_edit,
             href_get_upload_url,
             href_commit_upload,
             href_publish,
