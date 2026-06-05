@@ -56,7 +56,7 @@ pub enum Route<'a> {
     JournalCommentDeletePost(Option<&'a comment::JournalCommentDeleteQuery>),
     LoginGet,
     LoginPost,
-    LogoutPost,
+    LogoutGet,
     MediaUploadUrlPost,
     // TODO: Why do we need this?
     MediaUploadProxyPut(Option<&'a storage::MediaUploadProxyParams>),
@@ -101,12 +101,12 @@ impl<'a> Route<'a> {
                 None => "/entry/{entry_id}/edit".into(),
             },
             Route::JournalEntryEditPost { entry_id } => match entry_id {
-                Some(entry_id) => format!("/entry/{entry_id}/edit").into(),
-                None => "/entry/{entry_id}/edit".into(),
+                Some(entry_id) => format!("/hx/entry/{entry_id}/edit").into(),
+                None => "/hx/entry/{entry_id}/edit".into(),
             },
             Route::JournalEntryPublishPost { entry_id } => match entry_id {
-                Some(entry_id) => format!("/entry/{entry_id}/publish").into(),
-                None => "/entry/{entry_id}/publish".into(),
+                Some(entry_id) => format!("/hx/entry/{entry_id}/publish").into(),
+                None => "/hx/entry/{entry_id}/publish".into(),
             },
             Route::JournalDayGet(params) => match params {
                 None => "/journal/{slug}/entry/{date}".into(),
@@ -135,7 +135,7 @@ impl<'a> Route<'a> {
             },
             Route::LoginGet => "/login".into(),
             Route::LoginPost => "/login".into(),
-            Route::LogoutPost => "/logout".into(),
+            Route::LogoutGet => "/logout".into(),
             Route::MediaUploadUrlPost => "/api/media-upload-url".into(),
             Route::MediaUploadProxyPut(params) => match params {
                 None => "/api/media-upload".into(),
@@ -151,10 +151,10 @@ impl<'a> Route<'a> {
                     format!("/api/video-transcode-callback?{qs}").into()
                 }
             },
-            Route::JournalEntryMediaCommitPost => "/api/entry-commit".into(),
-            Route::JournalEntryMediaEditCaptionPost => "/api/media-caption-edit".into(),
-            Route::JournalEntryMediaDelete => "/api/media-delete".into(),
-            Route::JournalEntryMediaReorder => "/api/media-reorder".into(),
+            Route::JournalEntryMediaCommitPost => "/hx/entry-commit".into(),
+            Route::JournalEntryMediaEditCaptionPost => "/hx/media-caption-edit".into(),
+            Route::JournalEntryMediaDelete => "/hx/media-delete".into(),
+            Route::JournalEntryMediaReorder => "/hx/media-reorder".into(),
             Route::RegisterGet => "/register".into(),
             Route::RegisterPost => "/register".into(),
             Route::UserListGet => "/users".into(),
@@ -177,118 +177,124 @@ macro_rules! admin {
 
 fn get_protected_routes() -> Router<AppState> {
     Router::new()
-        .route(&Route::LogoutPost.as_path(), get(auth::logout_post))
-        .route(&Route::JournalListGet.as_path(), get(journal::journal_list))
+        .route(&Route::LogoutGet.as_path(), get(auth::page_logout_get))
+        .route(
+            &Route::JournalListGet.as_path(),
+            get(journal::page_journal_list_get),
+        )
         .route(
             &Route::JournalDetailGet { slug: None }.as_path(),
-            get(journal::journal_detail_get),
+            get(journal::page_journal_detail_get),
         )
         .route(
             &Route::JournalDayGet(None).as_path(),
-            get(journal::journal_day_get),
+            get(journal::page_journal_day_get),
         )
         .route(
             &Route::JournalCommentAddPost(None).as_path(),
-            post(comment::journal_comment_add_post),
+            post(comment::hx_journal_comment_add_post),
         )
         .route(
             &Route::JournalCommentEditPost(None).as_path(),
-            post(comment::journal_comment_edit_post),
+            post(comment::hx_journal_comment_edit_post),
         )
         .route(
             &Route::JournalCommentDeletePost(None).as_path(),
-            post(comment::journal_comment_delete_post),
+            post(comment::hx_journal_comment_delete_post),
         )
         .route(
             &Route::JournalNewGet.as_path(),
-            admin!(get(journal::journal_new_get)),
+            admin!(get(journal::page_journal_new_get)),
         )
         .route(
             &Route::JournalNewPost.as_path(),
-            admin!(post(journal::journal_new_post)),
+            admin!(post(journal::page_journal_new_post)),
         )
         .route(
             &Route::JournalEntryNewGet(None).as_path(),
-            admin!(get(journal::journal_entry_new_get)),
+            admin!(get(journal::page_journal_entry_new_get)),
         )
         .route(
             &Route::JournalEntryNewPost { slug: None }.as_path(),
-            admin!(post(journal::journal_entry_new_post)),
+            admin!(post(journal::page_journal_entry_new_post)),
         )
         .route(
             &Route::JournalEntryEditGet { entry_id: None }.as_path(),
-            admin!(get(journal::journal_entry_edit_get)),
+            admin!(get(journal::page_journal_entry_edit_get)),
         )
         .route(
             &Route::JournalEntryEditPost { entry_id: None }.as_path(),
-            admin!(post(journal::journal_entry_edit_post)),
+            admin!(post(journal::hx_journal_entry_edit_post)),
         )
         .route(
             &Route::JournalEntryPublishPost { entry_id: None }.as_path(),
-            admin!(post(journal::journal_entry_publish_post)),
+            admin!(post(journal::hx_journal_entry_publish_post)),
         )
         .route(
             &Route::JournalEntryMediaCommitPost.as_path(),
-            admin!(post(journal::journal_entry_media_commit_post)),
+            admin!(post(journal::hx_journal_entry_media_commit_post)),
         )
         .route(
             &Route::JournalEntryMediaEditCaptionPost.as_path(),
-            admin!(post(journal::journal_entry_media_caption_edit)),
+            admin!(post(journal::hx_journal_entry_media_caption_edit_post)),
         )
         .route(
             &Route::JournalEntryMediaDelete.as_path(),
-            admin!(post(journal::journal_entry_media_delete)),
+            admin!(post(journal::hx_journal_entry_media_delete_post)),
         )
         .route(
             &Route::JournalEntryMediaReorder.as_path(),
-            admin!(post(journal::journal_entry_media_reorder)),
+            admin!(post(journal::hx_journal_entry_media_reorder_post)),
         )
         .route(
             &Route::MediaUploadUrlPost.as_path(),
-            admin!(post(storage::media_upload_url_post)),
+            admin!(post(storage::api_media_upload_url_post)),
         )
         .route(
             &Route::MediaUploadProxyPut(None).as_path(),
-            admin!(put(storage::media_upload_proxy)),
+            admin!(put(storage::api_media_upload_proxy_put)),
         )
         .route(
             &Route::UserListGet.as_path(),
-            admin!(get(auth::user_list_get)),
+            admin!(get(auth::page_user_list_get)),
         )
         .route(
             &Route::UserListApprovePost.as_path(),
-            admin!(post(auth::user_approve_post)),
+            admin!(post(auth::hx_user_approve_post)),
         )
         .route(
             &Route::UserListDeletePost.as_path(),
-            admin!(post(auth::user_delete_post)),
+            admin!(post(auth::hx_user_delete_post)),
         )
 }
 
 fn get_public_routes() -> Router<AppState> {
     Router::new()
-        .route(&Route::LoginGet.as_path(), get(auth::login_get))
-        .route(&Route::LoginPost.as_path(), post(auth::login_post))
-        .route(&Route::RegisterGet.as_path(), get(auth::register_get))
-        .route(&Route::RegisterPost.as_path(), post(auth::register_post))
+        .route(&Route::LoginGet.as_path(), get(auth::page_login_get))
+        .route(&Route::LoginPost.as_path(), post(auth::page_login_post))
+        .route(&Route::RegisterGet.as_path(), get(auth::page_register_get))
+        .route(
+            &Route::RegisterPost.as_path(),
+            post(auth::page_register_post),
+        )
         .route(
             &Route::ForgotPasswordGet.as_path(),
-            get(auth::forgot_password_get),
+            get(auth::page_forgot_password_get),
         )
         .route(
             &Route::ForgotPasswordPost.as_path(),
-            post(auth::forgot_password_post),
+            post(auth::page_forgot_password_post),
         )
         .route(
             &Route::DemoThumbnailGet.as_path(),
-            get(demo::demo_thumbnail_get),
+            get(demo::page_demo_thumbnail_get),
         )
 }
 
 fn get_github_action_routes() -> Router<AppState> {
     Router::new().route(
         &Route::VideoTranscodeCallbackPost(None).as_path(),
-        post(video_transcoding::video_transcode_callback_post),
+        post(video_transcoding::api_video_transcode_callback_post),
     )
 }
 

@@ -1,18 +1,7 @@
 # cookie-odyssey
 
-## TODO
+My personal travel blog.
 
-- View All
-
-## TODO Future
-
-- [todo-loading] Loading indicators
-- [todo-bundle] Better JS bundling
-- Improve styles
-
-## Setup
-
-### Typechecking in HTML files
-
-1. Disable the `@builtin HTML Language Features` extension.
-2. Install https://github.com/microsoft/vscode/issues/26338#issuecomment-889930923 .
+- See [deploy/README.md](./deploy/README.md) for deployment.
+- See [CONTRIBUTING.md](./CONTRIBUTING.md) for local development.
+- See [.claude](./.claude) for Claude stuff.

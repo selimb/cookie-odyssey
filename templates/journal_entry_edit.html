@@ -52,7 +52,7 @@
       <span> - </span>
       <span>Edit Entry</span>
     </h1>
-    <form hx-post="">
+    <form hx-post="{{ href_edit }}">
       {{ form.form_error(error="") }}
 
       {{ form.input("title", "Title", value=entry.title) }}

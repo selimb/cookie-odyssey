@@ -8,23 +8,27 @@ use sea_orm::{sea_query::OnConflict, ColumnTrait, EntityTrait, QueryFilter};
 use serde::Deserialize;
 
 use super::super::sessions::AuthBackend;
-use crate::{AppState, FormError, RouteError, RouteResult, Templ};
+use crate::{utils::serde_utils::string_trim, AppState, FormError, RouteError, RouteResult, Templ};
 use entities::{prelude::*, *};
 
-pub async fn register_get(templ: Templ) -> RouteResult {
+pub async fn page_register_get(templ: Templ) -> RouteResult {
     let html = templ.render("register.html")?;
     Ok(html.into_response())
 }
 
 #[derive(Deserialize, Clone, Debug)]
 pub struct Register {
+    #[serde(deserialize_with = "string_trim")]
     email: String,
+    #[serde(deserialize_with = "string_trim")]
     first_name: String,
+    #[serde(deserialize_with = "string_trim")]
     last_name: String,
+    #[serde(deserialize_with = "string_trim")]
     password: String,
 }
 
-pub async fn register_post(
+pub async fn page_register_post(
     state: State<AppState>,
     form: Result<Form<Register>, FormRejection>,
 ) -> RouteResult {

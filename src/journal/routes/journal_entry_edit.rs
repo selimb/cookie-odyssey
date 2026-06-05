@@ -29,7 +29,7 @@ pub struct JournalEntryEdit {
     text: String,
 }
 
-pub async fn journal_entry_edit_get(
+pub async fn page_journal_entry_edit_get(
     state: State<AppState>,
     templ: Templ,
     Path(entry_id): Path<i32>,
@@ -42,6 +42,10 @@ pub async fn journal_entry_edit_get(
         }
     };
 
+    let href_edit = Route::JournalEntryEditPost {
+        entry_id: Some(entry_id),
+    }
+    .as_path();
     let href_get_upload_url = Route::MediaUploadUrlPost.as_path();
     let href_commit_upload = Route::JournalEntryMediaCommitPost.as_path();
     let href_publish = Route::JournalEntryPublishPost {
@@ -55,6 +59,7 @@ pub async fn journal_entry_edit_get(
 
     let ctx = context! {
         ..context! {
+            href_edit,
             href_get_upload_url,
             href_commit_upload,
             href_publish,
@@ -68,7 +73,7 @@ pub async fn journal_entry_edit_get(
     Ok(html.into_response())
 }
 
-pub async fn journal_entry_edit_post(
+pub async fn hx_journal_entry_edit_post(
     state: State<AppState>,
     Path(entry_id): Path<i32>,
     form: Result<Form<JournalEntryEdit>, FormRejection>,
@@ -101,7 +106,10 @@ pub async fn journal_entry_edit_post(
     }
 }
 
-pub async fn journal_entry_publish_post(state: AppState, Path(entry_id): Path<i32>) -> RouteResult {
+pub async fn hx_journal_entry_publish_post(
+    state: AppState,
+    Path(entry_id): Path<i32>,
+) -> RouteResult {
     let data = journal_entry::ActiveModel {
         id: sea_orm::ActiveValue::Set(entry_id),
         draft: sea_orm::ActiveValue::Set(false),
@@ -116,7 +124,7 @@ pub async fn journal_entry_publish_post(state: AppState, Path(entry_id): Path<i3
     Ok(resp.into_response())
 }
 
-// SYNC
+// SYNC JournalEntryMediaCommitItem
 #[derive(Deserialize, Debug)]
 pub struct JournalEntryMediaCommitItem {
     pub media_type: journal_entry_media::MediaType,
@@ -128,7 +136,7 @@ pub struct JournalEntryMediaCommitItem {
     pub height_thumbnail: i32,
 }
 
-// SYNC
+// SYNC JournalEntryMediaCommitBody
 #[derive(Deserialize, Debug)]
 pub struct JournalEntryMediaCommitBody {
     pub entry_id: i32,
@@ -141,7 +149,7 @@ pub struct JournalEntryMediaCommitForm {
     json: String,
 }
 
-pub async fn journal_entry_media_commit_post(
+pub async fn hx_journal_entry_media_commit_post(
     state: State<AppState>,
     templ: Templ,
     form: Form<JournalEntryMediaCommitForm>,
@@ -164,7 +172,7 @@ pub struct JournalEntryMediaDelete {
     entry_id: i32,
 }
 
-pub async fn journal_entry_media_delete(
+pub async fn hx_journal_entry_media_delete_post(
     state: State<AppState>,
     templ: Templ,
     form: Result<Form<JournalEntryMediaDelete>, FormRejection>,
@@ -199,7 +207,7 @@ pub struct JournalEntryMediaReorder {
     pub direction: Direction,
 }
 
-pub async fn journal_entry_media_reorder(
+pub async fn hx_journal_entry_media_reorder_post(
     state: State<AppState>,
     templ: Templ,
     form: Result<Form<JournalEntryMediaReorder>, FormRejection>,
@@ -251,7 +259,7 @@ pub struct JournalEntryMediaCaptionEdit {
     caption: String,
 }
 
-pub async fn journal_entry_media_caption_edit(
+pub async fn hx_journal_entry_media_caption_edit_post(
     state: State<AppState>,
     form: Result<Form<JournalEntryMediaCaptionEdit>, FormRejection>,
 ) -> RouteResult {

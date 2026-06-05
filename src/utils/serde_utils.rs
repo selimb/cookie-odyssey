@@ -6,5 +6,5 @@ where
     D: serde::de::Deserializer<'de>,
 {
     let ret = String::deserialize(d)?;
-    Ok(ret)
+    Ok(ret.trim().to_string())
 }

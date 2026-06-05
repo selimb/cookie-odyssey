@@ -6,6 +6,8 @@ use axum_login::tower_sessions::ExpiredDeletion;
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 use serde::{Deserialize, Serialize};
 
+use crate::utils::serde_utils::string_trim;
+
 const DELETE_EXPIRED_INTERVAL: chrono::Duration = chrono::Duration::hours(1);
 const COOKIE_MAX_AGE: tower_sessions::cookie::time::Duration =
     tower_sessions::cookie::time::Duration::days(365);
@@ -65,8 +67,11 @@ impl axum_login::AuthUser for AuthUser {
 // to authenticate requests with the backend.
 #[derive(Debug, Clone, Deserialize)]
 pub struct Credentials {
+    #[serde(deserialize_with = "string_trim")]
     pub email: String,
+    #[serde(deserialize_with = "string_trim")]
     pub password: String,
+    #[serde(deserialize_with = "string_trim")]
     pub next: String,
 }
 

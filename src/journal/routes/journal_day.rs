@@ -20,7 +20,7 @@ pub struct JournalDayGetPath {
     pub date: chrono::NaiveDate,
 }
 
-pub async fn journal_day_get(
+pub async fn page_journal_day_get(
     state: AppState,
     templ: Templ,
     session: AuthSession,

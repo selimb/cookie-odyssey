@@ -11,6 +11,7 @@ use entities::{prelude::*, *};
 
 use crate::{
     comment::queries::{add_comment_to_journal, query_comments_for_journal, AddCommentToJournal},
+    utils::serde_utils::string_trim,
     AppState, AuthSession, Route, RouteError, RouteResult, Templ, Toast,
 };
 
@@ -22,10 +23,11 @@ pub struct JournalCommentAddQuery {
 
 #[derive(Deserialize, Debug)]
 pub struct JournalCommentAddForm {
+    #[serde(deserialize_with = "string_trim")]
     text: String,
 }
 
-pub async fn journal_comment_add_post(
+pub async fn hx_journal_comment_add_post(
     state: AppState,
     templ: Templ,
     session: AuthSession,
@@ -71,10 +73,11 @@ pub struct JournalCommentEditQuery {
 #[derive(Deserialize, Debug)]
 pub struct JournalCommentEditForm {
     comment_id: i32,
+    #[serde(deserialize_with = "string_trim")]
     text: String,
 }
 
-pub async fn journal_comment_edit_post(
+pub async fn hx_journal_comment_edit_post(
     state: AppState,
     templ: Templ,
     session: AuthSession,
@@ -119,7 +122,7 @@ pub struct JournalCommentDeleteForm {
     comment_id: i32,
 }
 
-pub async fn journal_comment_delete_post(
+pub async fn hx_journal_comment_delete_post(
     state: AppState,
     templ: Templ,
     session: AuthSession,

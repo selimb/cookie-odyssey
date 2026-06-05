@@ -14,7 +14,7 @@ pub struct MediaUploadProxyParams {
     pub key: String,
 }
 
-pub async fn media_upload_proxy(
+pub async fn api_media_upload_proxy_put(
     state: State<AppState>,
     Query(params): Query<MediaUploadProxyParams>,
     body: Bytes,

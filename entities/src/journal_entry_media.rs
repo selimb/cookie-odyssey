@@ -22,7 +22,7 @@ pub struct Model {
 }
 
 // KEEP ME
-// SYNC
+// SYNC MediaType
 #[derive(Debug, Clone, Copy, PartialEq, Eq, EnumIter, DeriveActiveEnum, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 #[sea_orm(rs_type = "String", db_type = "String(StringLen::None)")]

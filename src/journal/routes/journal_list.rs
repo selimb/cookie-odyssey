@@ -17,7 +17,7 @@ struct JournalListItem {
     cover_url: Option<Url>,
 }
 
-pub async fn journal_list(State(state): State<AppState>, templ: Templ) -> RouteResult {
+pub async fn page_journal_list_get(State(state): State<AppState>, templ: Templ) -> RouteResult {
     let journals = Journal::find()
         .find_also_related(File)
         .order_by_desc(journal::Column::StartDate)

@@ -30,14 +30,14 @@ async fn query_and_render_user_list(
         "user_list.html",
         ctx,
         if partial {
-            Some("frag_user_list")
+            Some("fragment_user_list")
         } else {
             None
         },
     )
 }
 
-pub async fn user_list_get(state: State<AppState>, templ: Templ) -> RouteResult {
+pub async fn page_user_list_get(state: State<AppState>, templ: Templ) -> RouteResult {
     let html = query_and_render_user_list(&state, &templ, false).await?;
     Ok(html.into_response())
 }
@@ -47,7 +47,7 @@ pub struct UserApprovePost {
     user_id: i32,
 }
 
-pub async fn user_approve_post(
+pub async fn hx_user_approve_post(
     state: State<AppState>,
     templ: Templ,
     form: Form<UserApprovePost>,
@@ -73,7 +73,7 @@ pub struct UserDeletePost {
     user_id: i32,
 }
 
-pub async fn user_delete_post(
+pub async fn hx_user_delete_post(
     state: State<AppState>,
     templ: Templ,
     form: Form<UserDeletePost>,

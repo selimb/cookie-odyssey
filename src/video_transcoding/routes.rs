@@ -11,7 +11,7 @@ pub struct VideoTranscodeCallbackQuery {
     pub output_key: String,
 }
 
-pub async fn video_transcode_callback_post(
+pub async fn api_video_transcode_callback_post(
     state: AppState,
     Query(VideoTranscodeCallbackQuery {
         task_id,

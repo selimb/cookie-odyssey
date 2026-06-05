@@ -147,16 +147,16 @@ export class JournalEntryMediaFormController extends TypedController(
   }
 }
 
-// SYNC
+// SYNC MediaType
 type MediaType = "image" | "video";
 
-// SYNC
+// SYNC MediaUploadUrlBody
 type MediaUploadUrlBody = {
   thumbnail_extension: string;
   filenames: string[];
 };
 
-// SYNC
+// SYNC MediaUploadUrlResultItem
 type MediaUploadUrlResultItem = {
   upload_method: string;
   upload_url_original: string;
@@ -167,7 +167,7 @@ type MediaUploadUrlResultItem = {
   file_id_thumbnail: number;
 };
 
-// SYNC
+// SYNC JournalEntryMediaCommitItem
 type JournalEntryMediaCommitItem = {
   media_type: MediaType;
   file_id_original: number;
@@ -178,7 +178,7 @@ type JournalEntryMediaCommitItem = {
   height_thumbnail: number;
 };
 
-// SYNC
+// SYNC JournalEntryMediaCommitBody
 type JournalEntryMediaCommitBody = {
   entry_id: number;
   items: JournalEntryMediaCommitItem[];

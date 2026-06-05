@@ -11,6 +11,12 @@ const ignorePath = fileURLToPath(new URL(".prettierignore", import.meta.url));
 
 export default defineConfig(
   includeIgnoreFile(ignorePath),
+  {
+    // No longer care about this file.
+    ignores: [
+      "migration/data-migrations/journal-entry-media-width-height-thumbnail/index.ts",
+    ],
+  },
   eslint.configs.recommended,
   // @ts-expect-error -- Weird bug in typescript-eslint
   tseslint.configs.strictTypeChecked,
