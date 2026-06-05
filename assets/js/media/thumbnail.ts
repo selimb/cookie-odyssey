@@ -73,24 +73,80 @@ export async function thumbnailFromVideo(
   const cleanup: Array<() => void> = [];
   try {
     const video = document.createElement("video");
+    log?.("Created video element");
     cleanup.push(() => {
       video.remove();
+      log?.("Removed video element");
     });
     const objectUrl = URL.createObjectURL(file);
+    log?.("Created object URL");
     cleanup.push(() => {
       URL.revokeObjectURL(objectUrl);
+      log?.("Revoked object URL");
     });
 
     video.src = objectUrl;
     video.muted = true;
+    // Play inline (not full-screen).
     video.playsInline = true;
-    // NOTE: I tried carefully orchestrating loadedmetadata/loadeddata/seek listeners,
-    // but the most reliable way seems to be just calling `.play()`.
-    // We already have the video in-memory, so we don't really need to care about over-loading.
-    await promiseTimeout(video.play(), 5000, "video.play()");
-    // Pause and seek back to beginning.
-    video.pause();
-    video.currentTime = 0;
+
+    //
+    // On most browsers, we can simply:
+    // ```
+    // await video.play();
+    // video.pause();
+    // video.currentTime = 0;
+    // ```
+    // But of course, MacOS Safari likes to be difficult, and forces us to do the event listener dance instead:
+    // 1. Load the video, and wait for `loadeddata`.
+    // 2. Set `currentTime` to the beginning, and wait for `seeked`.
+    // Note that none of this starts playing the video, i.e. `video.paused` is still `true`.
+    //
+    log?.("Loading video");
+    video.load();
+    log?.("Waiting for loadeddata");
+    await promiseTimeout(
+      new Promise<void>((resolve, reject) => {
+        video.addEventListener(
+          "loadeddata",
+          () => {
+            log?.("loadeddata fired");
+            resolve();
+          },
+          { once: true },
+        );
+        video.addEventListener(
+          "error",
+          () => {
+            // NOTE: Typescript claims there's a `message` on the event parameter (`ErrorEvent`),
+            // but that's a lie.
+            const msg = `Failed to load video:\n${video.error?.message}`;
+            log?.(msg);
+            reject(new Error(msg));
+          },
+          { once: true },
+        );
+      }),
+      5000,
+      "video.loadeddata",
+    );
+
+    log?.("Waiting for video to seek to 0s");
+    await promiseTimeout(
+      new Promise<void>((resolve) => {
+        video.addEventListener(
+          "seeked",
+          () => {
+            log?.("seeked fired");
+            resolve();
+          },
+          { once: true },
+        );
+        video.currentTime = 0;
+      }),
+      5000,
+      "video.seeked",
+    );
 
     const widthOriginal = video.videoWidth;
     const heightOriginal = video.videoHeight;
