@@ -24,7 +24,8 @@ POST/PUT/DELETE handlers do not need to share a URL with their corresponding GET
 
 All URLs are generated through the `Route` enum.
 Never hardcode URL strings in handlers or pass them directly to templates.
-Pass pre-computed `href_*` variables from the handler instead:
+Pass pre-computed `href_*` variables from the handler instead.
+The one accepted exception is the root path `"/"`, which may appear as a literal.
 
 ## Handler return type
 
@@ -39,7 +40,7 @@ Choose based on context:
   Let `?` propagate; the error becomes a 500.
   Dev mode shows the full error chain; prod shows "Something went wrong".
 
-- **`Toast`** -- for user-visible feedback in HTMX flows where the page content should not change (`HX-Reswap: none`):
+- **`Toast`** -- for user-visible feedback in HTMX flows where the page content should not change (`HX-Reswap: none`).
 
 - **`FormError`** -- for form validation failures.
 
@@ -61,7 +62,7 @@ Render methods:
 
 ## Form structs
 
-Apply `#[serde(deserialize_with = "string_trim")]` to every `String` field in a form struct that comes from user input:
+Apply `#[serde(deserialize_with = "string_trim")]` to every `String` field in a form struct that comes from user input.
 
 ## Database queries
 

@@ -12,6 +12,11 @@ Use ASCII equivalents instead, e.g. `--` for em dash.
 In markdown, only break lines at the end of a sentence.
 In code comments, break lines to keep within 80 characters _and_ at the end of each sentence.
 
+## Comment formatting
+
+Put comments on their own line (not trailing), written as proper sentences (capitalized, end punctuation).
+Marker comments (anchors, `// SYNC`) are exempt.
+
 ## Comment anchors
 
 Use `[anchor-name]` tags to link related comments across files or locations.

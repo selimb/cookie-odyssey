@@ -83,7 +83,7 @@ pub struct TemplContextLinks {
 static TEMPL_CONTEXT_LINKS: Lazy<TemplContextLinks> = Lazy::new(|| TemplContextLinks {
     home: "/".into(),
     admin_users_list: Route::UserListGet.as_path(),
-    logout: Route::LogoutPost.as_path(),
+    logout: Route::LogoutGet.as_path(),
 });
 
 /// Template renderer, which is pre-populated with common context variables (see [TemplContext]).
@@ -144,7 +144,7 @@ struct TemplContext<'a> {
     links: &'a TemplContextLinks,
     /// Obsolete, but kept in case we need it in the future.
     hx_boosted: bool,
-    /// Can be overriden.
+    /// Can be overridden.
     wide_layout: bool,
 }
 

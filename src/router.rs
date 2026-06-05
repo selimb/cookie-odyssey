@@ -56,7 +56,7 @@ pub enum Route<'a> {
     JournalCommentDeletePost(Option<&'a comment::JournalCommentDeleteQuery>),
     LoginGet,
     LoginPost,
-    LogoutPost,
+    LogoutGet,
     MediaUploadUrlPost,
     // TODO: Why do we need this?
     MediaUploadProxyPut(Option<&'a storage::MediaUploadProxyParams>),
@@ -135,7 +135,7 @@ impl<'a> Route<'a> {
             },
             Route::LoginGet => "/login".into(),
             Route::LoginPost => "/login".into(),
-            Route::LogoutPost => "/logout".into(),
+            Route::LogoutGet => "/logout".into(),
             Route::MediaUploadUrlPost => "/api/media-upload-url".into(),
             Route::MediaUploadProxyPut(params) => match params {
                 None => "/api/media-upload".into(),
@@ -177,7 +177,7 @@ macro_rules! admin {
 
 fn get_protected_routes() -> Router<AppState> {
     Router::new()
-        .route(&Route::LogoutPost.as_path(), get(auth::page_logout_post))
+        .route(&Route::LogoutGet.as_path(), get(auth::page_logout_get))
         .route(
             &Route::JournalListGet.as_path(),
             get(journal::page_journal_list_get),
