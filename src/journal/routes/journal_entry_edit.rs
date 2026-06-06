@@ -1,18 +1,16 @@
 use axum::{
     extract::{rejection::FormRejection, Path, State},
-    http::StatusCode,
     response::{Html, IntoResponse},
-    Form, Json,
+    Form,
 };
 use minijinja::context;
-use sea_orm::EntityTrait;
-use serde::{Deserialize, Serialize};
+use sea_orm::{EntityTrait, TransactionTrait};
+use serde::Deserialize;
 
 use crate::{
     journal::queries::{
-        delete_journal_entry_media, enqueue_video_transcoding, insert_journal_entry_media,
-        query_journal_entry_by_id, query_media_editor_items, reorder_journal_entry_media,
-        MediaEditorItem,
+        enqueue_video_transcoding, query_journal_entry_by_id, query_media_for_journal_entry,
+        sync_journal_entry_media, MediaEditorItem,
     },
     utils::serde_utils::string_trim,
     AppState, FormError, Route, RouteResult, Templ, Toast,
@@ -29,6 +27,9 @@ pub struct JournalEntryEdit {
     time: chrono::NaiveTime,
     #[serde(deserialize_with = "string_trim")]
     text: String,
+    // A JSON-serialized array of `MediaEditorItem`, carried in a hidden form
+    // field by the client-side editor.
+    media_items: String,
 }
 
 pub async fn page_journal_entry_edit_get(
@@ -44,10 +45,24 @@ pub async fn page_journal_entry_edit_get(
         }
     };
 
-    let media_items = query_media_editor_items(entry_id, &state.db, &state.storage).await?;
+    let media_full = query_media_for_journal_entry(entry_id, &state.db, &state.storage).await?;
     // The editor is client-owned, so it is seeded with the existing Media as a
     // JSON array rather than server-rendered markup.
-    let initial_items = serde_json::to_string(&media_items).map_err(anyhow::Error::from)?;
+    let initial_items: Vec<MediaEditorItem> = media_full
+        .into_iter()
+        .map(|m| MediaEditorItem {
+            media_type: m.media_type,
+            caption: m.caption,
+            file_id_original: m.file_id_original,
+            width_original: m.width_original,
+            height_original: m.height_original,
+            file_id_thumbnail: m.file_id_thumbnail,
+            width_thumbnail: m.width_thumbnail,
+            height_thumbnail: m.height_thumbnail,
+            url_thumbnail: m.url_thumbnail,
+        })
+        .collect();
+    let initial_items = serde_json::to_string(&initial_items).map_err(anyhow::Error::from)?;
 
     let href_edit = Route::JournalEntryEditPost {
         entry_id: Some(entry_id),
@@ -69,7 +84,6 @@ pub async fn page_journal_entry_edit_get(
             href_journal_detail,
             entry => entry_full.entry,
             journal => entry_full.journal,
-            entry_id,
             initial_items,
         },
         ..media_editor_ctx()
@@ -79,19 +93,13 @@ pub async fn page_journal_entry_edit_get(
 }
 
 // The `href_*` URLs the client-side Media editor needs. Shared between the
-// edit page (this module) and the new-entry page.
+// edit page (this module) and the new-entry page. The editor stages everything
+// in memory and submits with the form, so the only endpoint it calls directly
+// is the upload-URL minter.
 pub fn media_editor_ctx() -> minijinja::Value {
     let href_upload_url = Route::MediaUploadUrlPost.as_path();
-    let href_commit = Route::JournalEntryMediaCommitPost.as_path();
-    let href_caption = Route::JournalEntryMediaEditCaptionPost.as_path();
-    let href_delete = Route::JournalEntryMediaDelete.as_path();
-    let href_reorder = Route::JournalEntryMediaReorder.as_path();
     context! {
         href_upload_url,
-        href_commit,
-        href_caption,
-        href_delete,
-        href_reorder,
     }
 }
 
@@ -111,7 +119,19 @@ pub async fn hx_journal_entry_edit_post(
             date,
             time,
             text,
+            media_items,
         })) => {
+            let items: Vec<MediaEditorItem> = match serde_json::from_str(&media_items) {
+                Ok(items) => items,
+                Err(err) => {
+                    let resp = Toast::error(err);
+                    return Ok(resp.into_response());
+                }
+            };
+
+            // Prose and Media are saved together: update the Entry's fields and
+            // reconcile its Media list in one transaction.
+            let tx = state.db.begin().await?;
             let data = journal_entry::ActiveModel {
                 id: sea_orm::ActiveValue::Set(entry_id),
                 title: sea_orm::ActiveValue::Set(title),
@@ -121,7 +141,13 @@ pub async fn hx_journal_entry_edit_post(
                 text: sea_orm::ActiveValue::Set(text),
                 ..Default::default()
             };
-            JournalEntry::update(data).exec(&state.db).await?;
+            JournalEntry::update(data).exec(&tx).await?;
+            let new_video_file_ids = sync_journal_entry_media(entry_id, &items, &tx).await?;
+            tx.commit().await?;
+
+            enqueue_video_transcoding(new_video_file_ids, &state.db, &state.video_transcoder)
+                .await?;
+
             let resp = Toast::success("Saved");
             Ok(resp.into_response())
         }
@@ -144,91 +170,4 @@ pub async fn hx_journal_entry_publish_post(
     let html = Html("");
     let resp = (toast.into_headers(), html);
     Ok(resp.into_response())
-}
-
-// SYNC MediaCommitBody
-#[derive(Deserialize, Debug)]
-pub struct MediaCommitBody {
-    pub entry_id: i32,
-    pub items: Vec<MediaEditorItem>,
-}
-
-// SYNC MediaCommitResult
-#[derive(Serialize, Debug)]
-pub struct MediaCommitResult {
-    // The new `JournalEntryMedia` ids, in the same order as the submitted items.
-    pub ids: Vec<i32>,
-}
-
-// Persists newly-uploaded Media against an existing Entry (edit page).
-// The client owns the DOM, so this returns the new ids as JSON rather than a
-// rendered fragment; the client uses them to wire up subsequent caption,
-// reorder and delete calls.
-pub async fn api_journal_entry_media_commit_post(
-    state: State<AppState>,
-    Json(body): Json<MediaCommitBody>,
-) -> RouteResult {
-    let ids = insert_journal_entry_media(body.entry_id, &body.items, &state.db).await?;
-    enqueue_video_transcoding(&body.items, &state.db, &state.video_transcoder).await?;
-    Ok(Json(MediaCommitResult { ids }).into_response())
-}
-
-// SYNC MediaDeleteBody
-#[derive(Deserialize, Debug)]
-pub struct MediaDeleteBody {
-    pub media_id: i32,
-}
-
-pub async fn api_journal_entry_media_delete_post(
-    state: State<AppState>,
-    Json(body): Json<MediaDeleteBody>,
-) -> RouteResult {
-    delete_journal_entry_media(body.media_id, &state.db).await?;
-    Ok(StatusCode::NO_CONTENT.into_response())
-}
-
-// SYNC Direction
-#[derive(Deserialize, PartialEq, Debug)]
-#[serde(rename_all = "lowercase")]
-pub enum Direction {
-    Up,
-    Down,
-}
-
-// SYNC MediaReorderBody
-#[derive(Deserialize, Debug)]
-pub struct MediaReorderBody {
-    pub media_id: i32,
-    pub entry_id: i32,
-    pub order: i32,
-    pub direction: Direction,
-}
-
-pub async fn api_journal_entry_media_reorder_post(
-    state: State<AppState>,
-    Json(body): Json<MediaReorderBody>,
-) -> RouteResult {
-    reorder_journal_entry_media(&body, &state.db).await?;
-    Ok(StatusCode::NO_CONTENT.into_response())
-}
-
-// SYNC MediaCaptionBody
-#[derive(Deserialize, Debug)]
-pub struct MediaCaptionBody {
-    pub media_id: i32,
-    #[serde(deserialize_with = "string_trim")]
-    pub caption: String,
-}
-
-pub async fn api_journal_entry_media_caption_post(
-    state: State<AppState>,
-    Json(body): Json<MediaCaptionBody>,
-) -> RouteResult {
-    let data = journal_entry_media::ActiveModel {
-        id: sea_orm::ActiveValue::Set(body.media_id),
-        caption: sea_orm::ActiveValue::Set(body.caption),
-        ..Default::default()
-    };
-    JournalEntryMedia::update(data).exec(&state.db).await?;
-    Ok(StatusCode::NO_CONTENT.into_response())
 }

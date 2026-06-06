@@ -1,8 +1,16 @@
 {# Shared body of the client-owned Media editor (`media--editor` controller). #}
-{# The caller provides the controller element with the required #}
-{# `data-media--editor-*-value` attributes (and, on the new-entry page, the #}
-{# hidden field and Create button). #}
-{% macro body() %}
+{# The caller wraps this in the controller element and an enclosing <form>, and #}
+{# passes `initial_items` (a JSON array of the Entry's current Media, or "[]"). #}
+{# That JSON seeds both the hidden `media_items` field and the controller, so #}
+{# even if the controller never initializes the form submits the existing state #}
+{# rather than an empty list (which would delete all Media). #}
+{% macro body(initial_items) %}
+  <input
+    type="hidden"
+    name="media_items"
+    data-media--editor-target="hiddenField"
+    value="{{ initial_items }}"
+  />
   <div data-media--editor-target="list" class="w-full space-y-4"></div>
 
   <template data-media--editor-target="itemTemplate">
@@ -42,7 +50,6 @@
     data-media--editor-target="addButton"
     class="btn btn-primary my-4 w-full"
   >
-    <span class="loading loading-spinner hidden"></span>
     Add
   </button>
   <input

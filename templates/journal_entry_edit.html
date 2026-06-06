@@ -11,7 +11,12 @@
       <span> - </span>
       <span>Edit Entry</span>
     </h1>
-    <form hx-post="{{ href_edit }}">
+    {# Prose and Media share one form: Save submits both. #}
+    <form
+      hx-post="{{ href_edit }}"
+      data-controller="media--editor"
+      data-media--editor-href-upload-url-value="{{ href_upload_url }}"
+    >
       {{ form.form_error(error="") }}
 
       {{ form.input("title", "Title", value=entry.title) }}
@@ -42,7 +47,15 @@
       >
 {{ entry.text }}</textarea
       >
-      <button type="submit" class="btn btn-primary mt-2 w-full">Save</button>
+
+      <hr class="my-8 h-px border-0 bg-gray-200 dark:bg-gray-700" />
+
+      {{ editor.body(initial_items) }}
+
+      <button type="submit" class="btn btn-primary mt-2 w-full">
+        <span class="loading loading-spinner hidden"></span>
+        Save
+      </button>
       {% if entry.draft %}
         <button
           type="button"
@@ -54,21 +67,5 @@
         </button>
       {% endif %}
     </form>
-
-    <hr class="my-8 h-px border-0 bg-gray-200 dark:bg-gray-700" />
-
-    <div
-      class="w-full"
-      data-controller="media--editor"
-      data-media--editor-entry-id-value="{{ entry.id }}"
-      data-media--editor-href-upload-url-value="{{ href_upload_url }}"
-      data-media--editor-href-commit-value="{{ href_commit }}"
-      data-media--editor-href-caption-value="{{ href_caption }}"
-      data-media--editor-href-reorder-value="{{ href_reorder }}"
-      data-media--editor-href-delete-value="{{ href_delete }}"
-      data-media--editor-initial-items-value="{{ initial_items }}"
-    >
-      {{ editor.body() }}
-    </div>
   </div>
 {% endblock content %}

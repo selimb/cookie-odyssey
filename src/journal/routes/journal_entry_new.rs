@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     journal::{
         queries::{
-            enqueue_video_transcoding, insert_journal_entry_media, query_journal_by_slug,
+            enqueue_video_transcoding, query_journal_by_slug, sync_journal_entry_media,
             MediaEditorItem,
         },
         routes::media_editor_ctx,
@@ -114,12 +114,13 @@ pub async fn page_journal_entry_new_post(
             };
             let entry = JournalEntry::insert(data).exec(&tx).await?;
             let entry_id = entry.last_insert_id;
-            insert_journal_entry_media(entry_id, &items, &tx).await?;
+            let new_video_file_ids = sync_journal_entry_media(entry_id, &items, &tx).await?;
             tx.commit().await?;
 
             // Video transcoding is a background side-effect, kicked off after
             // the Entry and its Media are durably committed.
-            enqueue_video_transcoding(&items, &state.db, &state.video_transcoder).await?;
+            enqueue_video_transcoding(new_video_file_ids, &state.db, &state.video_transcoder)
+                .await?;
 
             let href = Route::JournalEntryEditGet {
                 entry_id: Some(entry_id),

@@ -10,11 +10,6 @@
       id="journal_entry_new_form"
       data-controller="media--editor"
       data-media--editor-href-upload-url-value="{{ href_upload_url }}"
-      data-media--editor-href-commit-value="{{ href_commit }}"
-      data-media--editor-href-caption-value="{{ href_caption }}"
-      data-media--editor-href-reorder-value="{{ href_reorder }}"
-      data-media--editor-href-delete-value="{{ href_delete }}"
-      data-media--editor-initial-items-value="[]"
     >
       {{ form.form_error(error="") }}
 
@@ -43,20 +38,10 @@
         required="false"
         value="{{ journal.id }}"
       />
-      <input
-        type="hidden"
-        name="media_items"
-        data-media--editor-target="hiddenField"
-        value="[]"
-      />
 
-      {{ editor.body() }}
+      {{ editor.body("[]") }}
 
-      <button
-        type="submit"
-        data-media--editor-target="createButton"
-        class="btn btn-primary my-8 w-full"
-      >
+      <button type="submit" class="btn btn-primary my-8 w-full">
         <span class="loading loading-spinner hidden"></span>
         Create
       </button>

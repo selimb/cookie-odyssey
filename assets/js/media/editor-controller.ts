@@ -9,6 +9,10 @@ import {
   thumbnailFromVideo,
 } from "./thumbnail";
 
+// How long the submit gate waits for in-flight uploads before giving up and
+// letting the user retry. Uploads are not aborted -- they keep running.
+const UPLOAD_SETTLE_TIMEOUT_MS = 30_000;
+
 // SYNC MediaType
 type MediaType = "image" | "video";
 
@@ -32,7 +36,6 @@ type MediaUploadUrlResultItem = z.infer<typeof mediaUploadUrlResultItemSchema>;
 
 // SYNC MediaEditorItem
 const mediaEditorItemSchema = z.object({
-  id: z.number().nullable(),
   media_type: z.enum(["image", "video"]),
   caption: z.string(),
   file_id_original: z.number(),
@@ -45,47 +48,12 @@ const mediaEditorItemSchema = z.object({
 });
 type MediaEditorItem = z.infer<typeof mediaEditorItemSchema>;
 
-// SYNC MediaCommitBody
-type MediaCommitBody = {
-  entry_id: number;
-  items: MediaEditorItem[];
-};
-
-// SYNC MediaCommitResult
-const mediaCommitResultSchema = z.object({
-  ids: z.array(z.number()),
-});
-
-// SYNC MediaCaptionBody
-type MediaCaptionBody = {
-  media_id: number;
-  caption: string;
-};
-
-// SYNC Direction
-type Direction = "up" | "down";
-
-// SYNC MediaReorderBody
-type MediaReorderBody = {
-  media_id: number;
-  entry_id: number;
-  order: number;
-  direction: Direction;
-};
-
-// SYNC MediaDeleteBody
-type MediaDeleteBody = {
-  media_id: number;
-};
-
 // The editor's in-memory model of a single Media item. Richer than the wire
 // `MediaEditorItem`: it tracks the client-side `uid`, upload `status`, and a
 // renderable `thumbnailUrl` (a local object URL for freshly-added files, a
 // signed URL for items seeded from the server).
 type EditorItem = {
   uid: number;
-  // The persisted `JournalEntryMedia` id, or null until the item is created.
-  serverId: number | null;
   mediaType: MediaType;
   caption: string;
   fileIdOriginal: number;
@@ -111,22 +79,30 @@ type ItemElements = {
 };
 
 // htmx fires this before issuing a request; `issueRequest` releases a request
-// that was held back with `preventDefault()`.
+// that was held back with `preventDefault()`. `elt` is the element making the
+// request (the form, for a form submit).
 type HtmxConfirmEvent = CustomEvent<{
+  elt: Element;
   issueRequest: (skipConfirmation?: boolean) => void;
 }>;
 
+type HtmxAfterRequestEvent = CustomEvent<{
+  elt: Element;
+  successful: boolean;
+}>;
+
 /**
- * A single client-owned Media editor, used on both the new-entry and edit
- * pages. It owns an in-memory ordered list of Media and renders the Thumbnails
- * itself.
+ * A single client-owned Media editor, used identically on the new-entry and
+ * edit pages. It owns an in-memory ordered list of Media and renders the
+ * Thumbnails itself.
  *
- * The presence of an `entryId` selects the persistence mode:
- * - Edit mode (entryId present): every mutation persists immediately.
- * - New-entry mode (no entryId): mutations only touch the in-memory list, which
- *   is serialized into a hidden form field so the page's normal HTMX form
- *   submission carries it. A `htmx:confirm` gate makes Create wait for in-flight
- *   uploads to land.
+ * Everything is staged in memory: adding a file uploads its blob to storage in
+ * the background, but reorder/caption/delete only touch the in-memory list,
+ * which is serialized into a hidden form field. The Media is persisted only when
+ * the enclosing form is submitted (Create or Save), which the server reconciles
+ * in one transaction. Two cross-cutting concerns:
+ * - A `htmx:confirm` gate makes the submit wait for in-flight uploads to land.
+ * - A `beforeunload` guard warns before discarding unsaved changes.
  */
 export class MediaEditorController extends TypedController(
   "media--editor",
@@ -137,28 +113,32 @@ export class MediaEditorController extends TypedController(
       itemTemplate: "template",
       fileInput: "input",
       addButton: "button",
+      hiddenField: "input",
     },
     values: {
       hrefUploadUrl: "string",
-      hrefCommit: "string",
-      hrefCaption: "string",
-      hrefReorder: "string",
-      hrefDelete: "string",
-      initialItems: "string",
     },
   },
 ) {
   private items: EditorItem[] = [];
   private elements = new Map<number, ItemElements>();
   private uidCounter = 0;
-  // Tracks every in-flight upload so the Create gate can await them. Each
-  // promise resolves (never rejects) once its upload settles.
-  private uploadPromises: Array<Promise<void>> = [];
+  // One promise per added batch, covering its whole pipeline (URL fetch +
+  // uploads). The submit gate awaits these so it can wait out in-flight work.
+  private batches: Array<Promise<void>> = [];
+  // True once the user has made changes not yet persisted by a form submit.
+  private dirty = false;
+  private form: HTMLFormElement | null = null;
 
   connect(): void {
+    this.form = this.element.closest("form");
+
+    // The hidden field is the single source of truth for the list. It is
+    // server-seeded with the Entry's current Media, so it already holds the
+    // correct state before this controller runs.
     const initialItems: MediaEditorItem[] = z
       .array(mediaEditorItemSchema)
-      .parse(JSON.parse(this.getValue("initialItems")));
+      .parse(JSON.parse(this.getTarget("hiddenField").value));
     for (const wire of initialItems) {
       const item = this.itemFromWire(wire);
       this.items.push(item);
@@ -169,79 +149,65 @@ export class MediaEditorController extends TypedController(
 
     const $addButton = this.getTarget("addButton");
     const $fileInput = this.getTarget("fileInput");
-    const $addSpinner = $addButton.querySelector(".loading");
 
     $addButton.addEventListener("click", (event) => {
       event.preventDefault();
       $fileInput.click();
     });
 
-    // eslint-disable-next-line @typescript-eslint/no-misused-promises -- Async handler.
-    $fileInput.addEventListener("change", async () => {
+    $fileInput.addEventListener("change", () => {
       if (!$fileInput.files || $fileInput.files.length === 0) {
         return;
       }
       const files = [...$fileInput.files];
       // Reset so re-selecting the same file fires `change` again.
       $fileInput.value = "";
-
-      $addButton.disabled = true;
-      $addSpinner?.classList.remove("hidden");
-      try {
-        await this.handleFiles(files);
-      } finally {
-        $addButton.disabled = false;
-        $addSpinner?.classList.add("hidden");
-      }
+      this.addFiles(files);
     });
 
-    if (!this.isEditMode) {
-      this.element.addEventListener("htmx:confirm", this.onConfirm);
-    }
+    // Any edit -- to the prose fields or a caption -- marks the form dirty.
+    this.form?.addEventListener("input", this.markDirty);
+    this.form?.addEventListener("htmx:confirm", this.onConfirm);
+    this.form?.addEventListener("htmx:after-request", this.onAfterRequest);
+    window.addEventListener("beforeunload", this.onBeforeUnload);
   }
 
   disconnect(): void {
-    if (!this.isEditMode) {
-      this.element.removeEventListener("htmx:confirm", this.onConfirm);
-    }
+    this.form?.removeEventListener("input", this.markDirty);
+    this.form?.removeEventListener("htmx:confirm", this.onConfirm);
+    this.form?.removeEventListener("htmx:after-request", this.onAfterRequest);
+    window.removeEventListener("beforeunload", this.onBeforeUnload);
     for (const item of this.items) {
       this.revokeThumbnail(item);
     }
   }
 
-  private get entryId(): number | null {
-    const raw = this.element.getAttribute("data-media--editor-entry-id-value");
-    return raw ? Number(raw) : null;
-  }
+  // --- Adding files --------------------------------------------------------
 
-  private get isEditMode(): boolean {
-    return this.entryId !== null;
-  }
-
-  private get hiddenField(): HTMLInputElement | null {
-    return this.element.querySelector(
-      `[data-media--editor-target="hiddenField"]`,
-    );
-  }
-
-  private get createButton(): HTMLButtonElement | null {
-    return this.element.querySelector(
-      `[data-media--editor-target="createButton"]`,
-    );
-  }
-
-  private async handleFiles(files: File[]): Promise<void> {
+  private addFiles(files: File[]): void {
     const items = files.map((file) => this.createPendingItem(file));
     for (const item of items) {
       this.items.push(item);
       this.renderItem(item);
     }
+    this.dirty = true;
     this.refreshControls();
+    this.syncHiddenField();
 
-    // Kick off Thumbnail generation right away so a preview appears
-    // immediately, in parallel with requesting upload URLs.
-    const thumbnailPromises = files.map(async (file, index) =>
-      await this.generateThumbnail(items[index], file),
+    // Run the batch in the background; the submit gate tracks it via `batches`.
+    // Drop it once it settles so the array only ever holds in-flight work.
+    const batch = this.runBatch(items, files);
+    this.batches.push(batch);
+    void batch.finally(() => {
+      this.batches = this.batches.filter((b) => b !== batch);
+    });
+  }
+
+  // Uploads a batch of files: generates Thumbnails, mints upload URLs, then
+  // uploads each blob. Never rejects -- per-item failure is recorded as status.
+  private async runBatch(items: EditorItem[], files: File[]): Promise<void> {
+    const thumbnailPromises = files.map(
+      async (file, index) => await this.generateThumbnail(items[index], file),
     );
 
     let uploadParamsList: MediaUploadUrlResultItem[];
@@ -261,6 +227,14 @@ export class MediaEditorController extends TypedController(
       }
       this.refreshControls();
       this.syncHiddenField();
+      // The Thumbnails may still be generating; once they settle, revoke their
+      // object URLs (the items are already gone, so nothing else will). This
+      // also swallows their rejections so they don't surface as unhandled.
+      void Promise.allSettled(thumbnailPromises).then(() => {
+        for (const item of items) {
+          this.revokeThumbnail(item);
+        }
+      });
       return;
     }
 
@@ -272,89 +246,16 @@ export class MediaEditorController extends TypedController(
     }
     this.syncHiddenField();
 
-    // Upload each file independently in the background.
-    const uploadPromises = items.map(async (item, index) =>
-      { await this.uploadItem(
-        item,
-        files[index],
-        thumbnailPromises[index],
-        uploadParamsList[index],
-      ); },
+    await Promise.allSettled(
+      items.map(async (item, index) => {
+        await this.uploadItem(
+          item,
+          files[index],
+          thumbnailPromises[index],
+          uploadParamsList[index],
+        );
+      }),
     );
-    this.uploadPromises.push(...uploadPromises);
-
-    if (this.isEditMode) {
-      await this.commitAfterUpload(items, uploadPromises);
-    }
-    // In new-entry mode, `uploadItem` flips each item's status and re-syncs the
-    // hidden field on its own; the Create gate awaits `uploadPromises`.
-  }
-
-  private createPendingItem(file: File): EditorItem {
-    return {
-      uid: this.uidCounter++,
-      serverId: null,
-      mediaType: file.type.startsWith("video/") ? "video" : "image",
-      caption: "",
-      fileIdOriginal: -1,
-      widthOriginal: 0,
-      heightOriginal: 0,
-      fileIdThumbnail: -1,
-      widthThumbnail: 0,
-      heightThumbnail: 0,
-      thumbnailUrl: "",
-      status: "pending",
-    };
-  }
-
-  private itemFromWire(wire: MediaEditorItem): EditorItem {
-    return {
-      uid: this.uidCounter++,
-      serverId: wire.id,
-      mediaType: wire.media_type,
-      caption: wire.caption,
-      fileIdOriginal: wire.file_id_original,
-      widthOriginal: wire.width_original,
-      heightOriginal: wire.height_original,
-      fileIdThumbnail: wire.file_id_thumbnail,
-      widthThumbnail: wire.width_thumbnail,
-      heightThumbnail: wire.height_thumbnail,
-      thumbnailUrl: wire.url_thumbnail,
-      status: "ready",
-    };
-  }
-
-  private toWire(item: EditorItem): MediaEditorItem {
-    return {
-      id: item.serverId,
-      media_type: item.mediaType,
-      caption: item.caption,
-      file_id_original: item.fileIdOriginal,
-      width_original: item.widthOriginal,
-      height_original: item.heightOriginal,
-      file_id_thumbnail: item.fileIdThumbnail,
-      width_thumbnail: item.widthThumbnail,
-      height_thumbnail: item.heightThumbnail,
-      url_thumbnail: "",
-    };
-  }
-
-  private async generateThumbnail(
-    item: EditorItem,
-    file: File,
-  ): Promise<ThumbnailFromAnyResult> {
-    const result =
-      item.mediaType === "video"
-        ? await thumbnailFromVideo(file)
-        : await thumbnailFromImage(file);
-    item.widthOriginal = result.widthOriginal;
-    item.heightOriginal = result.heightOriginal;
-    item.widthThumbnail = result.widthThumbnail;
-    item.heightThumbnail = result.heightThumbnail;
-    item.thumbnailUrl = URL.createObjectURL(result.thumbnail);
-    this.updateThumbnail(item);
-    this.syncHiddenField();
-    return result;
   }
 
   private async uploadItem(
@@ -389,137 +290,96 @@ export class MediaEditorController extends TypedController(
       });
     }
     this.updateStatus(item);
-    this.refreshControls();
-    this.syncHiddenField();
   }
 
-  // Edit mode only: after a batch of uploads settles, persist the successful
-  // ones and adopt their server ids.
-  private async commitAfterUpload(
-    items: EditorItem[],
-    uploadPromises: Array<Promise<void>>,
-  ): Promise<void> {
-    await Promise.allSettled(uploadPromises);
-
-    for (const item of items) {
-      if (item.status === "error") {
-        this.removeItem(item.uid);
-      }
-    }
-    const ready = items.filter((item) => this.items.includes(item));
-    if (ready.length === 0) {
-      this.refreshControls();
-      return;
-    }
-
-    let ids: number[];
-    try {
-      ids = await this.commitItems(ready);
-    } catch (error) {
-      toast({ message: "Failed to save media", error, variant: "error" });
-      for (const item of ready) {
-        this.removeItem(item.uid);
-      }
-      this.refreshControls();
-      this.syncHiddenField();
-      return;
-    }
-
-    for (const [index, item] of ready.entries()) {
-      item.serverId = ids[index];
-      this.updateStatus(item);
-    }
-    this.refreshControls();
-  }
-
-  private async commitItems(items: EditorItem[]): Promise<number[]> {
-    const entryId = this.entryId;
-    if (entryId === null) {
-      throw new Error("Cannot commit without an entry id");
-    }
-    const body: MediaCommitBody = {
-      entry_id: entryId,
-      items: items.map((item) => this.toWire(item)),
-    };
-    const json = await postJson(this.getValue("hrefCommit"), body);
-    return mediaCommitResultSchema.parse(json).ids;
-  }
-
-  // --- Mutations -----------------------------------------------------------
-
-  private onCaptionChange(item: EditorItem): void {
-    const els = this.elements.get(item.uid);
-    if (!els) return;
-    item.caption = els.caption.value;
-    this.syncHiddenField();
-
-    if (this.isEditMode && item.serverId !== null) {
-      const body: MediaCaptionBody = {
-        media_id: item.serverId,
-        caption: item.caption,
-      };
-      void postJson(this.getValue("hrefCaption"), body)
-        .then(() => {
-          toast({ message: "Caption saved", variant: "success" });
-        })
-        .catch((error: unknown) => {
-          toast({ message: "Failed to save caption", error, variant: "error" });
-        });
-    }
-  }
-
-  private async onReorder(
+  private async generateThumbnail(
     item: EditorItem,
-    direction: Direction,
-  ): Promise<void> {
+    file: File,
+  ): Promise<ThumbnailFromAnyResult> {
+    const result =
+      item.mediaType === "video"
+        ? await thumbnailFromVideo(file)
+        : await thumbnailFromImage(file);
+    item.widthOriginal = result.widthOriginal;
+    item.heightOriginal = result.heightOriginal;
+    item.widthThumbnail = result.widthThumbnail;
+    item.heightThumbnail = result.heightThumbnail;
+    item.thumbnailUrl = URL.createObjectURL(result.thumbnail);
+    this.updateThumbnail(item);
+    this.syncHiddenField();
+    return result;
+  }
+
+  // --- In-memory mutations -------------------------------------------------
+
+  private onReorder(item: EditorItem, direction: "up" | "down"): void {
     const index = this.items.indexOf(item);
     const targetIndex = direction === "up" ? index - 1 : index + 1;
     if (targetIndex < 0 || targetIndex >= this.items.length) {
       return;
     }
-
-    // The server swaps by `order`, which mirrors the array index since the
-    // client renders in persisted order.
-    if (this.isEditMode && item.serverId !== null) {
-      const body: MediaReorderBody = {
-        media_id: item.serverId,
-        entry_id: this.entryId ?? 0,
-        order: index,
-        direction,
-      };
-      try {
-        await postJson(this.getValue("hrefReorder"), body);
-      } catch (error) {
-        toast({ message: "Failed to reorder media", error, variant: "error" });
-        return;
-      }
-    }
-
     this.swapItems(index, targetIndex);
+    this.dirty = true;
     this.syncHiddenField();
   }
 
-  private async onDelete(item: EditorItem): Promise<void> {
+  private onDelete(item: EditorItem): void {
     if (!window.confirm("Are you sure you wish to delete this?")) {
       return;
     }
-
-    if (this.isEditMode && item.serverId !== null) {
-      const body: MediaDeleteBody = { media_id: item.serverId };
-      try {
-        await postJson(this.getValue("hrefDelete"), body);
-      } catch (error) {
-        toast({ message: "Failed to delete media", error, variant: "error" });
-        return;
-      }
-    }
-
     this.removeItem(item.uid);
+    this.dirty = true;
     this.refreshControls();
     this.syncHiddenField();
   }
 
   // --- Rendering -----------------------------------------------------------
+
+  private createPendingItem(file: File): EditorItem {
+    return {
+      uid: this.uidCounter++,
+      mediaType: file.type.startsWith("video/") ? "video" : "image",
+      caption: "",
+      fileIdOriginal: -1,
+      widthOriginal: 0,
+      heightOriginal: 0,
+      fileIdThumbnail: -1,
+      widthThumbnail: 0,
+      heightThumbnail: 0,
+      thumbnailUrl: "",
+      status: "pending",
+    };
+  }
+
+  private itemFromWire(wire: MediaEditorItem): EditorItem {
+    return {
+      uid: this.uidCounter++,
+      mediaType: wire.media_type,
+      caption: wire.caption,
+      fileIdOriginal: wire.file_id_original,
+      widthOriginal: wire.width_original,
+      heightOriginal: wire.height_original,
+      fileIdThumbnail: wire.file_id_thumbnail,
+      widthThumbnail: wire.width_thumbnail,
+      heightThumbnail: wire.height_thumbnail,
+      thumbnailUrl: wire.url_thumbnail,
+      status: "ready",
+    };
+  }
+
+  private toWire(item: EditorItem): MediaEditorItem {
+    return {
+      media_type: item.mediaType,
+      caption: item.caption,
+      file_id_original: item.fileIdOriginal,
+      width_original: item.widthOriginal,
+      height_original: item.heightOriginal,
+      file_id_thumbnail: item.fileIdThumbnail,
+      width_thumbnail: item.widthThumbnail,
+      height_thumbnail: item.heightThumbnail,
+      url_thumbnail: "",
+    };
+  }
 
   private renderItem(item: EditorItem): void {
     const fragment = this.getTarget("itemTemplate").content.cloneNode(
@@ -540,17 +400,16 @@ export class MediaEditorController extends TypedController(
     };
 
     els.caption.value = item.caption;
-    els.caption.addEventListener("change", () => {
-      this.onCaptionChange(item);
-    });
+    // Caption edits are read from the DOM at sync time (see syncHiddenField);
+    // the form's `input` listener marks the form dirty.
     els.up.addEventListener("click", () => {
-      void this.onReorder(item, "up");
+      this.onReorder(item, "up");
     });
     els.down.addEventListener("click", () => {
-      void this.onReorder(item, "down");
+      this.onReorder(item, "down");
     });
     els.del.addEventListener("click", () => {
-      void this.onDelete(item);
+      this.onDelete(item);
     });
 
     this.elements.set(item.uid, els);
@@ -577,55 +436,32 @@ export class MediaEditorController extends TypedController(
     const els = this.elements.get(item.uid);
     if (!els) return;
     const isError = item.status === "error";
-    const showSpinner = !this.isSettled(item) && !isError;
-    els.spinner.classList.toggle("hidden", !showSpinner);
-    els.root.classList.toggle("opacity-50", showSpinner);
-    // Flag failed uploads so the Admin can spot and remove them.
+    const isPending = item.status === "pending";
+    els.spinner.classList.toggle("hidden", !isPending);
+    els.root.classList.toggle("opacity-50", isPending);
+    // Flag failed uploads so the user can spot and remove them.
     els.root.classList.toggle("ring-2", isError);
     els.root.classList.toggle("ring-error", isError);
-  }
-
-  // An item is "settled" once it is safe to reorder it: in edit mode that means
-  // it has been persisted (so the server can swap it); in new-entry mode it just
-  // means the upload has landed.
-  private isSettled(item: EditorItem): boolean {
-    return this.isEditMode ? item.serverId !== null : item.status === "ready";
   }
 
   private refreshControls(): void {
     for (const [index, item] of this.items.entries()) {
       const els = this.elements.get(item.uid);
       if (!els) continue;
-      const prev = this.items[index - 1];
-      const next = this.items[index + 1];
-      // Removing a mistake and editing captions are always allowed; in edit
-      // mode a pre-commit caption is carried by the commit call.
-      els.del.disabled = false;
-      els.caption.disabled = false;
-      // A reorder swaps two items, so both ends must be safe to move. In edit
-      // mode that means both are persisted; in new-entry mode it is purely an
-      // in-memory swap.
-      els.up.disabled =
-        !this.canMove(item) || index === 0 || !this.canMove(prev);
-      els.down.disabled =
-        !this.canMove(item) ||
-        index === this.items.length - 1 ||
-        !this.canMove(next);
+      els.up.disabled = index === 0;
+      els.down.disabled = index === this.items.length - 1;
     }
-  }
-
-  // Whether an item may participate in a reorder swap.
-  private canMove(item: EditorItem | undefined): boolean {
-    return item !== undefined && (!this.isEditMode || this.isSettled(item));
   }
 
   private swapItems(a: number, b: number): void {
     [this.items[a], this.items[b]] = [this.items[b], this.items[a]];
-    // Re-attach the DOM nodes in the new order.
     const list = this.getTarget("list");
-    for (const item of this.items) {
-      const els = this.elements.get(item.uid);
-      if (els) list.append(els.root);
+    const lo = Math.min(a, b);
+    const loEls = this.elements.get(this.items[lo].uid);
+    const hiEls = this.elements.get(this.items[lo + 1].uid);
+    // Move the now-lower node before the now-higher one.
+    if (loEls && hiEls) {
+      list.insertBefore(loEls.root, hiEls.root);
     }
     this.refreshControls();
   }
@@ -647,36 +483,49 @@ export class MediaEditorController extends TypedController(
   }
 
   private syncHiddenField(): void {
-    const field = this.hiddenField;
-    if (!field) return;
-    field.value = JSON.stringify(this.items.map((item) => this.toWire(item)));
+    // Pull each caption straight from its live input so an un-blurred edit is
+    // captured even if no `change` event has fired yet.
+    for (const item of this.items) {
+      const els = this.elements.get(item.uid);
+      if (els) item.caption = els.caption.value;
+    }
+    this.getTarget("hiddenField").value = JSON.stringify(
+      this.items.map((item) => this.toWire(item)),
+    );
   }
 
-  // --- Create gate (new-entry mode) ---------------------------------------
+  // --- Submit gate & unsaved-changes guard --------------------------------
 
+  private markDirty = (): void => {
+    this.dirty = true;
+  };
+
+  // Holds the form submit until in-flight uploads land (or fail).
   private onConfirm = (event: Event): void => {
     const evt = event as HtmxConfirmEvent;
-    const pending = this.items.some((item) => item.status === "pending");
-    const failed = this.items.some((item) => item.status === "error");
-
-    if (!pending && !failed) {
+    // Only gate this form's own submit, not e.g. the Publish button.
+    if (evt.detail.elt !== this.form) return;
+    // Capture any un-blurred caption edits before the form is submitted.
+    this.syncHiddenField();
+    if (!this.hasPendingUploads() && !this.hasFailedUploads()) {
       // Nothing in flight -- let the submit proceed normally.
       return;
     }
     evt.preventDefault();
 
-    if (!pending) {
-      toast({
-        message: "Some uploads failed. Please remove them and try again.",
-        variant: "error",
-      });
-      return;
-    }
-
-    this.setCreateSpinner(true);
-    void Promise.allSettled(this.uploadPromises).then(() => {
-      this.setCreateSpinner(false);
-      if (this.items.some((item) => item.status === "error")) {
+    this.setSubmitting(true);
+    void this.settleBatches().then((settled) => {
+      this.setSubmitting(false);
+      if (!settled) {
+        // An upload is taking too long (or has stalled). Don't block the page;
+        // the uploads keep running, so the user can retry once they land.
+        toast({
+          message: "Uploads are still finishing. Try again in a moment.",
+          variant: "error",
+        });
+        return;
+      }
+      if (this.hasFailedUploads()) {
         toast({
           message: "Some uploads failed. Please remove them and try again.",
           variant: "error",
@@ -688,8 +537,60 @@ export class MediaEditorController extends TypedController(
     });
   };
 
-  private setCreateSpinner(on: boolean): void {
-    const button = this.createButton;
+  private onAfterRequest = (event: Event): void => {
+    const evt = event as HtmxAfterRequestEvent;
+    // Only the form's own submit clears the dirty flag (not the Publish button).
+    if (evt.detail.elt === this.form && evt.detail.successful) {
+      this.dirty = false;
+    }
+  };
+
+  private onBeforeUnload = (event: BeforeUnloadEvent): void => {
+    if (this.dirty || this.hasPendingUploads()) {
+      event.preventDefault();
+      // eslint-disable-next-line @typescript-eslint/no-deprecated -- Still required to trigger the prompt in some browsers.
+      event.returnValue = "";
+    }
+  };
+
+  // Awaits all added batches (re-checking for batches queued while awaiting),
+  // bounded by a cap so a stalled upload can't freeze the submit forever.
+  // Resolves true if everything settled, false if the cap was hit first.
+  private async settleBatches(): Promise<boolean> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const cap = new Promise<false>((resolve) => {
+      timer = setTimeout(() => {
+        resolve(false);
+      }, UPLOAD_SETTLE_TIMEOUT_MS);
+    });
+    const all = (async () => {
+      // `batches` shrinks as batches settle (and may grow if more are added
+      // mid-wait), so loop until it is empty.
+      while (this.batches.length > 0) {
+        // allSettled materializes the iterable synchronously, so this snapshots
+        // the current batches even though more may be added later.
+        await Promise.allSettled(this.batches);
+      }
+      return true as const;
+    })();
+
+    const settled = await Promise.race([all, cap]);
+    clearTimeout(timer);
+    return settled;
+  }
+
+  private hasPendingUploads(): boolean {
+    return this.items.some((item) => item.status === "pending");
+  }
+
+  private hasFailedUploads(): boolean {
+    return this.items.some((item) => item.status === "error");
+  }
+
+  private setSubmitting(on: boolean): void {
+    const button = this.form?.querySelector<HTMLButtonElement>(
+      'button[type="submit"]',
+    );
     if (!button) return;
     button.disabled = on;
     button.querySelector(".loading")?.classList.toggle("hidden", !on);
@@ -710,12 +611,7 @@ async function fetchUploadUrls(
     thumbnail_extension: THUMBNAIL_EXT,
     filenames: files.map((file) => file.name),
   };
-  const json = await postJson(hrefUploadUrl, body);
-  return z.array(mediaUploadUrlResultItemSchema).parse(json);
-}
-
-async function postJson(url: string, body: unknown): Promise<unknown> {
-  const resp = await fetch(url, {
+  const resp = await fetch(hrefUploadUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -723,10 +619,7 @@ async function postJson(url: string, body: unknown): Promise<unknown> {
   if (!resp.ok) {
     throw new Error(`Request failed with status ${resp.status}`);
   }
-  if (resp.status === 204) {
-    return null;
-  }
-  return await resp.json();
+  return z.array(mediaUploadUrlResultItemSchema).parse(await resp.json());
 }
 
 async function uploadOne(
