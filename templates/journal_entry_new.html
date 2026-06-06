@@ -1,10 +1,16 @@
 {% extends "base.html" %}
 {% import "common/form.html" as form %}
+{% import "common/media_editor.html" as editor %}
 
 {% block content %}
   <div>
     <h1 class="app-title">New Entry</h1>
-    <form hx-post="" id="journal_entry_new_form">
+    <form
+      hx-post=""
+      id="journal_entry_new_form"
+      data-controller="media--editor"
+      data-media--editor-href-upload-url-value="{{ href_upload_url }}"
+    >
       {{ form.form_error(error="") }}
 
       {{ form.input("", "Journal", disabled=true, value=journal.name, autocomplete="off") }}
@@ -33,7 +39,12 @@
         value="{{ journal.id }}"
       />
 
-      <button type="submit" class="btn btn-primary my-8 w-full">Create</button>
+      {{ editor.body("[]") }}
+
+      <button type="submit" class="btn btn-primary my-8 w-full">
+        <span class="loading loading-spinner hidden"></span>
+        Create
+      </button>
     </form>
 
     <script type="module">
