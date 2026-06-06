@@ -128,6 +128,9 @@ export class MediaEditorController extends TypedController(
   private batches: Array<Promise<void>> = [];
   // True once the user has made changes not yet persisted by a form submit.
   private dirty = false;
+  // True while a form submit we initiated is in flight, so the boosted-nav
+  // guard does not prompt on our own navigation (e.g. the post-Create redirect).
+  private submitInFlight = false;
   private form: HTMLFormElement | null = null;
 
   connect(): void {
@@ -170,6 +173,9 @@ export class MediaEditorController extends TypedController(
     this.form?.addEventListener("htmx:confirm", this.onConfirm);
     this.form?.addEventListener("htmx:after-request", this.onAfterRequest);
     window.addEventListener("beforeunload", this.onBeforeUnload);
+    // beforeunload can't fire on boosted in-app navigation (no real unload),
+    // so guard that separately at the document level.
+    document.addEventListener("htmx:confirm", this.onNavConfirm);
   }
 
   disconnect(): void {
@@ -177,6 +183,7 @@ export class MediaEditorController extends TypedController(
     this.form?.removeEventListener("htmx:confirm", this.onConfirm);
     this.form?.removeEventListener("htmx:after-request", this.onAfterRequest);
     window.removeEventListener("beforeunload", this.onBeforeUnload);
+    document.removeEventListener("htmx:confirm", this.onNavConfirm);
     for (const item of this.items) {
       this.revokeThumbnail(item);
     }
@@ -509,6 +516,7 @@ export class MediaEditorController extends TypedController(
     this.syncHiddenField();
     if (!this.hasPendingUploads() && !this.hasFailedUploads()) {
       // Nothing in flight -- let the submit proceed normally.
+      this.submitInFlight = true;
       return;
     }
     evt.preventDefault();
@@ -533,15 +541,34 @@ export class MediaEditorController extends TypedController(
         return;
       }
       this.syncHiddenField();
+      this.submitInFlight = true;
       evt.detail.issueRequest(true);
     });
   };
 
   private onAfterRequest = (event: Event): void => {
     const evt = event as HtmxAfterRequestEvent;
-    // Only the form's own submit clears the dirty flag (not the Publish button).
-    if (evt.detail.elt === this.form && evt.detail.successful) {
+    // Only react to the form's own submit (not the Publish button).
+    if (evt.detail.elt !== this.form) return;
+    this.submitInFlight = false;
+    if (evt.detail.successful) {
       this.dirty = false;
+    }
+  };
+
+  // beforeunload doesn't fire on boosted in-app navigation (the body is swapped,
+  // not unloaded), so guard those here: htmx:confirm fires before every htmx
+  // request, including a boosted link click. Cancel the navigation if the user
+  // declines. Our own form submit / Publish bubble here too -- the submit gate
+  // and submitInFlight own those.
+  private onNavConfirm = (event: Event): void => {
+    const evt = event as HtmxConfirmEvent;
+    if (this.submitInFlight) return;
+    if (this.form?.contains(evt.detail.elt)) return;
+    if (!this.dirty && !this.hasPendingUploads()) return;
+    if (!window.confirm("You have unsaved changes. Leave anyway?")) {
+      // Not calling issueRequest() cancels the navigation.
+      evt.preventDefault();
     }
   };
 

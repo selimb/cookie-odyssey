@@ -56,6 +56,6 @@ This still deviates from the HTMX-first stance in [0001](0001-htmx.md): reorder,
 - More JS, and the Media list is client-rendered with no server-side fallback -- the unavoidable price of having no Entry to render against on new-entry.
 - The editor renders thumbnails, not full Media, so we don't have to port the `common/media.html` macros into JS.
   The published day/gallery view stays server-rendered and untouched.
-- The `beforeunload` guard only fires on real browser unloads (tab close, refresh, external navigation); HTMX-boosted in-app navigation doesn't trigger it.
+- Unsaved-changes guarding takes two forms because no single event covers both cases: a `beforeunload` listener for real browser unloads (tab close, refresh, external navigation), and a document-level `htmx:confirm` listener that intercepts boosted in-app navigation (which swaps the body without a real unload) and cancels it via `preventDefault()` unless the user confirms. The latter uses a `window.confirm` prompt rather than the browser's native dialog, which is only available on a real unload.
 - Reorder stays as up/down buttons for now; pointer-based drag is deferred, and the component leaves a seam for it.
 - Drag-and-drop-to-create-an-Entry (drop Media anywhere in a Journal and land on a pre-filled new-entry page) is future work that builds directly on this component.

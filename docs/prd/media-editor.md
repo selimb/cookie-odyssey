@@ -95,7 +95,9 @@ Because Media is no longer auto-saved, leaving the page with unsaved edits (or u
 
 ### Unsaved-changes guard
 
-- Because Media is no longer auto-saved, a `beforeunload` listener warns before leaving the page with unsaved edits or in-flight uploads. It fires on real browser unloads (tab close, refresh, external navigation); HTMX-boosted in-app navigation does not trigger it.
+- Because Media is no longer auto-saved, leaving the page with unsaved edits or in-flight uploads warns the Admin. Two listeners cover the two ways to leave:
+  - A `beforeunload` listener for real browser unloads (tab close, refresh, external navigation), which shows the browser's native prompt.
+  - A document-level `htmx:confirm` listener for HTMX-boosted in-app navigation (which swaps the body with no real unload, so `beforeunload` never fires). It cancels the navigation via `preventDefault()` unless the user confirms a `window.confirm` prompt. The editor's own form submit (Create/Save) is excluded so it is never blocked.
 
 ### Reorder
 
