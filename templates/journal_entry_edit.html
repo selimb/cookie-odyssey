@@ -1,47 +1,6 @@
 {% extends "base.html" %}
 {% import "common/form.html" as form %}
-{% import "common/media.html" as m %}
-
-{% macro icon_check() %}
-  <!-- https://flowbite.com/icons/ check -->
-  <svg
-    class="h-6 w-6 text-gray-800 dark:text-white"
-    aria-hidden="true"
-    xmlns="http://www.w3.org/2000/svg"
-    width="24"
-    height="24"
-    fill="none"
-    viewBox="0 0 24 24"
-  >
-    <path
-      stroke="currentColor"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-      stroke-width="2"
-      d="M5 11.917 9.724 16.5 19 7.5"
-    />
-  </svg>
-{% endmacro %}
-{% macro icon_edit() %}
-  <!-- https://flowbite.com/icons/ edit -->
-  <svg
-    class="h-6 w-6 text-gray-800 dark:text-white"
-    aria-hidden="true"
-    xmlns="http://www.w3.org/2000/svg"
-    width="24"
-    height="24"
-    fill="none"
-    viewBox="0 0 24 24"
-  >
-    <path
-      stroke="currentColor"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-      stroke-width="2"
-      d="m14.304 4.844 2.852 2.852M7 7H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1v-4.5m2.409-9.91a2.017 2.017 0 0 1 0 2.853l-6.844 6.844L8 14l.713-3.565 6.844-6.844a2.015 2.015 0 0 1 2.852 0Z"
-    />
-  </svg>
-{% endmacro %}
+{% import "common/media_editor.html" as editor %}
 
 {% block content %}
   <div class="mx-auto">
@@ -52,7 +11,12 @@
       <span> - </span>
       <span>Edit Entry</span>
     </h1>
-    <form hx-post="{{ href_edit }}">
+    {# Prose and Media share one form: Save submits both. #}
+    <form
+      hx-post="{{ href_edit }}"
+      data-controller="media--editor"
+      data-media--editor-href-upload-url-value="{{ href_upload_url }}"
+    >
       {{ form.form_error(error="") }}
 
       {{ form.input("title", "Title", value=entry.title) }}
@@ -83,7 +47,15 @@
       >
 {{ entry.text }}</textarea
       >
-      <button type="submit" class="btn btn-primary mt-2 w-full">Save</button>
+
+      <hr class="my-8 h-px border-0 bg-gray-200 dark:bg-gray-700" />
+
+      {{ editor.body(initial_items) }}
+
+      <button type="submit" class="btn btn-primary mt-2 w-full">
+        <span class="loading loading-spinner hidden"></span>
+        Save
+      </button>
       {% if entry.draft %}
         <button
           type="button"
@@ -95,144 +67,5 @@
         </button>
       {% endif %}
     </form>
-
-    <hr class="my-8 h-px border-0 bg-gray-200 dark:bg-gray-700" />
-
-    <div
-      class="w-full"
-      data-controller="media--form"
-      data-media--form-get-upload-url-value="{{ href_get_upload_url }}"
-      data-media--form-commit-upload-url-value="{{ href_commit_upload }}"
-      data-media--form-entry-id-value="{{ entry.id }}"
-    >
-      {% block fragment_media_list %}
-        <div
-          id="media-container"
-          data-media--form-target="mediaContainer"
-          class="w-full space-y-4"
-        >
-          {% for media in media_list %}
-            <div class="w-full">
-              <div>{{ m.standalone_item(media, "w-full") }}</div>
-              <form
-                class="form-caption"
-                data-mode="view"
-                hx-post="{{ href_caption_edit }}"
-                hx-vals='{ "media_id": "{{ media.id }}" }'
-                hx-on::after-request="toggleCaptionEdit(this, 'view')"
-              >
-                <div class="mt-2 flex justify-between gap-2">
-                  <input
-                    type="text"
-                    name="caption"
-                    disabled
-                    placeholder="Caption..."
-                    value="{{ media.caption }}"
-                    class="flex-1"
-                  />
-                  {# [onclick-caption-edit] #}
-                  <button type="submit" class="btn btn-circle btn-ghost">
-                    {{ icon_check() }}
-                  </button>
-
-                  {# [onclick-caption-edit] #}
-                  <button
-                    type="button"
-                    class="btn btn-circle btn-ghost"
-                    onclick="toggleCaptionEdit(this, 'edit')"
-                  >
-                    {{ icon_edit() }}
-                  </button>
-                </div>
-              </form>
-              <div class="flex w-full justify-between">
-                <button
-                  type="button"
-                  hx-post="{{ href_reorder }}"
-                  hx-vals='{ "media_id": "{{ media.id }}", "entry_id": "{{ entry_id }}", "order": {{ media.order }}, "direction": "up"}'
-                  hx-target="#media-container"
-                  hx-swap="outerHTML"
-                  class="btn btn-secondary"
-                  {% if loop.first %}
-                    disabled
-                  {% endif %}
-                >
-                  Up
-                </button>
-                <button
-                  type="button"
-                  hx-post="{{ href_reorder }}"
-                  hx-vals='{ "media_id": "{{ media.id }}", "entry_id": "{{ entry_id }}", "order": {{ media.order }}, "direction": "down"}'
-                  hx-target="#media-container"
-                  hx-swap="outerHTML"
-                  class="btn btn-secondary"
-                  {% if loop.last %}
-                    disabled
-                  {% endif %}
-                >
-                  Down
-                </button>
-                <button
-                  type="button"
-                  hx-post="{{ href_delete }}"
-                  hx-vals='{ "media_id": "{{ media.id }}", "entry_id": "{{ entry_id }}"}'
-                  hx-target="#media-container"
-                  hx-swap="outerHTML"
-                  hx-confirm="Are you sure you wish to delete this?"
-                  class="btn btn-error"
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
-          {% endfor %}
-        </div>
-      {% endblock fragment_media_list %}
-      <button
-        type="button"
-        data-media--form-target="addMediaButton"
-        class="btn btn-primary my-4 w-full"
-      >
-        <span class="loading loading-spinner hidden"></span>
-        Add
-      </button>
-      <input
-        data-media--form-target="fileInput"
-        class="hidden"
-        type="file"
-        accept="image/*,video/*"
-        multiple
-      />
-    </div>
   </div>
-
-  <script>
-    // @ts-check
-
-    /**
-     * [onclick-caption-edit]
-     * @param {HTMLButtonElement} $button
-     * @param {"edit" | "view"} mode
-     */
-    function toggleCaptionEdit($button, mode) {
-      const $form = $button.closest("form");
-      const $input = $form.querySelector("input");
-
-      $form.setAttribute("data-mode", mode);
-      $input.disabled = mode === "view";
-      if (mode === "edit") {
-        $input.focus();
-      }
-    }
-  </script>
-
-  <style>
-    .form-caption[data-mode="view"] button[type="submit"] {
-      display: none;
-    }
-
-    .form-caption[data-mode="edit"] button[type="button"] {
-      display: none;
-    }
-  </style>
 {% endblock content %}

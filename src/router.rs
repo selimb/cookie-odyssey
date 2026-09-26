@@ -47,10 +47,6 @@ pub enum Route<'a> {
         entry_id: Option<i32>,
     },
     JournalDayGet(Option<&'a journal::JournalDayGetPath>),
-    JournalEntryMediaCommitPost,
-    JournalEntryMediaEditCaptionPost,
-    JournalEntryMediaDelete,
-    JournalEntryMediaReorder,
     JournalCommentAddPost(Option<&'a comment::JournalCommentAddQuery>),
     JournalCommentEditPost(Option<&'a comment::JournalCommentEditQuery>),
     JournalCommentDeletePost(Option<&'a comment::JournalCommentDeleteQuery>),
@@ -151,10 +147,6 @@ impl<'a> Route<'a> {
                     format!("/api/video-transcode-callback?{qs}").into()
                 }
             },
-            Route::JournalEntryMediaCommitPost => "/hx/entry-commit".into(),
-            Route::JournalEntryMediaEditCaptionPost => "/hx/media-caption-edit".into(),
-            Route::JournalEntryMediaDelete => "/hx/media-delete".into(),
-            Route::JournalEntryMediaReorder => "/hx/media-reorder".into(),
             Route::RegisterGet => "/register".into(),
             Route::RegisterPost => "/register".into(),
             Route::UserListGet => "/users".into(),
@@ -229,22 +221,6 @@ fn get_protected_routes() -> Router<AppState> {
         .route(
             &Route::JournalEntryPublishPost { entry_id: None }.as_path(),
             admin!(post(journal::hx_journal_entry_publish_post)),
-        )
-        .route(
-            &Route::JournalEntryMediaCommitPost.as_path(),
-            admin!(post(journal::hx_journal_entry_media_commit_post)),
-        )
-        .route(
-            &Route::JournalEntryMediaEditCaptionPost.as_path(),
-            admin!(post(journal::hx_journal_entry_media_caption_edit_post)),
-        )
-        .route(
-            &Route::JournalEntryMediaDelete.as_path(),
-            admin!(post(journal::hx_journal_entry_media_delete_post)),
-        )
-        .route(
-            &Route::JournalEntryMediaReorder.as_path(),
-            admin!(post(journal::hx_journal_entry_media_reorder_post)),
         )
         .route(
             &Route::MediaUploadUrlPost.as_path(),

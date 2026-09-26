@@ -1,0 +1,62 @@
+{# Shared body of the client-owned Media editor (`media--editor` controller). #}
+{# The caller wraps this in the controller element and an enclosing <form>, and #}
+{# passes `initial_items` (a JSON array of the Entry's current Media, or "[]"). #}
+{# That JSON seeds both the hidden `media_items` field and the controller, so #}
+{# even if the controller never initializes the form submits the existing state #}
+{# rather than an empty list (which would delete all Media). #}
+{% macro body(initial_items) %}
+  <input
+    type="hidden"
+    name="media_items"
+    data-media--editor-target="hiddenField"
+    value="{{ initial_items }}"
+  />
+  <div data-media--editor-target="list" class="w-full space-y-4"></div>
+
+  <template data-media--editor-target="itemTemplate">
+    <div class="w-full" data-editor-item>
+      <div class="relative inline-block w-full">
+        <img data-ref="thumb" class="w-full" alt="" />
+        <span data-ref="videoIndicator" class="video-indicator hidden"></span>
+        <div
+          data-ref="spinner"
+          class="absolute inset-0 flex items-center justify-center bg-black/40"
+        >
+          <span class="loading loading-spinner loading-lg"></span>
+        </div>
+      </div>
+      <input
+        data-ref="caption"
+        type="text"
+        placeholder="Caption..."
+        class="input input-bordered mt-2 w-full"
+      />
+      <div class="mt-1 flex w-full justify-between">
+        <button type="button" data-ref="up" class="btn btn-secondary">
+          Up
+        </button>
+        <button type="button" data-ref="down" class="btn btn-secondary">
+          Down
+        </button>
+        <button type="button" data-ref="delete" class="btn btn-error">
+          Delete
+        </button>
+      </div>
+    </div>
+  </template>
+
+  <button
+    type="button"
+    data-media--editor-target="addButton"
+    class="btn btn-primary my-4 w-full"
+  >
+    Add
+  </button>
+  <input
+    data-media--editor-target="fileInput"
+    class="hidden"
+    type="file"
+    accept="image/*,video/*"
+    multiple
+  />
+{% endmacro %}

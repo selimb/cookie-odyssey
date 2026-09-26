@@ -1,20 +1,17 @@
 use std::collections::HashMap;
 
 use sea_orm::{
-    ColumnTrait, ConnectionTrait, DatabaseConnection, DbErr, EntityTrait, PaginatorTrait,
-    QueryFilter, QueryOrder, Statement, TransactionTrait,
+    ColumnTrait, ConnectionTrait, DatabaseConnection, DbErr, EntityTrait, QueryFilter, QueryOrder,
 };
 
 use entities::{prelude::*, *};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     storage::FileStore,
     video_transcoding::{daemon::VideoTranscoder, manager::VideoTranscodingManager},
     NotFound, RouteError,
 };
-
-use super::routes::{Direction, JournalEntryMediaCommitBody, JournalEntryMediaReorder};
 
 pub async fn query_journal_by_slug(
     slug: String,
@@ -36,9 +33,11 @@ pub struct MediaFull {
     pub order: i32,
     pub caption: String,
     pub media_type: journal_entry_media::MediaType,
+    pub file_id_original: i32,
     pub url_original: String,
     pub width_original: i32,
     pub height_original: i32,
+    pub file_id_thumbnail: i32,
     pub url_thumbnail: String,
     pub width_thumbnail: i32,
     pub height_thumbnail: i32,
@@ -48,13 +47,11 @@ pub struct MediaFull {
 pub struct JournalEntryFull {
     pub entry: journal_entry::Model,
     pub journal: journal::Model,
-    pub media_list: Vec<MediaFull>,
 }
 
 pub async fn query_journal_entry_by_id(
     id: i32,
     db: &DatabaseConnection,
-    storage: &FileStore,
 ) -> Result<Result<JournalEntryFull, NotFound>, anyhow::Error> {
     let entry = JournalEntry::find_by_id(id)
         .find_also_related(Journal)
@@ -66,13 +63,30 @@ pub async fn query_journal_entry_by_id(
             return Ok(Err(NotFound::for_entity("entry")));
         }
     };
-    let media_list = query_media_for_journal_entry(entry.id, db, storage).await?;
 
-    Ok(Ok(JournalEntryFull {
-        entry,
-        journal,
-        media_list,
-    }))
+    Ok(Ok(JournalEntryFull { entry, journal }))
+}
+
+// The shape of a single Media item as exchanged with the client-side editor.
+// The editor stages its whole list in memory and submits it with the form; the
+// server reconciles it against existing rows keyed by `file_id_original` (unique
+// per upload), so the item carries no `JournalEntryMedia` id. `url_thumbnail` is
+// the signed Thumbnail URL the editor renders; it is only meaningful server ->
+// client (the edit page's initial list) and is ignored on the way back.
+// SYNC MediaEditorItem
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct MediaEditorItem {
+    pub media_type: journal_entry_media::MediaType,
+    #[serde(default)]
+    pub caption: String,
+    pub file_id_original: i32,
+    pub width_original: i32,
+    pub height_original: i32,
+    pub file_id_thumbnail: i32,
+    pub width_thumbnail: i32,
+    pub height_thumbnail: i32,
+    #[serde(default)]
+    pub url_thumbnail: String,
 }
 
 pub async fn query_media_for_journal_entry(
@@ -126,9 +140,11 @@ pub async fn query_media_for_journal_entry(
             order: media.order,
             caption: media.caption,
             media_type: media.media_type,
+            file_id_original: media.file_id,
             url_original,
             width_original: media.width,
             height_original: media.height,
+            file_id_thumbnail: media.thumbnail_file_id,
             url_thumbnail,
             width_thumbnail: media.thumbnail_width,
             height_thumbnail: media.thumbnail_height,
@@ -138,111 +154,99 @@ pub async fn query_media_for_journal_entry(
     Ok(media_list)
 }
 
-pub async fn append_journal_entry_media(
-    // Don't like referencing upper layers here, but this is easier.
-    input: &JournalEntryMediaCommitBody,
+// Reconciles an Entry's Media against the editor's submitted list, in one pass:
+// rows whose `file_id_original` is absent from `items` are deleted, surviving
+// rows have their `order` and `caption` updated to match the submitted list, and
+// items with a new `file_id_original` are inserted. The submitted order is the
+// item's index in `items`. Returns the `file_id_original` of any newly-inserted
+// Video items so the caller can enqueue transcoding for them.
+//
+// Keying on `file_id_original` (unique per upload) makes re-saving idempotent
+// without the client tracking row ids. Generic over the connection so it can run
+// inside a transaction (the new-entry create flow needs Entry + Media atomic).
+pub async fn sync_journal_entry_media<C: ConnectionTrait>(
+    entry_id: i32,
+    items: &[MediaEditorItem],
+    conn: &C,
+) -> Result<Vec<i32>, DbErr> {
+    let existing = JournalEntryMedia::find()
+        .filter(journal_entry_media::Column::JournalEntryId.eq(entry_id))
+        .all(conn)
+        .await?;
+    let mut existing_by_file_id: HashMap<i32, journal_entry_media::Model> =
+        existing.into_iter().map(|m| (m.file_id, m)).collect();
+
+    let submitted_file_ids: std::collections::HashSet<i32> =
+        items.iter().map(|item| item.file_id_original).collect();
+
+    // Delete rows the editor no longer lists.
+    let to_delete: Vec<i32> = existing_by_file_id
+        .values()
+        .filter(|m| !submitted_file_ids.contains(&m.file_id))
+        .map(|m| m.id)
+        .collect();
+    if !to_delete.is_empty() {
+        JournalEntryMedia::delete_many()
+            .filter(journal_entry_media::Column::Id.is_in(to_delete))
+            .exec(conn)
+            .await?;
+    }
+
+    let mut new_video_file_ids = Vec::new();
+    for (index, item) in items.iter().enumerate() {
+        let order = index as i32;
+        let caption = item.caption.trim().to_string();
+        match existing_by_file_id.remove(&item.file_id_original) {
+            // Existing row: only order and caption can change.
+            Some(model) => {
+                let data = journal_entry_media::ActiveModel {
+                    id: sea_orm::ActiveValue::Set(model.id),
+                    order: sea_orm::ActiveValue::Set(order),
+                    caption: sea_orm::ActiveValue::Set(caption),
+                    ..Default::default()
+                };
+                JournalEntryMedia::update(data).exec(conn).await?;
+            }
+            // New row.
+            None => {
+                let data = journal_entry_media::ActiveModel {
+                    journal_entry_id: sea_orm::ActiveValue::Set(entry_id),
+                    media_type: sea_orm::ActiveValue::Set(item.media_type),
+                    order: sea_orm::ActiveValue::Set(order),
+                    file_id: sea_orm::ActiveValue::Set(item.file_id_original),
+                    width: sea_orm::ActiveValue::Set(item.width_original),
+                    height: sea_orm::ActiveValue::Set(item.height_original),
+                    thumbnail_file_id: sea_orm::ActiveValue::Set(item.file_id_thumbnail),
+                    thumbnail_width: sea_orm::ActiveValue::Set(item.width_thumbnail),
+                    thumbnail_height: sea_orm::ActiveValue::Set(item.height_thumbnail),
+                    caption: sea_orm::ActiveValue::Set(caption),
+                    id: sea_orm::ActiveValue::NotSet, // Auto-incremented.
+                };
+                JournalEntryMedia::insert(data).exec(conn).await?;
+                if item.media_type == journal_entry_media::MediaType::Video {
+                    new_video_file_ids.push(item.file_id_original);
+                }
+            }
+        }
+    }
+
+    Ok(new_video_file_ids)
+}
+
+// Enqueues video transcoding for the given original file ids, then kicks off
+// processing.
+pub async fn enqueue_video_transcoding(
+    file_ids: Vec<i32>,
     db: &DatabaseConnection,
     video_transcoder: &VideoTranscoder,
 ) -> anyhow::Result<()> {
-    let next_order = JournalEntryMedia::find()
-        .filter(journal_entry_media::Column::JournalEntryId.eq(input.entry_id))
-        .count(db)
-        .await?;
-    let next_order = next_order as usize;
-
-    let mut transcode_tasks = Vec::new();
-
-    let mut data: Vec<journal_entry_media::ActiveModel> = Vec::with_capacity(input.items.len());
-
-    for (index, item) in input.items.iter().enumerate() {
-        data.push(journal_entry_media::ActiveModel {
-            journal_entry_id: sea_orm::ActiveValue::Set(input.entry_id),
-            media_type: sea_orm::ActiveValue::Set(item.media_type),
-            order: sea_orm::ActiveValue::Set((next_order + index) as i32),
-            file_id: sea_orm::ActiveValue::Set(item.file_id_original),
-            width: sea_orm::ActiveValue::Set(item.width_original),
-            height: sea_orm::ActiveValue::Set(item.height_original),
-            thumbnail_file_id: sea_orm::ActiveValue::Set(item.file_id_thumbnail),
-            thumbnail_width: sea_orm::ActiveValue::Set(item.width_thumbnail),
-            thumbnail_height: sea_orm::ActiveValue::Set(item.height_thumbnail),
-            caption: sea_orm::ActiveValue::NotSet,
-            id: sea_orm::ActiveValue::NotSet, // Auto-incremented.
-        });
-        match item.media_type {
-            journal_entry_media::MediaType::Image => {}
-            journal_entry_media::MediaType::Video => {
-                let task = VideoTranscodingManager::enqueue_task(db, item.file_id_original).await?;
-                transcode_tasks.push(task);
-            }
-        };
+    if file_ids.is_empty() {
+        return Ok(());
     }
-
-    if !transcode_tasks.is_empty() {
-        video_transcoder.process(transcode_tasks).await?;
+    let mut tasks = Vec::with_capacity(file_ids.len());
+    for file_id in file_ids {
+        tasks.push(VideoTranscodingManager::enqueue_task(db, file_id).await?);
     }
-
-    JournalEntryMedia::insert_many(data).exec(db).await?;
-
-    Ok(())
-}
-
-pub async fn delete_journal_entry_media(
-    // Don't like referencing upper layers here, but this is easier.
-    media_id: i32,
-    db: &DatabaseConnection,
-) -> Result<(), DbErr> {
-    let media = JournalEntryMedia::find_by_id(media_id).one(db).await?;
-
-    let media = match media {
-        None => {
-            return Ok(());
-        }
-        Some(media) => media,
-    };
-    let order = media.order;
-
-    let tx = db.begin().await?;
-
-    JournalEntryMedia::delete_by_id(media_id).exec(&tx).await?;
-
-    let q = Statement::from_sql_and_values(
-        sea_orm::DatabaseBackend::Sqlite,
-        r#"
-        UPDATE journal_entry_media
-        SET "order" = "order" - 1
-        WHERE "journal_entry_id" = ? AND "order" >= ?
-        "#,
-        [media.journal_entry_id.into(), order.into()],
-    );
-    tx.execute(q).await?;
-
-    tx.commit().await?;
-
-    Ok(())
-}
-
-pub async fn reorder_journal_entry_media(
-    // Don't like referencing upper layers here, but this is easier.
-    params: &JournalEntryMediaReorder,
-    db: &DatabaseConnection,
-) -> Result<(), DbErr> {
-    let order_src = params.order;
-    let order_dst = match params.direction {
-        Direction::Up => order_src - 1,
-        Direction::Down => order_src + 1,
-    };
-
-    let q = Statement::from_sql_and_values(
-        sea_orm::DatabaseBackend::Sqlite,
-        // "SELECT $1, $2, $3",
-        r#"
-        UPDATE journal_entry_media
-        SET "order" = (CASE WHEN "order" = $1 THEN $2 ELSE $1 END)
-        WHERE "journal_entry_id" = $3 AND ("order" = $1 OR "order" = $2)
-        "#,
-        [order_src.into(), order_dst.into(), params.entry_id.into()],
-    );
-    db.execute(q).await?;
-
+    video_transcoder.process(tasks).await?;
     Ok(())
 }
