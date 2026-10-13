@@ -12,22 +12,9 @@ use entities::{
 
 pub const PAGE_SIZE: u64 = 50;
 
-/// Records a Pending Notification for a freshly published Entry.
-pub async fn insert_entry_published(db: &impl ConnectionTrait, entry_id: i32) -> Result<(), DbErr> {
-    let data = notification::ActiveModel {
-        kind: sea_orm::ActiveValue::Set(NotificationKind::EntryPublished),
-        journal_entry_id: sea_orm::ActiveValue::Set(entry_id),
-        created_at: sea_orm::ActiveValue::Set(Utc::now()),
-        flushed_at: sea_orm::ActiveValue::Set(None),
-        ..Default::default()
-    };
-    Notification::insert(data).exec(db).await?;
-    Ok(())
-}
-
 /// Publishes a Draft Entry, and records a Pending Notification if (and only
 /// if) the Entry was actually still a Draft.
-pub async fn publish_entry(db: &sea_orm::DatabaseConnection, entry_id: i32) -> Result<bool, DbErr> {
+pub async fn publish_entry(db: &sea_orm::DatabaseConnection, entry_id: i32) -> Result<(), DbErr> {
     let txn = db.begin().await?;
     let result = JournalEntry::update_many()
         .col_expr(journal_entry::Column::Draft, Expr::value(false))
@@ -35,12 +22,17 @@ pub async fn publish_entry(db: &sea_orm::DatabaseConnection, entry_id: i32) -> R
         .filter(journal_entry::Column::Draft.eq(true))
         .exec(&txn)
         .await?;
-    let published = result.rows_affected > 0;
-    if published {
-        insert_entry_published(&txn, entry_id).await?;
+    if result.rows_affected > 0 {
+        let data = notification::ActiveModel {
+            kind: sea_orm::ActiveValue::Set(NotificationKind::EntryPublished),
+            journal_entry_id: sea_orm::ActiveValue::Set(entry_id),
+            created_at: sea_orm::ActiveValue::Set(Utc::now()),
+            flushed_at: sea_orm::ActiveValue::Set(None),
+            ..Default::default()
+        };
+        Notification::insert(data).exec(&txn).await?;
     }
-    txn.commit().await?;
-    Ok(published)
+    txn.commit().await
 }
 
 pub async fn count_unread(db: &impl ConnectionTrait, user_id: i32) -> Result<u64, DbErr> {
@@ -77,7 +69,7 @@ pub async fn flush(db: &sea_orm::DatabaseConnection) -> Result<u64, DbErr> {
             n.id,
             u.id,
             NULL,
-            CASE WHEN u.email_notifications THEN 'pending' ELSE 'skipped' END
+            CASE WHEN u.email_notifications THEN 'unsent' ELSE 'skipped' END
         FROM notification n
         JOIN journal_entry e ON e.id = n.journal_entry_id
         CROSS JOIN "user" u
@@ -107,25 +99,31 @@ pub struct NotificationRow {
     pub journal_slug: String,
 }
 
+/// Joins the Notification's Entry and Journal, and selects the columns shared
+/// by [`NotificationRow`] and [`PendingRow`].
+fn select_entry_columns<E: EntityTrait>(q: Select<E>) -> Select<E> {
+    q.join(
+        JoinType::InnerJoin,
+        notification::Relation::JournalEntry.def(),
+    )
+    .join(JoinType::InnerJoin, journal_entry::Relation::Journal.def())
+    .column_as(journal_entry::Column::Title, "title")
+    .column_as(journal_entry::Column::Date, "date")
+    .column_as(journal_entry::Column::Time, "time")
+    .column_as(journal::Column::Name, "journal_name")
+    .column_as(journal::Column::Slug, "journal_slug")
+}
+
 fn rows_query() -> Select<NotificationRecipient> {
-    NotificationRecipient::find()
+    let q = NotificationRecipient::find()
         .join(
             JoinType::InnerJoin,
             notification_recipient::Relation::Notification.def(),
         )
-        .join(
-            JoinType::InnerJoin,
-            notification::Relation::JournalEntry.def(),
-        )
-        .join(JoinType::InnerJoin, journal_entry::Relation::Journal.def())
         .select_only()
         .column(notification_recipient::Column::Id)
-        .column(notification_recipient::Column::ReadAt)
-        .column_as(journal_entry::Column::Title, "title")
-        .column_as(journal_entry::Column::Date, "date")
-        .column_as(journal_entry::Column::Time, "time")
-        .column_as(journal::Column::Name, "journal_name")
-        .column_as(journal::Column::Slug, "journal_slug")
+        .column(notification_recipient::Column::ReadAt);
+    select_entry_columns(q)
 }
 
 /// Returns up to [`PAGE_SIZE`] + 1 rows, newest first, so that the caller can
@@ -193,9 +191,8 @@ pub async fn mark_day_read(
     Ok(())
 }
 
-#[derive(Debug, Serialize, FromQueryResult)]
+#[derive(Debug, FromQueryResult)]
 pub struct PendingRow {
-    pub id: i32,
     pub title: String,
     pub date: chrono::NaiveDate,
     pub time: chrono::NaiveTime,
@@ -205,20 +202,10 @@ pub struct PendingRow {
 
 /// Lists Pending Notifications in the order that readers will see them.
 pub async fn list_pending(db: &impl ConnectionTrait) -> Result<Vec<PendingRow>, DbErr> {
-    Notification::find()
+    let q = Notification::find()
         .filter(notification::Column::FlushedAt.is_null())
-        .join(
-            JoinType::InnerJoin,
-            notification::Relation::JournalEntry.def(),
-        )
-        .join(JoinType::InnerJoin, journal_entry::Relation::Journal.def())
-        .select_only()
-        .column(notification::Column::Id)
-        .column_as(journal_entry::Column::Title, "title")
-        .column_as(journal_entry::Column::Date, "date")
-        .column_as(journal_entry::Column::Time, "time")
-        .column_as(journal::Column::Name, "journal_name")
-        .column_as(journal::Column::Slug, "journal_slug")
+        .select_only();
+    select_entry_columns(q)
         .order_by_desc(journal_entry::Column::Date)
         .order_by_desc(journal_entry::Column::Time)
         .order_by_desc(notification::Column::Id)
@@ -246,15 +233,15 @@ pub async fn flush_reach(db: &impl ConnectionTrait) -> Result<FlushReach, DbErr>
     })
 }
 
-fn email_pending_query() -> Select<NotificationRecipient> {
-    NotificationRecipient::find()
-        .filter(notification_recipient::Column::EmailStatus.eq(NotificationEmailStatus::Pending))
+/// Keeps only unread Notifications whose email has not been sent yet.
+fn filter_unsent_email(q: Select<NotificationRecipient>) -> Select<NotificationRecipient> {
+    q.filter(notification_recipient::Column::EmailStatus.eq(NotificationEmailStatus::Unsent))
         .filter(notification_recipient::Column::ReadAt.is_null())
 }
 
-/// Ids of Users who have unread Notifications that still need to be emailed.
-pub async fn list_users_with_unemailed(db: &impl ConnectionTrait) -> Result<Vec<i32>, DbErr> {
-    email_pending_query()
+/// Ids of Users who have unread Notifications whose email has not been sent.
+pub async fn list_users_with_unsent_email(db: &impl ConnectionTrait) -> Result<Vec<i32>, DbErr> {
+    filter_unsent_email(NotificationRecipient::find())
         .select_only()
         .column(notification_recipient::Column::UserId)
         .distinct()
@@ -263,16 +250,14 @@ pub async fn list_users_with_unemailed(db: &impl ConnectionTrait) -> Result<Vec<
         .await
 }
 
-/// All of the User's unread Notifications that still need to be emailed, in
+/// All of the User's unread Notifications whose email has not been sent, in
 /// trip order.
-pub async fn list_unemailed_for_user(
+pub async fn list_unsent_email_for_user(
     db: &impl ConnectionTrait,
     user_id: i32,
 ) -> Result<Vec<NotificationRow>, DbErr> {
-    rows_query()
+    filter_unsent_email(rows_query())
         .filter(notification_recipient::Column::UserId.eq(user_id))
-        .filter(notification_recipient::Column::EmailStatus.eq(NotificationEmailStatus::Pending))
-        .filter(notification_recipient::Column::ReadAt.is_null())
         .order_by_asc(journal_entry::Column::Date)
         .order_by_asc(journal_entry::Column::Time)
         .order_by_asc(notification_recipient::Column::Id)
@@ -281,16 +266,16 @@ pub async fn list_unemailed_for_user(
         .await
 }
 
-/// Marks the given Recipient rows as emailed.
-/// Only rows that are still pending are touched.
-pub async fn mark_emailed(db: &impl ConnectionTrait, ids: Vec<i32>) -> Result<(), DbErr> {
+/// Marks the email of the given Recipient rows as sent.
+/// Only rows that are still unsent are touched.
+pub async fn mark_email_sent(db: &impl ConnectionTrait, ids: Vec<i32>) -> Result<(), DbErr> {
     NotificationRecipient::update_many()
         .col_expr(
             notification_recipient::Column::EmailStatus,
             Expr::value(NotificationEmailStatus::Sent),
         )
         .filter(notification_recipient::Column::Id.is_in(ids))
-        .filter(notification_recipient::Column::EmailStatus.eq(NotificationEmailStatus::Pending))
+        .filter(notification_recipient::Column::EmailStatus.eq(NotificationEmailStatus::Unsent))
         .exec(db)
         .await?;
     Ok(())
@@ -315,9 +300,7 @@ pub async fn set_email_notifications(
                 Expr::value(NotificationEmailStatus::Skipped),
             )
             .filter(notification_recipient::Column::UserId.eq(user_id))
-            .filter(
-                notification_recipient::Column::EmailStatus.eq(NotificationEmailStatus::Pending),
-            )
+            .filter(notification_recipient::Column::EmailStatus.eq(NotificationEmailStatus::Unsent))
             .exec(&txn)
             .await?;
     }

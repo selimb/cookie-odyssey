@@ -4,12 +4,13 @@ use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QueryOr
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    auth::utils::unwrap_user_from_session,
     comment::routes::CommentList,
     journal::{
         queries::{query_journal_by_slug, query_media_for_journal_entry, MediaFull},
         routes::{JournalEntryNewPath, JournalEntryNewQuery},
     },
-    notification::queries::{count_unread, mark_day_read},
+    notification::queries::mark_day_read,
     storage::FileStore,
     AppState, AuthSession, Route, RouteResult, Templ,
 };
@@ -23,7 +24,7 @@ pub struct JournalDayGetPath {
 
 pub async fn page_journal_day_get(
     state: AppState,
-    templ: Templ,
+    mut templ: Templ,
     session: AuthSession,
     Path(JournalDayGetPath { slug, date }): Path<JournalDayGetPath>,
 ) -> RouteResult {
@@ -35,11 +36,11 @@ pub async fn page_journal_day_get(
         }
     };
 
-    // Viewing a Day reads its Notifications, however the User got here.
-    let user_id = session.user.as_ref().expect("Should be authenticated").0.id;
+    // Viewing a Day marks its Notifications as read, regardless of how the User
+    // got here.
+    let user_id = unwrap_user_from_session(&session).0.id;
     mark_day_read(&state.db, user_id, journal.id, date).await?;
-    // The default (computed before this handler ran) is now stale.
-    let unread_count = count_unread(&state.db, user_id).await?;
+    templ.refresh_badges(&state.db).await?;
 
     let entries =
         query_entries_for_day(&journal, &date, &state.db, &session, &state.storage).await?;
@@ -79,7 +80,6 @@ pub async fn page_journal_day_get(
         journal,
         datetime,
         entries,
-        unread_count,
         comments_fragment => comments.0,
         href_journal_detail,
         href_journal_entry_new,

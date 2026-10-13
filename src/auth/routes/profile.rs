@@ -3,12 +3,12 @@ use minijinja::context;
 use serde::Deserialize;
 
 use crate::{
-    notification::queries::set_email_notifications, AppState, AuthSession, Route, RouteResult,
-    Templ, Toast,
+    auth::utils::unwrap_user_from_session, notification::queries::set_email_notifications,
+    AppState, AuthSession, Route, RouteResult, Templ, Toast,
 };
 
 pub async fn page_profile_get(templ: Templ, session: AuthSession) -> RouteResult {
-    let user = session.user.as_ref().expect("Should be authenticated");
+    let user = unwrap_user_from_session(&session);
     let ctx = context! {
         email_notifications => user.0.email_notifications,
         href_email_notifications => Route::ProfileEmailNotificationsPost.as_path(),
@@ -34,7 +34,7 @@ pub async fn hx_profile_email_notifications_post(
             return Ok(Toast::error(err).into_response());
         }
     };
-    let user_id = session.user.as_ref().expect("Should be authenticated").0.id;
+    let user_id = unwrap_user_from_session(&session).0.id;
     let enabled = form.email_notifications.is_some();
     set_email_notifications(&state.db, user_id, enabled).await?;
     Ok(Toast::success("Saved").into_response())

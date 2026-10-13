@@ -12,7 +12,7 @@ use crate::{
     email::{EmailClient, EmailMessage, EmailRecipient},
     journal::routes::JournalDayGetPath,
     notification::queries::{
-        list_unemailed_for_user, list_users_with_unemailed, mark_emailed, NotificationRow,
+        list_unsent_email_for_user, list_users_with_unsent_email, mark_email_sent, NotificationRow,
     },
     template_engine::TemplateEngine,
     Route,
@@ -77,14 +77,14 @@ impl NotificationEmailWorker {
 
 async fn run_pass(deps: &Deps) -> anyhow::Result<()> {
     if !deps.email.is_configured() {
-        warn!("Email is not configured, leaving notification emails pending");
+        warn!("Email is not configured, leaving notification emails unsent");
         return Ok(());
     }
-    let user_ids = list_users_with_unemailed(&deps.db).await?;
+    let user_ids = list_users_with_unsent_email(&deps.db).await?;
     info!("Emailing notifications to {} users", user_ids.len());
     for user_id in user_ids {
         if let Err(err) = email_user(deps, user_id).await {
-            // Leave the rows pending so that they roll over to the next pass.
+            // Leave the rows unsent so that they roll over to the next pass.
             error!("Failed to email notifications to user {user_id}: {err:#?}");
         }
     }
@@ -95,14 +95,14 @@ async fn email_user(deps: &Deps, user_id: i32) -> anyhow::Result<()> {
     let Some(user) = User::find_by_id(user_id).one(&deps.db).await? else {
         return Ok(());
     };
-    let rows = list_unemailed_for_user(&deps.db, user_id).await?;
+    let rows = list_unsent_email_for_user(&deps.db, user_id).await?;
     if rows.is_empty() {
         return Ok(());
     }
     let ids: Vec<i32> = rows.iter().map(|r| r.id).collect();
     let msg = render_email(deps, &user, rows)?;
     deps.email.send(msg).await?;
-    mark_emailed(&deps.db, ids)
+    mark_email_sent(&deps.db, ids)
         .await
         .context("Email was sent, but failed to mark it as sent")?;
     Ok(())

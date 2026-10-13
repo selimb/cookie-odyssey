@@ -26,7 +26,7 @@
           </a>
         {% else %}
           <div class="alert alert-info">
-            <span>Nothing is waiting to be announced.</span>
+            <span>There are no Pending Notifications.</span>
           </div>
         {% endfor %}
       </div>
@@ -41,8 +41,8 @@
         class="btn btn-primary w-full"
         hx-post="{{ href_flush }}"
         hx-target="#notification_pending"
-        hx-swap="outerHTML"
-        hx-confirm="Flush {{ items | length }} notification(s)? This cannot be undone."
+        hx-swap="innerHTML"
+        hx-confirm="Flush {{ items | length }} notification{{ "" if items | length == 1 else "s" }}? This cannot be undone."
         {% if not items %}disabled{% endif %}
       >
         Flush
@@ -51,15 +51,16 @@
       <hr class="h-px border-0 bg-gray-200 dark:bg-gray-700" />
 
       <div>
-        {{ unemailed_users }} user{{ "" if unemailed_users == 1 else "s" }}
-        {{ "has" if unemailed_users == 1 else "have" }}
-        unread notifications that have not been emailed.
+        {{ users_with_unsent_email }}
+        user{{ "" if users_with_unsent_email == 1 else "s" }}
+        {{ "has" if users_with_unsent_email == 1 else "have" }}
+        unread notifications whose email was not sent.
       </div>
       <button
         type="button"
         class="btn w-full"
         hx-post="{{ href_retry_emails }}"
-        {% if not unemailed_users %}disabled{% endif %}
+        {% if not users_with_unsent_email %}disabled{% endif %}
       >
         Retry emails
       </button>

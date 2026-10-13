@@ -1,6 +1,4 @@
 //! Generic SMTP email sending.
-//! Kept free of notification-specific logic so it can later serve other flows
-//! (e.g. forgot-password).
 use anyhow::Context as _;
 use app_config::EmailConfig;
 use lettre::{

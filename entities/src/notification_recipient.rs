@@ -20,8 +20,8 @@ pub struct Model {
 #[serde(rename_all = "lowercase")]
 #[sea_orm(rs_type = "String", db_type = "String(StringLen::None)")]
 pub enum NotificationEmailStatus {
-    #[sea_orm(string_value = "pending")]
-    Pending,
+    #[sea_orm(string_value = "unsent")]
+    Unsent,
     #[sea_orm(string_value = "sent")]
     Sent,
     #[sea_orm(string_value = "skipped")]

@@ -237,13 +237,10 @@ fn get_protected_routes() -> Router<AppState> {
             &Route::NotificationMarkAllReadPost.as_path(),
             post(notification::hx_notification_mark_all_read_post),
         )
-        .route(
-            &Route::ProfileGet.as_path(),
-            get(notification::page_profile_get),
-        )
+        .route(&Route::ProfileGet.as_path(), get(auth::page_profile_get))
         .route(
             &Route::ProfileEmailNotificationsPost.as_path(),
-            post(notification::hx_profile_email_notifications_post),
+            post(auth::hx_profile_email_notifications_post),
         )
         .route(
             &Route::NotificationPendingGet.as_path(),

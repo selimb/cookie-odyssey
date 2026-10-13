@@ -3,6 +3,7 @@ use minijinja::context;
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    auth::utils::unwrap_user_from_session,
     journal::routes::JournalDayGetPath,
     notification::queries::{list_for_user, mark_all_read, NotificationRow, PAGE_SIZE},
     AppState, AuthSession, Route, RouteError, RouteResult, Templ,
@@ -29,14 +30,10 @@ impl From<NotificationRow> for NotificationItem {
             read: row.read_at.is_some(),
             title: row.title,
             journal_name: row.journal_name,
-            datetime: chrono::NaiveDateTime::new(row.date, Default::default()),
+            datetime: chrono::NaiveDateTime::new(row.date, row.time),
             href,
         }
     }
-}
-
-fn user_id(session: &AuthSession) -> i32 {
-    session.user.as_ref().expect("Should be authenticated").0.id
 }
 
 /// Queries a page of the User's Notifications, and builds the template context.
@@ -45,7 +42,7 @@ async fn list_ctx(
     session: &AuthSession,
     before: Option<i32>,
 ) -> Result<minijinja::Value, RouteError> {
-    let mut rows = list_for_user(&state.db, user_id(session), before).await?;
+    let mut rows = list_for_user(&state.db, unwrap_user_from_session(session).0.id, before).await?;
     let has_more = rows.len() as u64 > PAGE_SIZE;
     rows.truncate(PAGE_SIZE as usize);
     let href_more = match (has_more, rows.last()) {
@@ -99,10 +96,10 @@ pub async fn hx_notification_list_more_get(
 
 pub async fn hx_notification_mark_all_read_post(
     state: AppState,
-    templ: Templ,
+    mut templ: Templ,
     session: AuthSession,
 ) -> RouteResult {
-    mark_all_read(&state.db, user_id(&session)).await?;
+    mark_all_read(&state.db, unwrap_user_from_session(&session).0.id).await?;
 
     let ctx = list_ctx(&state, &session, None).await?;
     let list = templ.render_ctx_fragment(
@@ -110,6 +107,6 @@ pub async fn hx_notification_mark_all_read_post(
         ctx,
         Some("fragment_notification_list"),
     )?;
-    let badges = templ.render_ctx("common/nav_badges_oob.html", context! { unread_count => 0 })?;
+    let badges = templ.render_nav_badges_oob(&state.db).await?;
     Ok(axum::response::Html(format!("{}{}", list.0, badges.0)).into_response())
 }

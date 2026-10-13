@@ -11,6 +11,7 @@ use axum::{
 use itertools::Itertools;
 use minijinja::context;
 use once_cell::sync::Lazy;
+use sea_orm::DatabaseConnection;
 use serde::Serialize;
 
 use crate::assets::AssetManifest;
@@ -135,6 +136,33 @@ impl Templ {
         Ok(Html(body))
     }
 
+    /// Recomputes the navbar badge counts.
+    /// Handlers that change them must call this before rendering.
+    pub async fn refresh_badges(&mut self, db: &DatabaseConnection) -> Result<(), RouteError> {
+        let Some(user) = &self.user else {
+            return Ok(());
+        };
+        self.unread_count = count_unread(db, user.id)
+            .await
+            .context("Failed to count unread notifications")?;
+        if user.admin {
+            self.pending_count = count_pending(db)
+                .await
+                .context("Failed to count pending notifications")?;
+        }
+        Ok(())
+    }
+
+    /// Renders out-of-band updates of the navbar badges, to append to an HTMX
+    /// response.
+    pub async fn render_nav_badges_oob(
+        &mut self,
+        db: &DatabaseConnection,
+    ) -> Result<Html<String>, RouteError> {
+        self.refresh_badges(db).await?;
+        self.render("common/nav_badges_oob.html")
+    }
+
     fn build_default_ctx(&self) -> minijinja::Value {
         // See [TemplContext].
         context! {
@@ -156,7 +184,7 @@ struct TemplContext<'a> {
     /// Obsolete, but kept in case we need it in the future.
     hx_boosted: bool,
     /// Number of unread Notifications, for the navbar badge.
-    /// Handlers that change it override it.
+    /// See [`Templ::refresh_badges`].
     unread_count: u64,
     /// Number of Pending Notifications (Admin only), for the navbar badge.
     pending_count: u64,
@@ -190,24 +218,14 @@ where
             .expect("HeaderMap extractor is infallible");
         let hx_boosted = header_map.contains_key("HX-Boosted");
 
-        let (mut unread_count, mut pending_count) = (0, 0);
-        if let Some(user) = &user {
-            unread_count = count_unread(&app_state.db, user.0.id)
-                .await
-                .context("Failed to count unread notifications")?;
-            if user.0.admin {
-                pending_count = count_pending(&app_state.db)
-                    .await
-                    .context("Failed to count pending notifications")?;
-            }
-        }
-
-        Ok(Self {
+        let mut templ = Self {
             engine: app_state.template_engine,
             user: user.map(TemplContextUser::from),
             hx_boosted,
-            unread_count,
-            pending_count,
-        })
+            unread_count: 0,
+            pending_count: 0,
+        };
+        templ.refresh_badges(&app_state.db).await?;
+        Ok(templ)
     }
 }

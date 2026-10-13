@@ -1,5 +1,6 @@
 use sea_orm_migration::{prelude::*, schema::*};
 
+use crate::m20240512_173332_create_table_user::User;
 use crate::m20240518_025335_create_table_journal_entry::JournalEntry;
 
 #[derive(DeriveMigrationName)]
@@ -54,7 +55,7 @@ impl MigrationTrait for Migration {
                     .col(
                         string(NotificationRecipient::EmailStatus).check(
                             Expr::col(NotificationRecipient::EmailStatus)
-                                .is_in(["pending", "sent", "skipped"]),
+                                .is_in(["unsent", "sent", "skipped"]),
                         ),
                     )
                     .foreign_key(
@@ -112,14 +113,14 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
-        // Email worker and the Admin "un-emailed" count.
+        // Email worker and the Admin "unsent email" count.
         manager
             .create_index(
                 Index::create()
-                    .name("idx_notification_recipient_email_pending")
+                    .name("idx_notification_recipient_email_unsent")
                     .table(NotificationRecipient::Table)
                     .col(NotificationRecipient::UserId)
-                    .and_where(Expr::col(NotificationRecipient::EmailStatus).eq("pending"))
+                    .and_where(Expr::col(NotificationRecipient::EmailStatus).eq("unsent"))
                     .to_owned(),
             )
             .await?;
@@ -156,5 +157,3 @@ enum NotificationRecipient {
     ReadAt,
     EmailStatus,
 }
-
-use crate::m20240512_173332_create_table_user::User;

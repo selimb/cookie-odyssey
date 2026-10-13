@@ -45,7 +45,7 @@ pub struct AppConfig {
     pub database_file: String,
     pub storage: StorageConfig,
     pub video_transcoding: VideoTranscodingConfig,
-    /// When absent, emails are not sent (and stay pending).
+    /// When absent, emails are not sent (and stay unsent).
     #[serde(default)]
     pub email: Option<EmailConfig>,
     #[serde(default)]

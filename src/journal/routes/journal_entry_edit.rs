@@ -12,7 +12,7 @@ use crate::{
         append_journal_entry_media, delete_journal_entry_media, query_journal_entry_by_id,
         query_media_for_journal_entry, reorder_journal_entry_media, MediaFull,
     },
-    notification::queries::{count_pending, publish_entry},
+    notification::queries::publish_entry,
     utils::serde_utils::string_trim,
     AppState, FormError, Route, RouteError, RouteResult, Templ, Toast,
 };
@@ -109,17 +109,14 @@ pub async fn hx_journal_entry_edit_post(
 
 pub async fn hx_journal_entry_publish_post(
     state: AppState,
-    templ: Templ,
+    mut templ: Templ,
     Path(entry_id): Path<i32>,
 ) -> RouteResult {
     publish_entry(&state.db, entry_id).await?;
 
     let toast = Toast::success("Published");
     // Wipes the button, and refreshes the pending badge.
-    let badges = templ.render_ctx(
-        "common/nav_badges_oob.html",
-        context! { pending_count => count_pending(&state.db).await? },
-    )?;
+    let badges = templ.render_nav_badges_oob(&state.db).await?;
     let resp = (toast.into_headers(), badges);
     Ok(resp.into_response())
 }
