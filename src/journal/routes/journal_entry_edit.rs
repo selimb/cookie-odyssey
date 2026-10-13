@@ -12,6 +12,7 @@ use crate::{
         append_journal_entry_media, delete_journal_entry_media, query_journal_entry_by_id,
         query_media_for_journal_entry, reorder_journal_entry_media, MediaFull,
     },
+    notification::queries::publish_entry,
     utils::serde_utils::string_trim,
     AppState, FormError, Route, RouteError, RouteResult, Templ, Toast,
 };
@@ -108,19 +109,15 @@ pub async fn hx_journal_entry_edit_post(
 
 pub async fn hx_journal_entry_publish_post(
     state: AppState,
+    mut templ: Templ,
     Path(entry_id): Path<i32>,
 ) -> RouteResult {
-    let data = journal_entry::ActiveModel {
-        id: sea_orm::ActiveValue::Set(entry_id),
-        draft: sea_orm::ActiveValue::Set(false),
-        ..Default::default()
-    };
-    JournalEntry::update(data).exec(&state.db).await?;
+    publish_entry(&state.db, entry_id).await?;
 
     let toast = Toast::success("Published");
-    // Simply wipes the button.
-    let html = Html("");
-    let resp = (toast.into_headers(), html);
+    // Wipes the button, and refreshes the pending badge.
+    let badges = templ.render_nav_badges_oob(&state.db).await?;
+    let resp = (toast.into_headers(), badges);
     Ok(resp.into_response())
 }
 

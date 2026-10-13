@@ -16,17 +16,26 @@ pub struct Model {
     pub approved: bool,
     pub admin: bool,
     pub first_login: bool,
+    pub email_notifications: bool,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
     #[sea_orm(has_many = "super::journal_comment::Entity")]
     JournalComment,
+    #[sea_orm(has_many = "super::notification_recipient::Entity")]
+    NotificationRecipient,
 }
 
 impl Related<super::journal_comment::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::JournalComment.def()
+    }
+}
+
+impl Related<super::notification_recipient::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::NotificationRecipient.def()
     }
 }
 

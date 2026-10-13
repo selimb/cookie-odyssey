@@ -8,6 +8,8 @@ use tower_http::{catch_panic::CatchPanicLayer, services::ServeDir};
 use crate::{
     assets::AssetManifest,
     auth::sessions::init_session,
+    email::EmailClient,
+    notification::email_worker::NotificationEmailWorker,
     state::AppState,
     storage::{init_storage, FileStore},
     template_engine::init_templates,
@@ -44,7 +46,7 @@ pub async fn init_state(
     let assets = AssetManifest::load(ASSETS_URL_BASE.to_string(), "assets/dist/manifest.json")
         .await
         .context("Failed to load asset manifest")?;
-    let template_engine = init_templates(assets);
+    let template_engine = Arc::new(init_templates(assets));
 
     let (pool, db) = init_db(conf).await?;
 
@@ -55,12 +57,25 @@ pub async fn init_state(
         video_transcoder.start().await;
     }
 
+    let email = Arc::new(EmailClient::new(conf.email.as_ref())?);
+    let notification_email_worker = NotificationEmailWorker::new(
+        db.clone(),
+        template_engine.clone(),
+        email.clone(),
+        conf.server_name.clone(),
+    );
+    if start {
+        notification_email_worker.start();
+    }
+
     let state = AppState {
         github_client_token: conf.video_transcoding.github_client_token.clone(),
-        template_engine: Arc::new(template_engine),
+        template_engine,
         db,
         storage,
         video_transcoder: Arc::new(video_transcoder),
+        email,
+        notification_email_worker: Arc::new(notification_email_worker),
         dev: conf.env == AppEnv::Dev,
     };
     Ok((state, pool))

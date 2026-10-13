@@ -105,8 +105,14 @@ export class JournalEntryMediaFormController extends TypedController(
             uploadParams,
           );
         } catch (error) {
+          const reason =
+            error instanceof Error
+              ? `${error.name}: ${error.message}`
+              : typeof error === "string"
+                ? error
+                : JSON.stringify(error);
           toast({
-            message: `Failed to upload ${file.name}`,
+            message: `Failed to upload ${file.name}. ${reason}`,
             error,
             variant: "error",
           });

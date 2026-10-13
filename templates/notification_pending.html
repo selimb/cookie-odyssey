@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% import "common/datetime.html" as dt %}
+
+{% block content %}
+  <h1 class="app-title">Pending Notifications</h1>
+
+  <div id="notification_pending" class="space-y-4">
+    {% block fragment_notification_pending %}
+      {% if not email_configured %}
+        <div class="alert alert-warning">
+          <span>Email is not configured, so no emails will be sent.</span>
+        </div>
+      {% endif %}
+
+      <div class="space-y-2">
+        {% for item in items %}
+          <a href="{{ item.href }}" class="app-card">
+            <div class="card-body p-4">
+              <div class="font-semibold">{{ item.title }}</div>
+              <div class="text-sm">
+                {{ item.journal_name }}
+                <span> - </span>
+                {{ dt.date(item.datetime) }}
+              </div>
+            </div>
+          </a>
+        {% else %}
+          <div class="alert alert-info">
+            <span>There are no Pending Notifications.</span>
+          </div>
+        {% endfor %}
+      </div>
+
+      <div>
+        Flushing will notify {{ reach.users }}
+        user{{ "" if reach.users == 1 else "s" }}, {{ reach.users_by_email }} of
+        them by email.
+      </div>
+      <button
+        type="button"
+        class="btn btn-primary w-full"
+        hx-post="{{ href_flush }}"
+        hx-target="#notification_pending"
+        hx-swap="innerHTML"
+        hx-confirm="Flush {{ items | length }} notification{{ "" if items | length == 1 else "s" }}? This cannot be undone."
+        {% if not items %}disabled{% endif %}
+      >
+        Flush
+      </button>
+
+      <hr class="h-px border-0 bg-gray-200 dark:bg-gray-700" />
+
+      <div>
+        {{ users_with_unsent_email }}
+        user{{ "" if users_with_unsent_email == 1 else "s" }}
+        {{ "has" if users_with_unsent_email == 1 else "have" }}
+        unread notifications whose email was not sent.
+      </div>
+      <button
+        type="button"
+        class="btn w-full"
+        hx-post="{{ href_retry_emails }}"
+        {% if not users_with_unsent_email %}disabled{% endif %}
+      >
+        Retry emails
+      </button>
+    {% endblock fragment_notification_pending %}
+  </div>
+{% endblock content %}

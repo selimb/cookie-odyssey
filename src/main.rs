@@ -126,6 +126,7 @@ impl Cli {
             password: sea_orm::ActiveValue::Set(password_hash),
             approved: sea_orm::ActiveValue::Set(true),
             first_login: sea_orm::ActiveValue::NotSet,
+            email_notifications: sea_orm::ActiveValue::NotSet,
             id: sea_orm::ActiveValue::NotSet,
         };
         entities::user::Entity::insert(user_data)

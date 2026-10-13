@@ -2,7 +2,8 @@ use axum::extract::{FromRef, FromRequestParts};
 use std::{convert::Infallible, sync::Arc};
 
 use crate::{
-    storage::FileStore, template_engine::TemplateEngine, video_transcoding::daemon::VideoTranscoder,
+    email::EmailClient, notification::email_worker::NotificationEmailWorker, storage::FileStore,
+    template_engine::TemplateEngine, video_transcoding::daemon::VideoTranscoder,
 };
 
 #[derive(Debug, Clone)]
@@ -12,6 +13,8 @@ pub struct AppState {
     pub db: sea_orm::DatabaseConnection,
     pub storage: Arc<FileStore>,
     pub video_transcoder: Arc<VideoTranscoder>,
+    pub email: Arc<EmailClient>,
+    pub notification_email_worker: Arc<NotificationEmailWorker>,
     pub dev: bool,
 }
 

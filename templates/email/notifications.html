@@ -1,0 +1,45 @@
+{# Email clients need inline styles. #}
+{# djlint:off H021,H030 #}
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>New on Cookie Odyssey</title>
+  </head>
+  <body
+    style="margin: 0; padding: 16px; font-family: -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.5; color: #1f2937;"
+  >
+    <div style="max-width: 560px; margin: 0 auto;">
+      <p>Hi {{ first_name }},</p>
+      <p>There is new content on Cookie Odyssey.</p>
+      {% for group in groups %}
+        <h2 style="margin: 24px 0 8px; font-size: 20px;">
+          {{ group.journal_name }}
+        </h2>
+        <ul style="margin: 0; padding-left: 20px;">
+          {% for entry in group.entries %}
+            <li style="margin-bottom: 8px;">
+              <a href="{{ entry.href }}" style="color: #2563eb;"
+                >{{ entry.title }}</a
+              >
+              <br />
+              <span style="color: #6b7280; font-size: 14px;"
+                >{{ entry.date }}</span
+              >
+            </li>
+          {% endfor %}
+        </ul>
+      {% endfor %}
+      <hr
+        style="margin: 32px 0 16px; border: 0; border-top: 1px solid #e5e7eb;"
+      />
+      <p style="color: #6b7280; font-size: 13px;">
+        You are receiving this because you follow along on Cookie Odyssey.
+        <a href="{{ href_profile }}" style="color: #6b7280;"
+          >Change your email settings</a
+        >.
+      </p>
+    </div>
+  </body>
+</html>

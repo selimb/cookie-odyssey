@@ -4,11 +4,13 @@ use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QueryOr
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    auth::utils::unwrap_user_from_session,
     comment::routes::CommentList,
     journal::{
         queries::{query_journal_by_slug, query_media_for_journal_entry, MediaFull},
         routes::{JournalEntryNewPath, JournalEntryNewQuery},
     },
+    notification::queries::mark_day_read,
     storage::FileStore,
     AppState, AuthSession, Route, RouteResult, Templ,
 };
@@ -22,7 +24,7 @@ pub struct JournalDayGetPath {
 
 pub async fn page_journal_day_get(
     state: AppState,
-    templ: Templ,
+    mut templ: Templ,
     session: AuthSession,
     Path(JournalDayGetPath { slug, date }): Path<JournalDayGetPath>,
 ) -> RouteResult {
@@ -33,6 +35,12 @@ pub async fn page_journal_day_get(
             return Ok(err.render(&templ).into_response());
         }
     };
+
+    // Viewing a Day marks its Notifications as read, regardless of how the User
+    // got here.
+    let user_id = unwrap_user_from_session(&session).0.id;
+    mark_day_read(&state.db, user_id, journal.id, date).await?;
+    templ.refresh_badges(&state.db).await?;
 
     let entries =
         query_entries_for_day(&journal, &date, &state.db, &session, &state.storage).await?;
