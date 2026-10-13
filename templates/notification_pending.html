@@ -33,9 +33,8 @@
 
       <div>
         Flushing will notify {{ reach.users }}
-        user{{ "" if reach.users == 1 else "s" }},
-        {{ reach.users_by_email }}
-        of them by email.
+        user{{ "" if reach.users == 1 else "s" }}, {{ reach.users_by_email }} of
+        them by email.
       </div>
       <button
         type="button"
@@ -52,8 +51,7 @@
       <hr class="h-px border-0 bg-gray-200 dark:bg-gray-700" />
 
       <div>
-        {{ unemailed_users }}
-        user{{ "" if unemailed_users == 1 else "s" }}
+        {{ unemailed_users }} user{{ "" if unemailed_users == 1 else "s" }}
         {{ "has" if unemailed_users == 1 else "have" }}
         unread notifications that have not been emailed.
       </div>

@@ -8,7 +8,7 @@
   <span
     id="nav-unread-badge"
     {% if oob %}hx-swap-oob="true"{% endif %}
-    class="badge indicator-item badge-secondary badge-sm {% if count == 0 %}hidden{% endif %}"
+    class="{% if count == 0 %}hidden{% endif %} badge indicator-item badge-secondary badge-sm"
     >{{ count_text(count) }}</span
   >
 {% endmacro %}
@@ -17,7 +17,7 @@
   <span
     id="nav-pending-badge"
     {% if oob %}hx-swap-oob="true"{% endif %}
-    class="badge indicator-item badge-warning badge-sm {% if count == 0 %}hidden{% endif %}"
+    class="{% if count == 0 %}hidden{% endif %} badge indicator-item badge-warning badge-sm"
     >{{ count_text(count) }}</span
   >
 {% endmacro %}

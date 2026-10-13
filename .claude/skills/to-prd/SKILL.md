@@ -1,7 +1,6 @@
 ---
 name: to-prd
-description: Turn the current conversation context into a PRD.
-Use when user wants to create a PRD from the current context.
+description: Turn the current conversation context into a PRD. Use when user wants to create a PRD from the current context.
 ---
 
 This skill takes the current conversation context and codebase understanding and produces a PRD.

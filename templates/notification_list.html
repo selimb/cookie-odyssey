@@ -21,7 +21,9 @@
         {% for item in items %}
           <a
             href="{{ item.href }}"
-            class="app-card {% if not item.read %}border-l-4 border-l-secondary bg-base-200{% endif %}"
+            class="app-card {% if not item.read %}
+              border-l-4 border-l-secondary bg-base-200
+            {% endif %}"
           >
             <div class="card-body p-4">
               <div class="{% if not item.read %}font-bold{% endif %}">
