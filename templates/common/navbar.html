@@ -17,6 +17,7 @@ and https://daisyui.com/components/navbar/
       {% if user and user.admin %}
         <a
           title="Manage Users"
+          aria-label="Manage Users"
           href="{{ links.admin_users_list }}"
           class="btn btn-circle btn-ghost"
         >
@@ -39,6 +40,7 @@ and https://daisyui.com/components/navbar/
         </a>
         <a
           title="Pending Notifications"
+          aria-label="Pending Notifications"
           href="{{ links.notifications_pending }}"
           class="btn btn-circle btn-ghost"
         >
@@ -65,6 +67,7 @@ and https://daisyui.com/components/navbar/
       {% if user %}
         <a
           title="Notifications"
+          aria-label="Notifications"
           href="{{ links.notifications }}"
           class="btn btn-circle btn-ghost"
         >
