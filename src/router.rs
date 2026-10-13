@@ -13,6 +13,7 @@ use crate::auth::{
 use crate::comment::routes as comment;
 use crate::demo::routes as demo;
 use crate::journal::routes as journal;
+use crate::notification::routes as notification;
 use crate::storage::routes as storage;
 use crate::video_transcoding::routes as video_transcoding;
 use crate::AppState;
@@ -57,6 +58,14 @@ pub enum Route<'a> {
     LoginGet,
     LoginPost,
     LogoutGet,
+    NotificationListGet,
+    NotificationListMoreGet(Option<&'a notification::NotificationListMoreQuery>),
+    NotificationMarkAllReadPost,
+    NotificationPendingGet,
+    NotificationFlushPost,
+    NotificationRetryEmailsPost,
+    ProfileGet,
+    ProfileEmailNotificationsPost,
     MediaUploadUrlPost,
     // TODO: Why do we need this?
     MediaUploadProxyPut(Option<&'a storage::MediaUploadProxyParams>),
@@ -136,6 +145,20 @@ impl<'a> Route<'a> {
             Route::LoginGet => "/login".into(),
             Route::LoginPost => "/login".into(),
             Route::LogoutGet => "/logout".into(),
+            Route::NotificationListGet => "/notifications".into(),
+            Route::NotificationListMoreGet(params) => match params {
+                None => "/hx/notifications".into(),
+                Some(params) => {
+                    let qs = serde_qs::to_string(params).expect(EXPECT_QS);
+                    format!("/hx/notifications?{qs}").into()
+                }
+            },
+            Route::NotificationMarkAllReadPost => "/hx/notifications/mark-all-read".into(),
+            Route::NotificationPendingGet => "/notifications/pending".into(),
+            Route::NotificationFlushPost => "/hx/notifications/flush".into(),
+            Route::NotificationRetryEmailsPost => "/hx/notifications/retry-emails".into(),
+            Route::ProfileGet => "/profile".into(),
+            Route::ProfileEmailNotificationsPost => "/hx/profile/email-notifications".into(),
             Route::MediaUploadUrlPost => "/api/media-upload-url".into(),
             Route::MediaUploadProxyPut(params) => match params {
                 None => "/api/media-upload".into(),
@@ -201,6 +224,38 @@ fn get_protected_routes() -> Router<AppState> {
         .route(
             &Route::JournalCommentDeletePost(None).as_path(),
             post(comment::hx_journal_comment_delete_post),
+        )
+        .route(
+            &Route::NotificationListGet.as_path(),
+            get(notification::page_notification_list_get),
+        )
+        .route(
+            &Route::NotificationListMoreGet(None).as_path(),
+            get(notification::hx_notification_list_more_get),
+        )
+        .route(
+            &Route::NotificationMarkAllReadPost.as_path(),
+            post(notification::hx_notification_mark_all_read_post),
+        )
+        .route(
+            &Route::ProfileGet.as_path(),
+            get(notification::page_profile_get),
+        )
+        .route(
+            &Route::ProfileEmailNotificationsPost.as_path(),
+            post(notification::hx_profile_email_notifications_post),
+        )
+        .route(
+            &Route::NotificationPendingGet.as_path(),
+            admin!(get(notification::page_notification_pending_get)),
+        )
+        .route(
+            &Route::NotificationFlushPost.as_path(),
+            admin!(post(notification::hx_notification_flush_post)),
+        )
+        .route(
+            &Route::NotificationRetryEmailsPost.as_path(),
+            admin!(post(notification::hx_notification_retry_emails_post)),
         )
         .route(
             &Route::JournalNewGet.as_path(),

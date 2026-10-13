@@ -14,6 +14,7 @@ use once_cell::sync::Lazy;
 use serde::Serialize;
 
 use crate::assets::AssetManifest;
+use crate::notification::queries::{count_pending, count_unread};
 use crate::{AppState, AuthSession, AuthUser, Route, RouteError};
 
 pub type TemplateEngine = minijinja::Environment<'static>;
@@ -78,12 +79,18 @@ pub struct TemplContextLinks {
     home: Cow<'static, str>,
     admin_users_list: Cow<'static, str>,
     logout: Cow<'static, str>,
+    notifications: Cow<'static, str>,
+    notifications_pending: Cow<'static, str>,
+    profile: Cow<'static, str>,
 }
 
 static TEMPL_CONTEXT_LINKS: Lazy<TemplContextLinks> = Lazy::new(|| TemplContextLinks {
     home: "/".into(),
     admin_users_list: Route::UserListGet.as_path(),
     logout: Route::LogoutGet.as_path(),
+    notifications: Route::NotificationListGet.as_path(),
+    notifications_pending: Route::NotificationPendingGet.as_path(),
+    profile: Route::ProfileGet.as_path(),
 });
 
 /// Template renderer, which is pre-populated with common context variables (see [TemplContext]).
@@ -92,6 +99,8 @@ pub struct Templ {
     engine: Arc<TemplateEngine>,
     user: Option<TemplContextUser>,
     hx_boosted: bool,
+    unread_count: u64,
+    pending_count: u64,
 }
 
 impl Templ {
@@ -132,6 +141,8 @@ impl Templ {
             user => self.user,
             links => TEMPL_CONTEXT_LINKS.deref(),
             hx_boosted => self.hx_boosted,
+            unread_count => self.unread_count,
+            pending_count => self.pending_count,
             wide_layout => false,
         }
     }
@@ -144,6 +155,11 @@ struct TemplContext<'a> {
     links: &'a TemplContextLinks,
     /// Obsolete, but kept in case we need it in the future.
     hx_boosted: bool,
+    /// Number of unread Notifications, for the navbar badge.
+    /// Handlers that change it override it.
+    unread_count: u64,
+    /// Number of Pending Notifications (Admin only), for the navbar badge.
+    pending_count: u64,
     /// Can be overridden.
     wide_layout: bool,
 }
@@ -174,10 +190,24 @@ where
             .expect("HeaderMap extractor is infallible");
         let hx_boosted = header_map.contains_key("HX-Boosted");
 
+        let (mut unread_count, mut pending_count) = (0, 0);
+        if let Some(user) = &user {
+            unread_count = count_unread(&app_state.db, user.0.id)
+                .await
+                .context("Failed to count unread notifications")?;
+            if user.0.admin {
+                pending_count = count_pending(&app_state.db)
+                    .await
+                    .context("Failed to count pending notifications")?;
+            }
+        }
+
         Ok(Self {
             engine: app_state.template_engine,
             user: user.map(TemplContextUser::from),
             hx_boosted,
+            unread_count,
+            pending_count,
         })
     }
 }

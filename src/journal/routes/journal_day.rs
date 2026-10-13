@@ -9,6 +9,7 @@ use crate::{
         queries::{query_journal_by_slug, query_media_for_journal_entry, MediaFull},
         routes::{JournalEntryNewPath, JournalEntryNewQuery},
     },
+    notification::queries::{count_unread, mark_day_read},
     storage::FileStore,
     AppState, AuthSession, Route, RouteResult, Templ,
 };
@@ -33,6 +34,12 @@ pub async fn page_journal_day_get(
             return Ok(err.render(&templ).into_response());
         }
     };
+
+    // Viewing a Day reads its Notifications, however the User got here.
+    let user_id = session.user.as_ref().expect("Should be authenticated").0.id;
+    mark_day_read(&state.db, user_id, journal.id, date).await?;
+    // The default (computed before this handler ran) is now stale.
+    let unread_count = count_unread(&state.db, user_id).await?;
 
     let entries =
         query_entries_for_day(&journal, &date, &state.db, &session, &state.storage).await?;
@@ -72,6 +79,7 @@ pub async fn page_journal_day_get(
         journal,
         datetime,
         entries,
+        unread_count,
         comments_fragment => comments.0,
         href_journal_detail,
         href_journal_entry_new,

@@ -9,6 +9,8 @@ mod m20240526_203520_create_table_journal_comment;
 mod m20250520_001650_media_type;
 mod m20250622_181713_journal_entry_media_width_height_thumbnail;
 mod m20251007_205825_create_table_video_transcode_task;
+mod m20251101_120000_user_email_notifications;
+mod m20251101_120100_create_table_notification;
 
 pub struct Migrator;
 
@@ -25,6 +27,8 @@ impl MigratorTrait for Migrator {
             Box::new(m20250520_001650_media_type::Migration),
             Box::new(m20250622_181713_journal_entry_media_width_height_thumbnail::Migration),
             Box::new(m20251007_205825_create_table_video_transcode_task::Migration),
+            Box::new(m20251101_120000_user_email_notifications::Migration),
+            Box::new(m20251101_120100_create_table_notification::Migration),
         ]
     }
 }

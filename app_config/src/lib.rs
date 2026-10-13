@@ -45,6 +45,9 @@ pub struct AppConfig {
     pub database_file: String,
     pub storage: StorageConfig,
     pub video_transcoding: VideoTranscodingConfig,
+    /// When absent, emails are not sent (and stay pending).
+    #[serde(default)]
+    pub email: Option<EmailConfig>,
     #[serde(default)]
     pub env: AppEnv,
 }
@@ -69,6 +72,35 @@ pub struct VideoTranscodingConfig {
     #[serde(default)]
     pub github_token: Option<String>,
     pub github_client_token: Option<String>,
+}
+
+#[derive(Clone, Deserialize)]
+pub struct EmailConfig {
+    pub smtp_host: String,
+    pub smtp_port: u16,
+    pub smtp_username: String,
+    pub smtp_password: String,
+    /// Plain address, e.g. `notifications@mail.example.com`.
+    pub from_address: String,
+    /// Replies from readers go here (the Admin's personal address).
+    pub reply_to_address: String,
+    /// Use implicit TLS (port 465) instead of STARTTLS.
+    #[serde(default)]
+    pub smtp_implicit_tls: bool,
+}
+
+impl std::fmt::Debug for EmailConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("EmailConfig")
+            .field("smtp_host", &self.smtp_host)
+            .field("smtp_port", &self.smtp_port)
+            .field("smtp_username", &self.smtp_username)
+            .field("smtp_password", &"<redacted>")
+            .field("from_address", &self.from_address)
+            .field("reply_to_address", &self.reply_to_address)
+            .field("smtp_implicit_tls", &self.smtp_implicit_tls)
+            .finish()
+    }
 }
 
 impl AppConfig {

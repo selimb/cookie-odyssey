@@ -1,0 +1,15 @@
+Hi {{ first_name }},
+
+There is new content on Cookie Odyssey.
+{% for group in groups %}
+
+{{ group.journal_name }}
+{% for entry in group.entries %}
+- {{ entry.title }} ({{ entry.date }})
+  {{ entry.href }}
+{% endfor %}
+{% endfor %}
+
+--
+You are receiving this because you follow along on Cookie Odyssey.
+To stop receiving these emails, change your settings: {{ href_profile }}

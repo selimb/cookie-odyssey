@@ -1,4 +1,5 @@
 {% import "common/theme.html" as theme %}
+{% import "common/badges.html" as badges %}
 
 {#
 Inspired by https://flowbite.com/docs/components/navbar/
@@ -36,30 +37,55 @@ and https://daisyui.com/components/navbar/
             />
           </svg>
         </a>
+        <a
+          title="Pending Notifications"
+          href="{{ links.notifications_pending }}"
+          class="btn btn-circle btn-ghost"
+        >
+          <div class="indicator">
+            {{ badges.pending(pending_count) }}
+            <!-- https://flowbite.com/icons/ paper-plane -->
+            <svg
+              class="h-6 w-6"
+              width="24"
+              height="24"
+              aria-hidden="true"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                d="M12 2a1 1 0 0 1 .932.638l7 18a1 1 0 0 1-1.326 1.281L13 19.517V13a1 1 0 1 0-2 0v6.517l-5.606 2.402a1 1 0 0 1-1.326-1.281l7-18A1 1 0 0 1 12 2Z"
+              />
+            </svg>
+          </div>
+        </a>
       {% endif %}
 
       {% if user %}
-        {# Maybe one day #}
-        {# <a
+        <a
           title="Notifications"
           href="{{ links.notifications }}"
           class="btn btn-circle btn-ghost"
         >
-          <!-- https://flowbite.com/icons/ bell -->
-          <svg
-            class="h-6 w-6"
-            width="24"
-            height="24"
-            aria-hidden="true"
-            xmlns="http://www.w3.org/2000/svg"
-            fill="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              d="M17.133 12.632v-1.8a5.406 5.406 0 0 0-4.154-5.262.955.955 0 0 0 .021-.106V3.1a1 1 0 0 0-2 0v2.364a.955.955 0 0 0 .021.106 5.406 5.406 0 0 0-4.154 5.262v1.8C6.867 15.018 5 15.614 5 16.807 5 17.4 5 18 5.538 18h12.924C19 18 19 17.4 19 16.807c0-1.193-1.867-1.789-1.867-4.175ZM8.823 19a3.453 3.453 0 0 0 6.354 0H8.823Z"
-            />
-          </svg>
-        </a> #}
+          <div class="indicator">
+            {{ badges.unread(unread_count) }}
+            <!-- https://flowbite.com/icons/ bell -->
+            <svg
+              class="h-6 w-6"
+              width="24"
+              height="24"
+              aria-hidden="true"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                d="M17.133 12.632v-1.8a5.406 5.406 0 0 0-4.154-5.262.955.955 0 0 0 .021-.106V3.1a1 1 0 0 0-2 0v2.364a.955.955 0 0 0 .021.106 5.406 5.406 0 0 0-4.154 5.262v1.8C6.867 15.018 5 15.614 5 16.807 5 17.4 5 18 5.538 18h12.924C19 18 19 17.4 19 16.807c0-1.193-1.867-1.789-1.867-4.175ZM8.823 19a3.453 3.453 0 0 0 6.354 0H8.823Z"
+              />
+            </svg>
+          </div>
+        </a>
       {% endif %}
 
       {{ theme.theme_toggle() }}
@@ -91,8 +117,7 @@ and https://daisyui.com/components/navbar/
             tabindex="0"
             class="menu dropdown-content menu-sm z-[1] mt-3 w-52 rounded-box bg-base-100 p-2 shadow dark:bg-neutral"
           >
-            {# FIXME #}
-            <li><a>Profile</a></li>
+            <li><a href="{{ links.profile }}">Profile</a></li>
             {# See [confetti-fn] #}
             <li><button onclick="fireConfetti()">Confetti</button></li>
             <li><a href="{{ links.logout }}">Logout</a></li>
