@@ -4,11 +4,13 @@
 # Uploads a build to the VPS. Does not restart the service.
 #
 # By default, uses the artifact of the latest successful `build.yml` run
-# on main. Requires an authenticated `gh` CLI.
+# on main.
+# Pass a run ID to use a specific `build.yml` run instead.
+# Requires an authenticated `gh` CLI.
 #
 # Usage:
-#   ./deploy/deploy.sh             # Latest build on main.
-#   ./deploy/deploy.sh <run-id>    # A specific build.yml run.
+#   ./deploy/deploy.sh
+#   ./deploy/deploy.sh <run-id>
 #
 set -eu
 
