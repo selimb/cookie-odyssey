@@ -51,14 +51,25 @@ const BACKUPS_KEEP = 10;
 const HEALTH_URL = "http://127.0.0.1:4444/";
 const HEALTH_ATTEMPTS = 15;
 
-const logger = console;
+// Every line of output is prefixed with where it comes from, as "(tag) ".
+// This script's own messages use this tag.
+const SELF_TAG = "deploy";
+// Output of the app, whether run directly or through the service.
+const APP_TAG = "cookie-odyssey";
 
 type RunOptions = {
   cwd?: string;
+  /** Prefix for the output of the command. Defaults to its name. */
+  tag?: string;
   /** Run as this user, instead of root. */
   user?: string;
-  /** Return stdout, instead of passing it through. */
+  /** Return stdout, which is then never printed. */
   capture?: boolean;
+  /**
+   * Print the output even if the command succeeds.
+   * Otherwise it is only printed if the command fails.
+   */
+  show?: boolean;
   /** Return the exit code, instead of throwing on a non-zero one. */
   allowFailure?: boolean;
 };
@@ -91,20 +102,29 @@ let interrupted: string | undefined;
 let recovering = false;
 
 // Writing can fail if the terminal is gone, which must not stop recovery.
-function log(message: string): void {
+function writeLine(sink: NodeJS.WriteStream, tag: string, line: string): void {
   try {
-    logger.log(message);
+    sink.write(`(${tag}) ${line}\n`);
   } catch {
     // Ignored.
   }
 }
 
-function logError(message: string): void {
-  try {
-    logger.error(message);
-  } catch {
-    // Ignored.
+function writeLines(sink: NodeJS.WriteStream, tag: string, text: string): void {
+  if (text.trim() === "") {
+    return;
   }
+  for (const line of text.trimEnd().split("\n")) {
+    writeLine(sink, tag, line);
+  }
+}
+
+function log(message: string): void {
+  writeLines(process.stdout, SELF_TAG, message);
+}
+
+function logError(message: string): void {
+  writeLines(process.stderr, SELF_TAG, message);
 }
 
 function formatErr(error: unknown): string {
@@ -117,6 +137,45 @@ function throwIfInterrupted(): void {
   }
 }
 
+type OutputLine = { isStderr: boolean; text: string };
+
+/**
+ * Reads `stream` to the end and returns all of it.
+ * Each line is also added to `lines` as soon as it is complete, so that lines
+ * from stdout and stderr end up in roughly the order they were written.
+ */
+async function collect(
+  stream: ReadableStream<Uint8Array>,
+  isStderr: boolean,
+  lines: OutputLine[],
+): Promise<string> {
+  const decoder = new TextDecoder();
+  let all = "";
+  let pending = "";
+  const push = (text: string): void => {
+    all += text;
+    pending += text;
+    const parts = pending.split("\n");
+    pending = parts.pop() ?? "";
+    for (const part of parts) {
+      lines.push({ isStderr, text: part });
+    }
+  };
+  const reader = stream.getReader();
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) {
+      break;
+    }
+    push(decoder.decode(value, { stream: true }));
+  }
+  push(decoder.decode());
+  if (pending !== "") {
+    lines.push({ isStderr, text: pending });
+  }
+  return all;
+}
+
 async function run(
   cmd: string[],
   options: RunOptions = {},
@@ -127,13 +186,23 @@ async function run(
   const proc = Bun.spawn(fullCmd, {
     cwd: options.cwd,
     stdin: "ignore",
-    stdout: options.capture ? "pipe" : "inherit",
-    stderr: "inherit",
+    stdout: "pipe",
+    stderr: "pipe",
   });
-  const stdout = options.capture
-    ? await new Response(proc.stdout as ReadableStream).text()
-    : "";
-  const code = await proc.exited;
+  const tag = options.tag ?? path.basename(cmd[0] ?? "");
+  const lines: OutputLine[] = [];
+  const [stdout, , code] = await Promise.all([
+    collect(proc.stdout, false, lines),
+    collect(proc.stderr, true, lines),
+    proc.exited,
+  ]);
+  if (code !== 0 || options.show) {
+    for (const { isStderr, text } of lines) {
+      if (isStderr || !options.capture) {
+        writeLine(isStderr ? process.stderr : process.stdout, tag, text);
+      }
+    }
+  }
   throwIfInterrupted();
   if (code !== 0 && !options.allowFailure) {
     throw new Error(`Command failed with code ${code}: ${fullCmd.join(" ")}`);
@@ -177,11 +246,14 @@ async function systemctl(
   action: string,
   options?: { allowFailure?: boolean },
 ): Promise<RunResult> {
+  log(`Running systemctl ${action} ${SERVICE}`);
   return await run(["systemctl", action, SERVICE], options);
 }
 
 async function waitHealthy(): Promise<boolean> {
-  for (let attempt = 0; attempt < HEALTH_ATTEMPTS; attempt++) {
+  log(`Running health check against ${HEALTH_URL}`);
+  for (let attempt = 1; attempt <= HEALTH_ATTEMPTS; attempt++) {
+    const prefix = `Health check ${attempt}/${HEALTH_ATTEMPTS}`;
     const active = await run(["systemctl", "is-active", "--quiet", SERVICE], {
       allowFailure: true,
     });
@@ -192,14 +264,20 @@ async function waitHealthy(): Promise<boolean> {
           signal: AbortSignal.timeout(2000),
         });
         if (response.ok) {
+          log(`${prefix}: ok (HTTP ${response.status}).`);
+          log("Health check passed.");
           return true;
         }
-      } catch {
-        // Not up yet.
+        log(`${prefix}: HTTP ${response.status}, retrying.`);
+      } catch (error) {
+        log(`${prefix}: ${formatErr(error)}, retrying.`);
       }
+    } else {
+      log(`${prefix}: service is not active, retrying.`);
     }
     await Bun.sleep(1000);
   }
+  logError("Health check failed.");
   return false;
 }
 
@@ -210,10 +288,12 @@ async function waitHealthy(): Promise<boolean> {
 async function runApp(
   bin: string,
   args: string[],
-  options?: { capture?: boolean },
+  options?: { capture?: boolean; show?: boolean },
 ): Promise<RunResult> {
+  log(`Running ${path.basename(bin)} ${args.join(" ")}`);
   return await run([bin, ...args], {
     ...options,
+    tag: APP_TAG,
     user: SERVICE_USER,
     cwd: DATA,
   });
@@ -241,6 +321,7 @@ async function backupDb(dir: string): Promise<string> {
     .replaceAll(/[-:]/g, "")
     .replace(/\.\d+Z$/, "Z");
   const file = path.join(backups, `db-${timestamp}-${oldSha}.sqlite`);
+  log("Backing up the database.");
   await run(["sqlite3", DB, `.backup '${file}'`]);
   const owner = fs.statSync(dir);
   fs.chownSync(file, owner.uid, owner.gid);
@@ -350,6 +431,7 @@ async function confirm(question: string): Promise<boolean> {
     input: process.stdin,
     output: process.stdout,
   });
+  const prompt = `(${SELF_TAG}) ${question}`;
   // Without this, Ctrl-C at the prompt would leave readline waiting forever.
   const closed = new Promise<string>((resolve) => {
     rl.once("close", () => {
@@ -361,7 +443,7 @@ async function confirm(question: string): Promise<boolean> {
     rl.close();
   });
   try {
-    const answer = await Promise.race([rl.question(question), closed]);
+    const answer = await Promise.race([rl.question(prompt), closed]);
     throwIfInterrupted();
     return answer === "y";
   } finally {
@@ -379,6 +461,7 @@ async function deploy(): Promise<void> {
 
   const staging = fs.mkdtempSync(path.join(os.tmpdir(), "cookie-odyssey-"));
   try {
+    log(`Extracting ${tarball}`);
     await run(["tar", "-xzf", tarball, "-C", staging, "--no-same-owner"]);
 
     const state: State = {
@@ -426,6 +509,7 @@ async function deployRelease(
 
   // Install the release.
   // The service only needs to read it, so it is owned by root.
+  log(`Installing release to ${release}`);
   fs.rmSync(release, { recursive: true, force: true });
   fs.mkdirSync(release, { recursive: true });
   await run(["cp", "-a", `${staging}/.`, `${release}/`]);
@@ -434,12 +518,15 @@ async function deployRelease(
   const bin = path.join(release, "cookie-odyssey");
 
   // The new binary is the one that knows about the new migrations.
-  // A failure here is not swallowed: the app has already printed the error.
+  // A failure here is not swallowed: run has already printed the error.
+  log("Checking for pending migrations.");
   const status = await runApp(bin, ["migrate", "status"], { capture: true });
   const pending = status.stdout
     .split("\n")
     .filter((line) => line.startsWith("pending "));
-  if (pending.length > 0) {
+  if (pending.length === 0) {
+    log("No pending migrations.");
+  } else {
     log("Pending migrations:");
     log(pending.join("\n"));
     if (!(await confirm("Stop the service and apply them? [y/N] "))) {
@@ -449,25 +536,30 @@ async function deployRelease(
     state.touched = true;
     await systemctl("stop");
     state.backup = await backupDb(path.dirname(tarball));
-    await runApp(bin, ["migrate", "up"]);
+    await runApp(bin, ["migrate", "up"], { show: true });
+    log("Migrations applied.");
   }
 
   // Run the app's own checks (assets, templates, migrations, database,
   // storage) before switching, so that a bad release is rejected early.
   await runApp(bin, ["check"]);
+  log("Release checks passed.");
 
   state.touched = true;
+  log(`Switching current to ${release}`);
   link(release, CURRENT);
   await systemctl("restart");
   if (!(await waitHealthy())) {
     await run(["journalctl", "-u", SERVICE, "--no-pager", "-n", "30"], {
       allowFailure: true,
+      show: true,
     });
     throw new Error("New release is not healthy");
   }
 
   // The deploy is good, so bookkeeping failures must not roll it back.
   recovering = true;
+  log("Cleaning up.");
   try {
     if (state.prevRelease !== undefined) {
       link(state.prevRelease, PREVIOUS);
@@ -502,6 +594,7 @@ async function rollback(): Promise<void> {
 
   const state: State = { prevRelease: from, backup: undefined, touched: true };
   try {
+    log(`Switching current to ${to}`);
     link(to, CURRENT);
     await systemctl("restart");
     if (!(await waitHealthy())) {
