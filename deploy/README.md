@@ -34,7 +34,10 @@ sudo journalctl -u cookie-odyssey-app.service
 - Builds happen in GitHub Actions (`build.yml`), on push to main and on manual dispatch.
   Each build uploads a `cookie-odyssey` artifact containing `cookie-odyssey.tar.gz`.
   The tarball includes a `VERSION` file (sha, branch, run number, build date).
-- Run `./deploy/deploy.sh [run-id]` locally to download the artifact and scp it to the VPS.
+- Run `./deploy/deploy.sh [run-id]` locally to download the artifact and scp it, along with `deploy-remote.sh`, to the VPS.
   It uses the latest successful build on main by default, and needs an authenticated `gh` CLI.
   Artifacts expire after 30 days, so re-run the build workflow if the latest one is older.
-- On the VPS, run `deploy-remote.sh`.
+- On the VPS, run `./deploy-remote.sh` (prompts for the sudo password).
+  It keeps the previous release in `/home/cookie-odyssey/app.prev`, restarts the service, and health-checks it.
+  It rolls back automatically if the new release is unhealthy.
+- To roll back manually, run `./deploy-remote.sh --rollback` on the VPS.

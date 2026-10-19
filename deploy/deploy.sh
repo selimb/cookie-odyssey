@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 #
 # To be run on a local dev box.
-# Uploads a build to the VPS. Does not restart the service.
+# Uploads a build, and deploy-remote.sh, to the VPS.
+# Does not install the build or restart the service.
+# To do so, run ./deploy-remote.sh on the VPS.
 #
 # By default, uses the artifact of the latest successful `build.yml` run
 # on main.
@@ -43,4 +45,7 @@ gh run download "$run_id" --name cookie-odyssey --dir dist
 tar -xzOf dist/cookie-odyssey.tar.gz VERSION
 
 scp dist/cookie-odyssey.tar.gz cookie-odyssey:cookie-odyssey.tar.gz
-# ssh cookie-odyssey
+scp deploy/deploy-remote.sh cookie-odyssey:deploy-remote.sh
+
+set +x
+echo "Uploaded. Now run: ssh cookie-odyssey, then ./deploy-remote.sh"
