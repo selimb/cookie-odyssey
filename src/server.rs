@@ -66,7 +66,7 @@ pub async fn init_state(
     .context("Failed to load asset manifest")?;
     let template_engine = Arc::new(init_templates(assets, &templates_dir(&release_dir)));
 
-    let (pool, db) = init_db(conf).await?;
+    let (pool, db) = init_db(conf, false).await?;
 
     let storage = init_storage(conf).await?;
 
@@ -99,13 +99,18 @@ pub async fn init_state(
     Ok((state, pool))
 }
 
+/// With `create_if_missing`, a missing database file is created.
+/// This is only wanted for migrations, so that a misconfigured path does not
+/// silently produce an empty database when serving.
 pub async fn init_db(
     conf: &AppConfig,
+    create_if_missing: bool,
 ) -> Result<(sqlx::SqlitePool, sea_orm::DatabaseConnection), anyhow::Error> {
     let db_path = &conf.database_file;
     // https://cj.rs/blog/sqlite-pragma-cheatsheet-for-performance-and-consistency/
     let opts = sqlx::sqlite::SqliteConnectOptions::new()
         .filename(db_path)
+        .create_if_missing(create_if_missing)
         .journal_mode(sqlx::sqlite::SqliteJournalMode::Wal)
         .synchronous(sqlx::sqlite::SqliteSynchronous::Normal)
         .foreign_keys(true);

@@ -102,6 +102,14 @@ let interrupted: string | undefined;
 let recovering = false;
 
 // Writing can fail if the terminal is gone, which must not stop recovery.
+// Failures can be synchronous, or asynchronous (such as EPIPE) in which case
+// they are emitted as events, and are fatal unless there is a listener.
+for (const sink of [process.stdout, process.stderr]) {
+  sink.on("error", () => {
+    // Ignored.
+  });
+}
+
 function writeLine(sink: NodeJS.WriteStream, tag: string, line: string): void {
   try {
     sink.write(`(${tag}) ${line}\n`);
@@ -377,18 +385,23 @@ function pruneReleases(): void {
  * up.
  * Leaves the service running, unless there is no previous release (the first
  * deploy), in which case there is nothing to run and the service is stopped.
- * Every step is attempted, even if an earlier one failed.
+ * Steps are attempted even if an earlier one failed, except that nothing
+ * touches the database or restarts the service unless the service was
+ * stopped and the database restored, in which case manual intervention is
+ * required.
  */
 async function recover(state: State, reason: string): Promise<void> {
   // Recovery must run to the end, even if the user interrupts it again.
   recovering = true;
   logError(`${reason}, recovering.`);
 
-  const attempt = async (what: string, fn: () => unknown): Promise<void> => {
+  const attempt = async (what: string, fn: () => unknown): Promise<boolean> => {
     try {
       await fn();
+      return true;
     } catch (error) {
       logError(`Recovery step failed (${what}): ${formatErr(error)}`);
+      return false;
     }
   };
 
@@ -404,12 +417,24 @@ async function recover(state: State, reason: string): Promise<void> {
   }
   if (state.backup !== undefined) {
     const { backup } = state;
-    await attempt("stop service", async () => {
+    // The database must not be overwritten while the service may have it
+    // open, and the previous release must not run against a database that
+    // was not restored.
+    const stopped = await attempt("stop service", async () => {
       await systemctl("stop");
     });
-    await attempt("restore database", () => {
-      restoreDb(backup);
-    });
+    const restored =
+      stopped &&
+      (await attempt("restore database", () => {
+        restoreDb(backup);
+      }));
+    if (!restored) {
+      logError(
+        "Manual intervention is required: the database was not restored, " +
+          `so the service is not restarted. Backup: ${backup}`,
+      );
+      return;
+    }
   }
   if (state.prevRelease === undefined) {
     logError("There is no previous release, leaving the service stopped.");

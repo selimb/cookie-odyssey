@@ -131,7 +131,7 @@ impl Cli {
         let (first_name, last_name) = name.trim().split_once(' ').context("Weird name")?;
         let password = "pass";
 
-        let (_, db) = init_db(&self.conf).await?;
+        let (_, db) = init_db(&self.conf, false).await?;
         let password_hash = AuthBackend::hash_password(password.to_string());
         let user_data = entities::user::ActiveModel {
             admin: sea_orm::ActiveValue::Set(true),
@@ -170,7 +170,7 @@ impl Cli {
     }
 
     async fn migrate(&self, command: MigrateCommand) -> Result<(), anyhow::Error> {
-        let (_, db) = init_db(&self.conf).await?;
+        let (_, db) = init_db(&self.conf, true).await?;
         match command {
             MigrateCommand::Status => {
                 for migration in Migrator::get_migration_with_status(&db).await? {
@@ -186,7 +186,7 @@ impl Cli {
     }
 
     async fn check(&self) -> Result<(), anyhow::Error> {
-        let (_, db) = init_db(&self.conf).await?;
+        let (_, db) = init_db(&self.conf, false).await?;
         let pending = Migrator::get_pending_migrations(&db).await?;
         if !pending.is_empty() {
             let names: Vec<_> = pending.iter().map(|m| m.name()).collect();
