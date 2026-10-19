@@ -2,7 +2,7 @@ name: Build
 
 on:
   push:
-    branches: [main, worktree-ci-build]
+    branches: [main]
   workflow_dispatch: {}
 
 env:

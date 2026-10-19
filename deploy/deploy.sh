@@ -12,6 +12,9 @@
 #   ./deploy/deploy.sh
 #   ./deploy/deploy.sh <run-id>
 #
+# To list builds, most recent first, with their run IDs:
+#   gh run list --workflow build.yml
+#
 set -eu
 
 run_id="${1:-}"
