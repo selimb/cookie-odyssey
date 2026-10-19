@@ -87,7 +87,8 @@ The script starts the service once the new release passes its checks.
   It then stops the service, backs up the database to `~/backups` (the newest 10 are kept), and runs `cookie-odyssey migrate up`.
 - It runs `cookie-odyssey check` (assets, templates, no pending migrations, database, storage) before switching `current` to the new release, then restarts the service and health-checks it.
 - If anything fails, `current` is switched back to the previous release, along with the database backup if migrations were involved.
-  Since the service was stopped during the migration, restoring the backup does not lose writes.
+  The service is stopped during the migration, so nothing is lost before the new release starts.
+  If the new release then fails its health check, writes made in the few seconds since it started are lost by the restore.
   Migrations are never reverted with `down`; the backup is the way back.
 - To roll back manually, run `./deploy-remote.sh --rollback` on the VPS.
   This switches `current` and `previous`, so running it again undoes the rollback.

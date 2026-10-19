@@ -18,14 +18,16 @@
 #
 # Anything that fails switches back to the previous release and, if
 # migrations were involved, restores the database backup.
-# The service is stopped for the whole migration, so restoring the backup
-# does not lose any writes.
+# The service is stopped for the whole migration, so no writes are lost
+# before the new release starts.
+# If the new release then fails its health check, writes made in the few
+# seconds since it started are lost by the restore.
 #
 # Usage:
 #   ./deploy-remote.sh
 #   ./deploy-remote.sh --rollback
 #
-set -eu
+set -eEu
 
 base=/home/cookie-odyssey
 releases="$base/releases"
@@ -46,10 +48,13 @@ app_bin=""
 # Set once the database has been backed up.
 backup=""
 
+# Set once the service has been stopped or switched to the new release.
+touched=0
+
 wait_healthy() {
   for _ in $(seq 1 15); do
     if sudo systemctl is-active --quiet "$service" &&
-      curl -s -o /dev/null -m 2 "$health_url"; then
+      curl -fsL -o /dev/null -m 2 "$health_url"; then
       return 0
     fi
     sleep 1
@@ -73,10 +78,11 @@ link() {
 backup_db() {
   old_sha="$(sudo sed -n 's/^sha=//p' "$current/VERSION" 2>/dev/null | cut -c1-8)"
   mkdir -p "$backups"
-  backup="$backups/db-$(date -u +%Y%m%dT%H%M%SZ)-${old_sha:-unknown}.sqlite"
-  sudo sqlite3 "$db" ".backup '$backup'"
-  sudo chown "$(id -un):$(id -gn)" "$backup"
-  chmod 600 "$backup"
+  file="$backups/db-$(date -u +%Y%m%dT%H%M%SZ)-${old_sha:-unknown}.sqlite"
+  sudo sqlite3 "$db" ".backup '$file'"
+  sudo chown "$(id -un):$(id -gn)" "$file"
+  chmod 600 "$file"
+  backup="$file"
   echo "Database backed up to $backup"
 
   # shellcheck disable=SC2012
@@ -110,6 +116,7 @@ prune_releases() {
 # database if it was backed up.
 # Leaves the service running.
 abort() {
+  trap - ERR
   echo "$1, switching back to the previous release." >&2
   if [ -n "$prev_release" ]; then
     link "$prev_release" "$current"
@@ -118,8 +125,10 @@ abort() {
     sudo systemctl stop "$service"
     restore_db
   fi
-  sudo systemctl restart "$service"
-  wait_healthy || echo "Previous release is not healthy either!" >&2
+  if [ "$touched" = 1 ]; then
+    sudo systemctl restart "$service"
+    wait_healthy || echo "Previous release is not healthy either!" >&2
+  fi
   exit 1
 }
 
@@ -164,6 +173,10 @@ tar -xzf "$tarball" -C "$staging"
 
 prev_release="$(sudo readlink -f "$current")"
 
+# From here on, an unexpected failure must not leave the service stopped or
+# on a bad release.
+trap 'abort "Unexpected failure"' ERR
+
 echo "Currently deployed:"
 sudo cat "$prev_release/VERSION" 2>/dev/null || echo "(unknown)"
 echo "Deploying:"
@@ -196,6 +209,7 @@ if [ -n "$pending" ]; then
     abort "Declined"
   fi
 
+  touched=1
   sudo systemctl stop "$service"
   backup_db
   run_app migrate up || abort "Migration failed"
@@ -205,10 +219,13 @@ fi
 # storage) before switching, so that a bad release is rejected early.
 run_app check || abort "Check failed"
 
+touched=1
 link "$release" "$current"
 sudo systemctl restart "$service"
 
 if wait_healthy; then
+  # The deploy is good, so bookkeeping failures must not roll it back.
+  trap - ERR
   link "$prev_release" "$previous"
   echo "Deployed."
   rm -f "$tarball"
