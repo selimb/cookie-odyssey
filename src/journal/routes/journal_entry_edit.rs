@@ -115,7 +115,7 @@ pub async fn hx_journal_entry_publish_post(
     publish_entry(&state.db, entry_id).await?;
 
     let toast = Toast::success("Published");
-    // Wipes the button, and refreshes the pending badge.
+    // Only return an OOB response, which will wipe the button.
     let badges = templ.render_nav_badges_oob(&state.db).await?;
     let resp = (toast.into_headers(), badges);
     Ok(resp.into_response())
