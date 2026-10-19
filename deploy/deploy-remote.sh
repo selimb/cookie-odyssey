@@ -23,6 +23,10 @@
 # If the new release then fails its health check, writes made in the few
 # seconds since it started are lost by the restore.
 #
+# Run this inside tmux or screen.
+# If the SSH connection drops, recovery still runs, but `sudo` may no longer
+# have a terminal to authenticate on, in which case it cannot complete.
+#
 # Usage:
 #   ./deploy-remote.sh
 #   ./deploy-remote.sh --rollback
@@ -116,7 +120,11 @@ prune_releases() {
 # database if it was backed up.
 # Leaves the service running.
 abort() {
-  trap - ERR HUP INT TERM
+  # Recovery must run to the end, even if the terminal is gone (so writing
+  # a message fails) or the user interrupts it again.
+  trap - ERR
+  trap '' HUP INT TERM PIPE
+  set +e
   echo "$1, switching back to the previous release." >&2
   if [ -n "$prev_release" ]; then
     link "$prev_release" "$current"
@@ -209,7 +217,11 @@ sudo chmod -R u+rwX,go+rX,go-w "$release"
 app_bin="$release/cookie-odyssey"
 
 # The new binary is the one that knows about the new migrations.
-pending="$(run_app migrate status | grep '^pending ' || true)"
+#
+# A failure here is not swallowed: it triggers the ERR handler, with the
+# real error already printed by the app.
+status="$(run_app migrate status)"
+pending="$(printf '%s\n' "$status" | grep '^pending ' || true)"
 if [ -n "$pending" ]; then
   echo "Pending migrations:"
   echo "$pending"

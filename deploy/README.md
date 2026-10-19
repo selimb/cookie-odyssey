@@ -52,25 +52,36 @@ The old layout was a single `app` directory holding the release files, `.env`, a
 The old binary expects `templates` and `assets` in its working directory, so it cannot run from `data/`.
 Leave the service stopped until the first deploy with the new layout.
 
+Your user cannot enter `/home/cookie-odyssey`, so these commands use absolute paths.
+Do not `cd` into it.
+
 ```
+B=/home/cookie-odyssey
 sudo systemctl stop cookie-odyssey-app.service
-cd /home/cookie-odyssey
 
-sudo mkdir releases data
-sudo sh -c 'mv app/db.sqlite* app/.env data/'
-sudo chown -R cookie-odyssey:cookie-odyssey data
-sudo vim data/.env  # Set APP.DATABASE_FILE=db.sqlite
+sudo mkdir $B/releases $B/data
+sudo sh -c "mv $B/app/db.sqlite* $B/app/.env $B/data/"
+sudo chown -R cookie-odyssey:cookie-odyssey $B/data
+sudo vim $B/data/.env
 
-sudo mv app releases/initial
-sudo chown -R root:root releases
-sudo ln -s releases/initial current
+sudo mv $B/app $B/releases/initial
+sudo chown -R root:root $B/releases
+sudo ln -s $B/releases/initial $B/current
 
-sudo cp <the new unit file> /etc/systemd/system/cookie-odyssey-app.service
+# Paste in deploy/systemd/cookie-odyssey-app.service.
+sudo vim /etc/systemd/system/cookie-odyssey-app.service
 sudo systemctl daemon-reload
 ```
 
+In `data/.env`:
+- Set `APP.DATABASE_FILE=db.sqlite`.
+- Add the `APP.EMAIL.*` variables from `.env.template` if they are not there yet.
+  They are required, and `check` fails without them.
+
 Then run the deploy as below.
 The script starts the service once the new release passes its checks.
+If that first deploy fails, the script switches back to `releases/initial`, which cannot run from `data/`, so the service stays down.
+Fix the problem and deploy again.
 
 # Code Deploy
 
@@ -80,7 +91,8 @@ The script starts the service once the new release passes its checks.
 - Run `./deploy/deploy.sh [run-id]` locally to download the artifact and scp it, along with `deploy-remote.sh`, to the VPS.
   It uses the latest successful build on main by default, and needs an authenticated `gh` CLI.
   Artifacts expire after 30 days, so re-run the build workflow if the latest one is older.
-- On the VPS, run `./deploy-remote.sh` (prompts for the sudo password).
+- On the VPS, run `./deploy-remote.sh` inside tmux or screen (prompts for the sudo password).
+  If the SSH connection drops, recovery still runs, but `sudo` may have no terminal to authenticate on.
   It installs the build as a new directory in `releases/`, and keeps the previous release for rollback.
   Only the newest 5 releases are kept.
 - If the new release has pending migrations (`cookie-odyssey migrate status`), the script lists them and asks before continuing.
@@ -92,4 +104,5 @@ The script starts the service once the new release passes its checks.
   Migrations are never reverted with `down`; the backup is the way back.
 - To roll back manually, run `./deploy-remote.sh --rollback` on the VPS.
   This switches `current` and `previous`, so running it again undoes the rollback.
+  It does not work until the second deploy with the new layout, since `previous` is `releases/initial` until then.
   If the database has newer migrations than that release, restore a backup from `~/backups` first.
