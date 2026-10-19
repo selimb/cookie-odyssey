@@ -44,45 +44,20 @@ data/            Owned by cookie-odyssey.
 
 `templates` and `assets` are found relative to the binary, so they are part of a release.
 `.env` and the database are found relative to the working directory, so they are part of `data/`.
-Set `APP.DATABASE_FILE=db.sqlite` in `data/.env`.
 
-### Cutover from the old layout
-
-The old layout was a single `app` directory holding the release files, `.env`, and `db.sqlite`.
-The old binary expects `templates` and `assets` in its working directory, so it cannot run from `data/`.
-Leave the service stopped until the first deploy with the new layout.
-
-Your user cannot enter `/home/cookie-odyssey`, so these commands use absolute paths.
-Do not `cd` into it.
+To provision a new host, create `releases/` and `data/`, and write `data/.env`:
 
 ```
 B=/home/cookie-odyssey
-sudo systemctl stop cookie-odyssey-app.service
-
 sudo mkdir $B/releases $B/data
-sudo sh -c "mv $B/app/db.sqlite* $B/app/.env $B/data/"
-sudo chown -R cookie-odyssey:cookie-odyssey $B/data
+sudo chown cookie-odyssey:cookie-odyssey $B/data
 sudo vim $B/data/.env
-
-sudo mv $B/app $B/releases/initial
-sudo chown -R root:root $B/releases
-sudo ln -s $B/releases/initial $B/current
-
-# Paste in deploy/systemd/cookie-odyssey-app.service.
-sudo vim /etc/systemd/system/cookie-odyssey-app.service
-sudo systemctl daemon-reload
 ```
 
-In `data/.env`:
-
-- Set `APP.DATABASE_FILE=db.sqlite`.
-- Add the `APP.EMAIL.*` variables from `.env.template` if they are not there yet.
-  They are required, and `check` fails without them.
-
-Then run the deploy as below.
-The script starts the service once the new release passes its checks.
-If that first deploy fails, the script switches back to `releases/initial`, which cannot run from `data/`, so the service stays down.
-Fix the problem and deploy again.
+Your user cannot enter `/home/cookie-odyssey`, so use absolute paths and `sudo`.
+Copy `.env.template` for the variables, and set `APP.DATABASE_FILE=db.sqlite`.
+The `APP.EMAIL.*` variables are required, and `check` fails without them.
+The `current` symlink is created by the first deploy.
 
 # Code Deploy
 
@@ -103,7 +78,8 @@ Fix the problem and deploy again.
   The service is stopped during the migration, so nothing is lost before the new release starts.
   If the new release then fails its health check, writes made in the few seconds since it started are lost by the restore.
   Migrations are never reverted with `down`; the backup is the way back.
+  The first deploy has no previous release to switch back to, so a failure leaves the service stopped.
 - To roll back manually, run `./deploy-remote.sh --rollback` on the VPS.
   This switches `current` and `previous`, so running it again undoes the rollback.
-  It does not work until the second deploy with the new layout, since `previous` is `releases/initial` until then.
+  It needs a previous release, so it is not available after the first deploy.
   If the database has newer migrations than that release, restore a backup from `~/backups` first.

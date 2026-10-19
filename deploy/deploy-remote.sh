@@ -116,38 +116,44 @@ prune_releases() {
   done
 }
 
-# Switches back to the release in $prev_release (if there was one), and the
-# database if it was backed up.
-# Leaves the service running.
+# Switches back to the release in $prev_release, and the database if it was
+# backed up.
+# Leaves the service running, unless there is no previous release (the first
+# deploy), in which case there is nothing to run and the service is stopped.
 abort() {
   # Recovery must run to the end, even if the terminal is gone (so writing
   # a message fails) or the user interrupts it again.
   trap - ERR
   trap '' HUP INT TERM PIPE
   set +e
-  echo "$1, switching back to the previous release." >&2
+  echo "$1, recovering." >&2
   if [ -n "$prev_release" ]; then
     link "$prev_release" "$current"
+  else
+    sudo rm -f "$current"
   fi
   if [ -n "$backup" ]; then
     sudo systemctl stop "$service"
     restore_db
   fi
-  if [ "$touched" = 1 ]; then
+  if [ -z "$prev_release" ]; then
+    echo "There is no previous release, leaving the service stopped." >&2
+    sudo systemctl stop "$service"
+  elif [ "$touched" = 1 ]; then
     sudo systemctl restart "$service"
     wait_healthy || echo "Previous release is not healthy either!" >&2
   fi
   exit 1
 }
 
-if ! sudo test -d "$data" || ! sudo test -L "$current"; then
-  echo "$base is not set up for releases." >&2
-  echo "See the cutover steps in deploy/README.md." >&2
+if ! sudo test -d "$data"; then
+  echo "$data does not exist." >&2
+  echo "See Provisioning in deploy/README.md." >&2
   exit 1
 fi
 
 if [ "${1:-}" = "--rollback" ]; then
-  if ! sudo test -L "$previous"; then
+  if ! sudo test -L "$current" || ! sudo test -L "$previous"; then
     echo "No previous release." >&2
     exit 1
   fi
@@ -185,7 +191,11 @@ staging="$(mktemp -d)"
 trap 'rm -rf "$staging"' EXIT
 tar -xzf "$tarball" -C "$staging"
 
-prev_release="$(sudo readlink -f "$current")"
+# Empty on the first deploy.
+prev_release=""
+if sudo test -L "$current"; then
+  prev_release="$(sudo readlink -f "$current")"
+fi
 
 # From here on, an unexpected failure, or losing the terminal (for example an
 # SSH disconnect), must not leave the service stopped or on a bad release.
@@ -194,8 +204,10 @@ prev_release="$(sudo readlink -f "$current")"
 trap 'abort "Unexpected failure"' ERR
 trap 'abort "Interrupted"' HUP INT TERM
 
-echo "Currently deployed:"
-sudo cat "$prev_release/VERSION" 2>/dev/null || echo "(unknown)"
+if [ -n "$prev_release" ]; then
+  echo "Currently deployed:"
+  sudo cat "$prev_release/VERSION"
+fi
 echo "Deploying:"
 cat "$staging/VERSION"
 
@@ -247,7 +259,9 @@ sudo systemctl restart "$service"
 if wait_healthy; then
   # The deploy is good, so bookkeeping failures must not roll it back.
   trap - ERR HUP INT TERM
-  link "$prev_release" "$previous"
+  if [ -n "$prev_release" ]; then
+    link "$prev_release" "$previous"
+  fi
   echo "Deployed."
   rm -f "$tarball"
   prune_releases
