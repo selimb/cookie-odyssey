@@ -7,6 +7,7 @@ use cookie_odyssey::{
     server::{init_db, init_state},
     storage::StorageCleanup,
 };
+use migration::{Migrator, MigratorTrait};
 use sea_orm::EntityTrait;
 use tracing::info;
 
@@ -67,6 +68,18 @@ enum Commands {
     },
     Server,
     Check,
+    Migrate {
+        #[command(subcommand)]
+        command: MigrateCommand,
+    },
+}
+
+#[derive(Subcommand, Debug, Clone, Copy)]
+enum MigrateCommand {
+    /// Print one line per migration: `applied <name>` or `pending <name>`.
+    Status,
+    /// Apply all pending migrations.
+    Up,
 }
 
 struct Cli {
@@ -82,6 +95,7 @@ impl Cli {
             Commands::CleanupStorage { dry_run } => self.cleanup_storage(dry_run).await,
             Commands::Server => self.server().await,
             Commands::Check => self.check().await,
+            Commands::Migrate { command } => self.migrate(command).await,
         }
     }
 
@@ -153,7 +167,30 @@ impl Cli {
         cleanup.run(confirm).await
     }
 
+    async fn migrate(&self, command: MigrateCommand) -> Result<(), anyhow::Error> {
+        let (_, db) = init_db(&self.conf).await?;
+        match command {
+            MigrateCommand::Status => {
+                for migration in Migrator::get_migration_with_status(&db).await? {
+                    let status = migration.status().to_string().to_lowercase();
+                    println!("{status} {}", migration.name());
+                }
+            }
+            MigrateCommand::Up => {
+                Migrator::up(&db, None).await?;
+            }
+        }
+        Ok(())
+    }
+
     async fn check(&self) -> Result<(), anyhow::Error> {
+        let (_, db) = init_db(&self.conf).await?;
+        let pending = Migrator::get_pending_migrations(&db).await?;
+        if !pending.is_empty() {
+            let names: Vec<_> = pending.iter().map(|m| m.name()).collect();
+            anyhow::bail!("Pending migrations: {names:?}");
+        }
+
         let (state, _) = init_state(&self.conf, false).await?;
         let containers = state.storage.list_containers().await?;
 
