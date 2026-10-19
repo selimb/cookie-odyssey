@@ -85,7 +85,7 @@ The script starts the service once the new release passes its checks.
   Only the newest 5 releases are kept.
 - If the new release has pending migrations (`cookie-odyssey migrate status`), the script lists them and asks before continuing.
   It then stops the service, backs up the database to `~/backups` (the newest 10 are kept), and runs `cookie-odyssey migrate up`.
-- It runs `cookie-odyssey check` (assets, templates, no pending migrations, database, storage) before switching `current` to the new release, then restarts the service and health-checks it.
+- It runs `cookie-odyssey check` (assets, every template compiles, no pending migrations, database, storage) before switching `current` to the new release, then restarts the service and health-checks it.
 - If anything fails, `current` is switched back to the previous release, along with the database backup if migrations were involved.
   The service is stopped during the migration, so nothing is lost before the new release starts.
   If the new release then fails its health check, writes made in the few seconds since it started are lost by the restore.

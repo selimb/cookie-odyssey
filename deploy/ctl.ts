@@ -18,7 +18,7 @@ import { z } from "zod";
 const REMOTE_HOST = "cookie-odyssey";
 
 const DB_PATH_LOCAL = "data/prod.sqlite";
-const DB_PATH_REMOTE = "/home/cookie-odyssey/app/db.sqlite";
+const DB_PATH_REMOTE = "/home/cookie-odyssey/data/db.sqlite";
 const DB_PATH_BACKUP_REMOTE = "/tmp/cookie-odyssey.sqlite.bak";
 
 // eslint-disable-next-line unicorn/template-indent -- No.

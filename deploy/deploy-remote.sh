@@ -116,7 +116,7 @@ prune_releases() {
 # database if it was backed up.
 # Leaves the service running.
 abort() {
-  trap - ERR
+  trap - ERR HUP INT TERM
   echo "$1, switching back to the previous release." >&2
   if [ -n "$prev_release" ]; then
     link "$prev_release" "$current"
@@ -155,9 +155,15 @@ if [ "${1:-}" = "--rollback" ]; then
     exit 1
   fi
   link "$to" "$current"
-  link "$from" "$previous"
   sudo systemctl restart "$service"
-  wait_healthy || { echo "Rollback is not healthy." >&2; exit 1; }
+  if ! wait_healthy; then
+    echo "Rollback is not healthy, switching back." >&2
+    link "$from" "$current"
+    sudo systemctl restart "$service"
+    wait_healthy || echo "Original release is not healthy either!" >&2
+    exit 1
+  fi
+  link "$from" "$previous"
   echo "Rolled back."
   exit 0
 fi
@@ -173,9 +179,12 @@ tar -xzf "$tarball" -C "$staging"
 
 prev_release="$(sudo readlink -f "$current")"
 
-# From here on, an unexpected failure must not leave the service stopped or
-# on a bad release.
+# From here on, an unexpected failure, or losing the terminal (for example an
+# SSH disconnect), must not leave the service stopped or on a bad release.
+# Bash runs a signal handler once the foreground command (such as a
+# migration) has finished, so recovery never overlaps with it.
 trap 'abort "Unexpected failure"' ERR
+trap 'abort "Interrupted"' HUP INT TERM
 
 echo "Currently deployed:"
 sudo cat "$prev_release/VERSION" 2>/dev/null || echo "(unknown)"
@@ -225,7 +234,7 @@ sudo systemctl restart "$service"
 
 if wait_healthy; then
   # The deploy is good, so bookkeeping failures must not roll it back.
-  trap - ERR
+  trap - ERR HUP INT TERM
   link "$prev_release" "$previous"
   echo "Deployed."
   rm -f "$tarball"

@@ -1,10 +1,10 @@
-use std::io::Write;
+use std::{io::Write, path::Path};
 
 use anyhow::Context;
 use clap::{Parser, Subcommand};
 use cookie_odyssey::{
     auth::sessions::AuthBackend,
-    server::{init_db, init_state},
+    server::{init_db, init_state, release_dir},
     storage::StorageCleanup,
 };
 use migration::{Migrator, MigratorTrait};
@@ -193,12 +193,46 @@ impl Cli {
         }
 
         let (state, _) = init_state(&self.conf, false).await?;
+
+        // Templates are loaded lazily, so compile every one up front to catch
+        // syntax errors before they are hit by a request.
+        let templates_dir = release_dir()?.join("templates");
+        let mut names = Vec::new();
+        collect_template_names(&templates_dir, &templates_dir, &mut names)?;
+        for name in &names {
+            state
+                .template_engine
+                .get_template(name)
+                .with_context(|| format!("Failed to compile template {name}"))?;
+        }
+        info!("Templates: {} compiled", names.len());
+
         let containers = state.storage.list_containers().await?;
 
         info!("Containers: {containers:?}");
 
         Ok(())
     }
+}
+
+/// Collects the names (relative paths) of all files under `dir`.
+fn collect_template_names(
+    root: &Path,
+    dir: &Path,
+    names: &mut Vec<String>,
+) -> Result<(), anyhow::Error> {
+    let entries = std::fs::read_dir(dir)
+        .with_context(|| format!("Failed to read templates directory {}", dir.display()))?;
+    for entry in entries {
+        let path = entry?.path();
+        if path.is_dir() {
+            collect_template_names(root, &path, names)?;
+        } else {
+            let relative = path.strip_prefix(root)?;
+            names.push(relative.to_string_lossy().replace('\\', "/"));
+        }
+    }
+    Ok(())
 }
 
 #[tokio::main]
