@@ -25,15 +25,20 @@
  * Only Node and Bun built-ins are used, since there is no node_modules on the
  * VPS.
  *
- * Usage (`sudo` does not see a `bun` installed by mise, so pass its path):
+ * Run it from the directory that it and the tarball were uploaded to (the home
+ * directory of the operator).
+ * The backups are written there too.
+ *
+ * Usage:
  *   sudo "$(mise which bun)" deploy-remote.ts
  *   sudo "$(mise which bun)" deploy-remote.ts --rollback
  */
-import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import readline from "node:readline/promises";
+
+import { inspect } from "bun";
 
 const SERVICE_USER = "cookie-odyssey";
 const SERVICE = "cookie-odyssey-app.service";
@@ -51,8 +56,6 @@ const HEALTH_URL = "http://127.0.0.1:4444/";
 const HEALTH_ATTEMPTS = 15;
 
 const logger = console;
-
-type User = { home: string; uid: number; gid: number };
 
 type RunOptions = {
   cwd?: string;
@@ -108,6 +111,10 @@ function logError(message: string): void {
   }
 }
 
+function formatErr(error: unknown): string {
+  return error instanceof Error ? error.message : inspect(error);
+}
+
 function throwIfInterrupted(): void {
   if (interrupted !== undefined && !recovering) {
     throw new Error(`Interrupted by ${interrupted}`);
@@ -136,26 +143,6 @@ async function run(
     throw new Error(`Command failed with code ${code}: ${fullCmd.join(" ")}`);
   }
   return { code, stdout };
-}
-
-function lookupUser(name: string): User {
-  const line = execFileSync("getent", ["passwd", name], {
-    encoding: "utf8",
-  }).trim();
-  const fields = line.split(":");
-  if (fields.length < 6) {
-    throw new Error(`Failed to parse passwd entry: ${line}`);
-  }
-  return { home: fields[5], uid: Number(fields[2]), gid: Number(fields[3]) };
-}
-
-/** The user who ran `sudo`, whose home holds the tarball and the backups. */
-function lookupOperator(): User {
-  const name = process.env.SUDO_USER;
-  if (name === undefined || name === "root") {
-    return { home: os.homedir(), uid: 0, gid: 0 };
-  }
-  return lookupUser(name);
 }
 
 function isSymlink(p: string): boolean {
@@ -235,8 +222,11 @@ async function runApp(
   });
 }
 
-/** Backs up the database to the operator's backups, and keeps the newest. */
-async function backupDb(operator: User): Promise<string> {
+/**
+ * Backs up the database to `backups` in `dir`, owned like `dir`, and keeps the
+ * newest.
+ */
+async function backupDb(dir: string): Promise<string> {
   let oldSha = "unknown";
   try {
     const sha = parseVersion(readVersion(CURRENT)).sha;
@@ -247,7 +237,7 @@ async function backupDb(operator: User): Promise<string> {
     // There is no current release, as on the first deploy.
   }
 
-  const backups = path.join(operator.home, "backups");
+  const backups = path.join(dir, "backups");
   fs.mkdirSync(backups, { recursive: true });
   const timestamp = new Date()
     .toISOString()
@@ -255,7 +245,8 @@ async function backupDb(operator: User): Promise<string> {
     .replace(/\.\d+Z$/, "Z");
   const file = path.join(backups, `db-${timestamp}-${oldSha}.sqlite`);
   await run(["sqlite3", DB, `.backup '${file}'`]);
-  fs.chownSync(file, operator.uid, operator.gid);
+  const owner = fs.statSync(dir);
+  fs.chownSync(file, owner.uid, owner.gid);
   fs.chmodSync(file, 0o600);
   log(`Database backed up to ${file}`);
 
@@ -272,11 +263,12 @@ async function backupDb(operator: User): Promise<string> {
 
 /** Restores the database from `backup`. The service must be stopped. */
 function restoreDb(backup: string): void {
-  const service = lookupUser(SERVICE_USER);
   fs.rmSync(`${DB}-wal`, { force: true });
   fs.rmSync(`${DB}-shm`, { force: true });
   fs.copyFileSync(backup, DB);
-  fs.chownSync(DB, service.uid, service.gid);
+  // The data directory is owned by the service user.
+  const owner = fs.statSync(DATA);
+  fs.chownSync(DB, owner.uid, owner.gid);
   log(`Database restored from ${backup}`);
 }
 
@@ -318,7 +310,7 @@ async function recover(state: State, reason: string): Promise<void> {
     try {
       await fn();
     } catch (error) {
-      logError(`Recovery step failed (${what}): ${String(error)}`);
+      logError(`Recovery step failed (${what}): ${formatErr(error)}`);
     }
   };
 
@@ -380,8 +372,10 @@ async function confirm(question: string): Promise<boolean> {
   }
 }
 
-async function deploy(operator: User): Promise<void> {
-  const tarball = path.join(operator.home, "cookie-odyssey.tar.gz");
+async function deploy(): Promise<void> {
+  // Uploaded to the home directory of the operator, which is where this is
+  // run from.
+  const tarball = path.resolve("cookie-odyssey.tar.gz");
   if (!fs.existsSync(tarball)) {
     throw new Error(`${tarball} not found. Run deploy.sh first.`);
   }
@@ -399,12 +393,9 @@ async function deploy(operator: User): Promise<void> {
     // From here on, a failure or a signal (for example an SSH disconnect)
     // must not leave the service stopped or on a bad release.
     try {
-      await deployRelease(operator, tarball, staging, state);
+      await deployRelease(tarball, staging, state);
     } catch (error) {
-      await recover(
-        state,
-        error instanceof Error ? error.message : String(error),
-      );
+      await recover(state, formatErr(error));
       process.exitCode = 1;
     }
   } finally {
@@ -413,7 +404,6 @@ async function deploy(operator: User): Promise<void> {
 }
 
 async function deployRelease(
-  operator: User,
   tarball: string,
   staging: string,
   state: State,
@@ -461,7 +451,7 @@ async function deployRelease(
 
     state.touched = true;
     await systemctl("stop");
-    state.backup = await backupDb(operator);
+    state.backup = await backupDb(path.dirname(tarball));
     await runApp(bin, ["migrate", "up"]);
   }
 
@@ -488,7 +478,7 @@ async function deployRelease(
     fs.rmSync(tarball, { force: true });
     pruneReleases();
   } catch (error) {
-    logError(`Deployed, but cleanup failed: ${String(error)}`);
+    logError(`Deployed, but cleanup failed: ${formatErr(error)}`);
   }
   log("Deployed.");
 }
@@ -505,7 +495,7 @@ async function rollback(): Promise<void> {
   try {
     await runApp(path.join(to, "cookie-odyssey"), ["check"]);
   } catch (error) {
-    logError(String(error));
+    logError(formatErr(error));
     throw new Error(
       "Check failed. If the database has newer migrations than this " +
         "release, restore a database backup first.",
@@ -521,10 +511,7 @@ async function rollback(): Promise<void> {
       throw new Error("Rollback is not healthy");
     }
   } catch (error) {
-    await recover(
-      state,
-      error instanceof Error ? error.message : String(error),
-    );
+    await recover(state, formatErr(error));
     process.exitCode = 1;
     return;
   }
@@ -551,12 +538,12 @@ async function main(): Promise<void> {
     });
   }
 
-  await (isRollback ? rollback() : deploy(lookupOperator()));
+  await (isRollback ? rollback() : deploy());
 }
 
 try {
   await main();
 } catch (error) {
-  logError(error instanceof Error ? error.message : String(error));
+  logError(formatErr(error));
   process.exitCode = 1;
 }
