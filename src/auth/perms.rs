@@ -4,7 +4,7 @@ use axum_login::AuthzBackend as _;
 use sea_orm::{ColumnTrait as _, QueryFilter as _, Select};
 use std::collections::HashSet;
 
-use super::sessions::AuthBackend;
+use super::{sessions::AuthBackend, utils::unwrap_user_from_session};
 use crate::AuthSession;
 
 /// Simplest permissioning ever.
@@ -35,7 +35,7 @@ impl AuthBackend {
         session: &AuthSession,
         mut q: Select<entities::journal_entry::Entity>,
     ) -> Result<Select<entities::journal_entry::Entity>, anyhow::Error> {
-        let user = session.user.as_ref().expect("Should have a user");
+        let user = unwrap_user_from_session(session);
         let can_view_draft = self
             .has_perm(user, Permission::Admin)
             .await

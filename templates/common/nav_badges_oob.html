@@ -1,0 +1,6 @@
+{# Out-of-band updates of the navbar badges, appended to HTMX responses. #}
+{% import "common/badges.html" as badges %}
+{{ badges.unread(unread_count, true) }}
+{% if user.admin %}
+  {{ badges.pending(pending_count, true) }}
+{% endif %}

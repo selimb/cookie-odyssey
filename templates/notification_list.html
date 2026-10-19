@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% import "common/datetime.html" as dt %}
+
+{% block content %}
+  <div>
+    <h1 class="app-title">Notifications</h1>
+    <div class="my-4 flex items-center justify-end">
+      <button
+        type="button"
+        class="btn btn-sm max-md:flex-1"
+        hx-post="{{ href_mark_all_read }}"
+        hx-target="#notification_list"
+        hx-swap="innerHTML"
+      >
+        Mark all as read
+      </button>
+    </div>
+
+    <div id="notification_list" class="space-y-2">
+      {% block fragment_notification_list %}
+        {% for item in items %}
+          <a
+            href="{{ item.href }}"
+            class="app-card {% if not item.read %}
+              border-l-4 border-l-secondary bg-base-200
+            {% endif %}"
+          >
+            <div class="card-body p-4">
+              <div class="{% if not item.read %}font-bold{% endif %}">
+                {{ item.title }}
+              </div>
+              <div class="text-sm">
+                {{ item.journal_name }}
+                <span> - </span>
+                {{ dt.date(item.datetime) }}
+              </div>
+            </div>
+          </a>
+        {% else %}
+          <div class="alert alert-info">
+            <span>No notifications yet.</span>
+          </div>
+        {% endfor %}
+        {% if href_more %}
+          <button
+            type="button"
+            class="btn btn-ghost w-full"
+            hx-get="{{ href_more }}"
+            hx-target="this"
+            hx-swap="outerHTML"
+          >
+            Load more
+          </button>
+        {% endif %}
+      {% endblock fragment_notification_list %}
+    </div>
+  </div>
+{% endblock content %}

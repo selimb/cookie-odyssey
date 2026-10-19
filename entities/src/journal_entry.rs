@@ -33,6 +33,8 @@ pub enum Relation {
     Journal,
     #[sea_orm(has_many = "super::journal_entry_media::Entity")]
     JournalEntryMedia,
+    #[sea_orm(has_many = "super::notification::Entity")]
+    Notification,
 }
 
 impl Related<super::journal::Entity> for Entity {
@@ -44,6 +46,12 @@ impl Related<super::journal::Entity> for Entity {
 impl Related<super::journal_entry_media::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::JournalEntryMedia.def()
+    }
+}
+
+impl Related<super::notification::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Notification.def()
     }
 }
 

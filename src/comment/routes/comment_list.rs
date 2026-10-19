@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 use entities::{prelude::*, *};
 
 use crate::{
+    auth::utils::unwrap_user_from_session,
     comment::queries::{add_comment_to_journal, query_comments_for_journal, AddCommentToJournal},
     utils::serde_utils::string_trim,
     AppState, AuthSession, Route, RouteError, RouteResult, Templ, Toast,
@@ -43,7 +44,7 @@ pub async fn hx_journal_comment_add_post(
     };
 
     let text = form.0.text;
-    let user_id = session.user.as_ref().expect("Should be authenticated").0.id;
+    let user_id = unwrap_user_from_session(&session).0.id;
     let params = AddCommentToJournal {
         date: query.date,
         journal_id: query.journal_id,

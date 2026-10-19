@@ -49,6 +49,7 @@ pub async fn page_register_post(
         last_name: sea_orm::ActiveValue::Set(form.last_name),
         approved: sea_orm::ActiveValue::Set(false),
         first_login: sea_orm::ActiveValue::NotSet,
+        email_notifications: sea_orm::ActiveValue::NotSet,
         id: sea_orm::ActiveValue::NotSet,
     };
     let result = User::insert(data)

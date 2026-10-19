@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <h1 class="app-title">Profile</h1>
+  <div class="form-control">
+    <label class="label cursor-pointer justify-start gap-4">
+      <input
+        type="checkbox"
+        name="email_notifications"
+        class="toggle toggle-primary"
+        hx-post="{{ href_email_notifications }}"
+        hx-trigger="change"
+        {% if email_notifications %}checked{% endif %}
+      />
+      <span class="label-text">
+        Email me when there is new content.
+        <br />
+        <span class="text-sm opacity-70"
+          >You will always see new content under the bell icon.</span
+        >
+      </span>
+    </label>
+  </div>
+{% endblock content %}
