@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::{borrow::Cow, ops::Deref};
 
@@ -21,6 +21,11 @@ use crate::{AppState, AuthSession, AuthUser, Route, RouteError};
 
 pub type TemplateEngine = minijinja::Environment<'static>;
 
+/// The directory of templates in a release.
+pub fn templates_dir(release_dir: &Path) -> PathBuf {
+    release_dir.join("templates")
+}
+
 pub fn init_templates(assets: AssetManifest, templates_dir: &Path) -> TemplateEngine {
     let mut env = minijinja::Environment::new();
     env.set_loader(minijinja::path_loader(templates_dir));
@@ -41,6 +46,49 @@ pub fn init_templates(assets: AssetManifest, templates_dir: &Path) -> TemplateEn
     );
 
     env
+}
+
+/// Compiles every template under `dir`, and returns how many there were.
+///
+/// Templates are loaded lazily, so this finds syntax errors up front instead
+/// of when a page is first rendered.
+/// Templates that are extended, included or imported by another one are not
+/// resolved until they are rendered.
+pub fn compile_all(env: &TemplateEngine, dir: &Path) -> Result<usize, anyhow::Error> {
+    let mut names = Vec::new();
+    collect_template_names(dir, dir, &mut names)?;
+    names.sort();
+    for name in &names {
+        env.get_template(name)
+            .with_context(|| format!("Failed to compile template {name}"))?;
+    }
+    Ok(names.len())
+}
+
+/// Collects the names (paths relative to `root`) of all files under `dir`.
+fn collect_template_names(
+    root: &Path,
+    dir: &Path,
+    names: &mut Vec<String>,
+) -> Result<(), anyhow::Error> {
+    let entries = std::fs::read_dir(dir)
+        .with_context(|| format!("Failed to read templates directory {}", dir.display()))?;
+    for entry in entries {
+        let entry = entry?;
+        // The template loader rejects names that start with a dot, so such
+        // files (for example `.DS_Store`) are not templates.
+        if entry.file_name().to_string_lossy().starts_with('.') {
+            continue;
+        }
+        let path = entry.path();
+        if entry.file_type()?.is_dir() {
+            collect_template_names(root, &path, names)?;
+        } else {
+            let relative = path.strip_prefix(root)?;
+            names.push(relative.to_string_lossy().replace('\\', "/"));
+        }
+    }
+    Ok(())
 }
 
 fn splitlines(value: &str) -> Vec<String> {

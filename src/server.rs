@@ -12,7 +12,7 @@ use crate::{
     notification::email_worker::NotificationEmailWorker,
     state::AppState,
     storage::{init_storage, FileStore},
-    template_engine::init_templates,
+    template_engine::{init_templates, templates_dir},
     video_transcoding::{
         backend::{
             github_action::GithubActionVideoTranscoder, in_process::InProcessVideoTranscoder,
@@ -65,7 +65,7 @@ pub async fn init_state(
     )
     .await
     .context("Failed to load asset manifest")?;
-    let template_engine = Arc::new(init_templates(assets, &release_dir.join("templates")));
+    let template_engine = Arc::new(init_templates(assets, &templates_dir(&release_dir)));
 
     let (pool, db) = init_db(conf).await?;
 
