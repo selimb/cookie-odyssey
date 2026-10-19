@@ -6,12 +6,6 @@
 
   <div id="notification_pending" class="space-y-4">
     {% block fragment_notification_pending %}
-      {% if not email_configured %}
-        <div class="alert alert-warning">
-          <span>Email is not configured, so no emails will be sent.</span>
-        </div>
-      {% endif %}
-
       <div class="space-y-2">
         {% for item in items %}
           <a href="{{ item.href }}" class="app-card">

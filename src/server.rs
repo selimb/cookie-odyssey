@@ -57,7 +57,7 @@ pub async fn init_state(
         video_transcoder.start().await;
     }
 
-    let email = Arc::new(EmailClient::new(conf.email.as_ref())?);
+    let email = Arc::new(EmailClient::new(&conf.email)?);
     let notification_email_worker = NotificationEmailWorker::new(
         db.clone(),
         template_engine.clone(),

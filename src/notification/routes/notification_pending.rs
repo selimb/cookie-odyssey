@@ -47,7 +47,6 @@ async fn pending_ctx(state: &AppState) -> Result<minijinja::Value, RouteError> {
         items,
         reach,
         users_with_unsent_email,
-        email_configured => state.email.is_configured(),
         href_flush => Route::NotificationFlushPost.as_path(),
         href_retry_emails => Route::NotificationRetryEmailsPost.as_path(),
     })

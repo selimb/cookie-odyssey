@@ -6,7 +6,7 @@ use anyhow::Context as _;
 use minijinja::context;
 use serde::Serialize;
 use tokio::sync::Notify;
-use tracing::{error, info, warn};
+use tracing::{error, info};
 
 use crate::{
     email::{EmailClient, EmailMessage, EmailRecipient},
@@ -76,10 +76,6 @@ impl NotificationEmailWorker {
 }
 
 async fn run_pass(deps: &Deps) -> anyhow::Result<()> {
-    if !deps.email.is_configured() {
-        warn!("Email is not configured, leaving notification emails unsent");
-        return Ok(());
-    }
     let user_ids = list_users_with_unsent_email(&deps.db).await?;
     info!("Emailing notifications to {} users", user_ids.len());
     for user_id in user_ids {

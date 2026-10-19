@@ -23,31 +23,16 @@ pub struct EmailMessage {
     pub html: String,
 }
 
-struct Configured {
+/// Sends emails over SMTP.
+#[derive(Debug)]
+pub struct EmailClient {
     transport: AsyncSmtpTransport<Tokio1Executor>,
     from: Mailbox,
     reply_to: Mailbox,
 }
 
-/// Sends emails over SMTP.
-/// When no configuration is provided, [`EmailClient::send`] always fails.
-pub struct EmailClient {
-    inner: Option<Configured>,
-}
-
-impl std::fmt::Debug for EmailClient {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("EmailClient")
-            .field("configured", &self.inner.is_some())
-            .finish()
-    }
-}
-
 impl EmailClient {
-    pub fn new(conf: Option<&EmailConfig>) -> anyhow::Result<Self> {
-        let Some(conf) = conf else {
-            return Ok(Self { inner: None });
-        };
+    pub fn new(conf: &EmailConfig) -> anyhow::Result<Self> {
         let builder = if conf.smtp_implicit_tls {
             AsyncSmtpTransport::<Tokio1Executor>::relay(&conf.smtp_host)
         } else {
@@ -75,23 +60,13 @@ impl EmailClient {
                 .context("Invalid email reply_to_address")?,
         );
         Ok(Self {
-            inner: Some(Configured {
-                transport,
-                from,
-                reply_to,
-            }),
+            transport,
+            from,
+            reply_to,
         })
     }
 
-    pub fn is_configured(&self) -> bool {
-        self.inner.is_some()
-    }
-
     pub async fn send(&self, msg: EmailMessage) -> anyhow::Result<()> {
-        let inner = self
-            .inner
-            .as_ref()
-            .context("Email is not configured (see APP.EMAIL.*)")?;
         let to = Mailbox::new(
             Some(msg.to.name),
             msg.to
@@ -100,8 +75,8 @@ impl EmailClient {
                 .context("Invalid recipient address")?,
         );
         let email = Message::builder()
-            .from(inner.from.clone())
-            .reply_to(inner.reply_to.clone())
+            .from(self.from.clone())
+            .reply_to(self.reply_to.clone())
             .to(to)
             .subject(msg.subject)
             .multipart(
@@ -118,8 +93,7 @@ impl EmailClient {
                     ),
             )
             .context("Failed to build email")?;
-        inner
-            .transport
+        self.transport
             .send(email)
             .await
             .context("Failed to send email")?;
