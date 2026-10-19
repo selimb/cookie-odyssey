@@ -74,6 +74,7 @@ sudo systemctl daemon-reload
 ```
 
 In `data/.env`:
+
 - Set `APP.DATABASE_FILE=db.sqlite`.
 - Add the `APP.EMAIL.*` variables from `.env.template` if they are not there yet.
   They are required, and `check` fails without them.
