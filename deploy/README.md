@@ -34,7 +34,7 @@ sudo journalctl -u cookie-odyssey-app.service
 Setup `bun` with `mise`:
 
 ```
-mise use -g bun 1.4.3
+mise use -g bun@1.4.3
 ```
 
 ### Directory layout
