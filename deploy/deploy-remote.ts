@@ -157,6 +157,7 @@ function link(target: string, linkPath: string): void {
   fs.renameSync(tmp, linkPath);
 }
 
+/** Reads the VERSION file (see [VERSION]) as a key-value map. */
 function parseVersion(text: string): Partial<Record<string, string>> {
   const result: Partial<Record<string, string>> = {};
   for (const line of text.split("\n")) {

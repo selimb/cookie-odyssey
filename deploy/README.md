@@ -68,6 +68,14 @@ The app runs as the `cookie-odyssey` user, which can't be SSH'd into and doesn't
 
 # Code Deploy
 
+In short:
+
+```
+./deploy/deploy.sh [run-id]
+ssh cookie-odyssey
+sudo "$(mise which bun)" deploy-remote.ts
+```
+
 - Builds happen in GitHub Actions (`build.yml`), on push to main and on manual dispatch.
   Each build uploads a `cookie-odyssey` artifact containing `cookie-odyssey.tar.gz`.
   The tarball includes a `VERSION` file (sha, branch, run number, build date).

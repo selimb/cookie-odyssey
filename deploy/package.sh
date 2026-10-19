@@ -25,6 +25,7 @@ mkdir dist/assets
 cp -r assets/dist dist/assets/dist
 cp -r templates dist/templates
 
+# [VERSION]
 cat > dist/VERSION <<VERSION
 sha=${git_sha}
 branch=${branch}
