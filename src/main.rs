@@ -4,9 +4,11 @@ use anyhow::Context;
 use clap::{Parser, Subcommand};
 use cookie_odyssey::{
     auth::sessions::AuthBackend,
-    server::{init_db, init_state},
+    server::{init_db, init_state, release_dir},
     storage::StorageCleanup,
+    template_engine::{compile_all_templates, templates_dir},
 };
+use migration::{Migrator, MigratorTrait};
 use sea_orm::EntityTrait;
 use tracing::info;
 
@@ -67,6 +69,18 @@ enum Commands {
     },
     Server,
     Check,
+    Migrate {
+        #[command(subcommand)]
+        command: MigrateCommand,
+    },
+}
+
+#[derive(Subcommand, Debug, Clone, Copy)]
+enum MigrateCommand {
+    /// Print one line per migration: `applied <name>` or `pending <name>`.
+    Status,
+    /// Apply all pending migrations.
+    Up,
 }
 
 struct Cli {
@@ -82,6 +96,7 @@ impl Cli {
             Commands::CleanupStorage { dry_run } => self.cleanup_storage(dry_run).await,
             Commands::Server => self.server().await,
             Commands::Check => self.check().await,
+            Commands::Migrate { command } => self.migrate(command).await,
         }
     }
 
@@ -116,7 +131,7 @@ impl Cli {
         let (first_name, last_name) = name.trim().split_once(' ').context("Weird name")?;
         let password = "pass";
 
-        let (_, db) = init_db(&self.conf).await?;
+        let (_, db) = init_db(&self.conf, false).await?;
         let password_hash = AuthBackend::hash_password(password.to_string());
         let user_data = entities::user::ActiveModel {
             admin: sea_orm::ActiveValue::Set(true),
@@ -154,8 +169,36 @@ impl Cli {
         cleanup.run(confirm).await
     }
 
+    async fn migrate(&self, command: MigrateCommand) -> Result<(), anyhow::Error> {
+        let (_, db) = init_db(&self.conf, true).await?;
+        match command {
+            MigrateCommand::Status => {
+                for migration in Migrator::get_migration_with_status(&db).await? {
+                    let status = migration.status().to_string().to_lowercase();
+                    println!("{status} {}", migration.name());
+                }
+            }
+            MigrateCommand::Up => {
+                Migrator::up(&db, None).await?;
+            }
+        }
+        Ok(())
+    }
+
     async fn check(&self) -> Result<(), anyhow::Error> {
+        let (_, db) = init_db(&self.conf, false).await?;
+        let pending = Migrator::get_pending_migrations(&db).await?;
+        if !pending.is_empty() {
+            let names: Vec<_> = pending.iter().map(|m| m.name()).collect();
+            anyhow::bail!("Pending migrations: {names:?}");
+        }
+
         let (state, _) = init_state(&self.conf, false).await?;
+
+        let templates =
+            compile_all_templates(&state.template_engine, &templates_dir(&release_dir()?))?;
+        info!("Templates: {templates} compiled");
+
         let containers = state.storage.list_containers().await?;
 
         info!("Containers: {containers:?}");

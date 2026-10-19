@@ -29,6 +29,9 @@ A reference points to it, usually as "See [anchor-name]" or "Matches [anchor-nam
 // See [toast]              <- reference elsewhere
 ```
 
+Anchors are also how to avoid duplicating information.
+Where the same convention or explanation would otherwise be repeated in several places, describe it once at the definition and make the other comments references.
+
 Anchors work in any comment syntax.
 This makes it easy to grep in both directions.
 

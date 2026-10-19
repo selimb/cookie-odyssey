@@ -6,6 +6,7 @@ use thiserror::Error;
 use tracing::{info, warn};
 
 pub fn load_env() -> Result<(), anyhow::Error> {
+    // The working directory holds the state, see [release-dir].
     let cwd = current_dir().context("Failed to access current directory")?;
     let dotenv_path = cwd.join(".env");
     if dotenv_path.exists() {

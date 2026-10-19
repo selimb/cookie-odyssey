@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, path::Path};
 
 use anyhow::Context;
 
@@ -11,7 +11,7 @@ pub struct AssetManifest {
 }
 
 impl AssetManifest {
-    pub async fn load(url_base: String, manifest_path: &str) -> Result<Self, anyhow::Error> {
+    pub async fn load(url_base: String, manifest_path: &Path) -> Result<Self, anyhow::Error> {
         let manifest = load_manifest(manifest_path).await?;
         Ok(Self { url_base, manifest })
     }
@@ -23,10 +23,10 @@ impl AssetManifest {
     }
 }
 
-async fn load_manifest(path: &str) -> Result<ManifestData, anyhow::Error> {
+async fn load_manifest(path: &Path) -> Result<ManifestData, anyhow::Error> {
     let raw = tokio::fs::read_to_string(path)
         .await
-        .with_context(|| format!("Failed to read manifest file at {path}."))?;
+        .with_context(|| format!("Failed to read manifest file at {}.", path.display()))?;
     let manifest: ManifestData = serde_json::from_str(&raw)
         .with_context(|| format!("Failed to deserialize manifest:\n{raw}"))?;
     Ok(manifest)
