@@ -1,9 +1,9 @@
 //! Background worker that emails Recipients about their unread Notifications.
-//! Flush and Retry only wake it up; they never send emails themselves.
 use std::sync::Arc;
 
-use anyhow::Context as _;
+use anyhow::Context;
 use minijinja::context;
+use sea_orm::EntityTrait;
 use serde::Serialize;
 use tokio::sync::Notify;
 use tracing::{error, info};
@@ -18,7 +18,6 @@ use crate::{
     Route,
 };
 use entities::{prelude::*, user};
-use sea_orm::EntityTrait as _;
 
 #[derive(Debug)]
 pub struct NotificationEmailWorker {
@@ -76,11 +75,13 @@ impl NotificationEmailWorker {
 }
 
 async fn run_pass(deps: &Deps) -> anyhow::Result<()> {
-    let user_ids = list_users_with_unsent_email(&deps.db).await?;
+    let user_ids = list_users_with_unsent_email(&deps.db)
+        .await
+        .context("Failed to list users with unsent email")?;
     info!("Emailing notifications to {} users", user_ids.len());
     for user_id in user_ids {
         if let Err(err) = email_user(deps, user_id).await {
-            // Leave the rows unsent so that they roll over to the next pass.
+            // Leave the rows unsent so that they can be retried in the next pass.
             error!("Failed to email notifications to user {user_id}: {err:#?}");
         }
     }
@@ -88,16 +89,25 @@ async fn run_pass(deps: &Deps) -> anyhow::Result<()> {
 }
 
 async fn email_user(deps: &Deps, user_id: i32) -> anyhow::Result<()> {
-    let Some(user) = User::find_by_id(user_id).one(&deps.db).await? else {
+    let Some(user) = User::find_by_id(user_id)
+        .one(&deps.db)
+        .await
+        .context("Failed to fetch user")?
+    else {
         return Ok(());
     };
-    let rows = list_unsent_email_for_user(&deps.db, user_id).await?;
+    let rows = list_unsent_email_for_user(&deps.db, user_id)
+        .await
+        .context("Failed to list unsent notifications")?;
     if rows.is_empty() {
         return Ok(());
     }
     let ids: Vec<i32> = rows.iter().map(|r| r.id).collect();
     let msg = render_email(deps, &user, rows)?;
-    deps.email.send(msg).await?;
+    deps.email
+        .send(msg)
+        .await
+        .context("Failed to send email")?;
     mark_email_sent(&deps.db, ids)
         .await
         .context("Email was sent, but failed to mark it as sent")?;
