@@ -1,23 +1,41 @@
 #!/usr/bin/env bash
 #
 # To be run on a local dev box.
+# Uploads a build to the VPS. Does not restart the service.
+#
+# By default, uses the artifact of the latest successful `build.yml` run
+# on main. Requires an authenticated `gh` CLI.
 #
 # Usage:
-#   ./deploy/deploy.sh
+#   ./deploy/deploy.sh             # Latest build on main.
+#   ./deploy/deploy.sh <run-id>    # A specific build.yml run.
 #
-set -eux
+set -eu
+
+run_id="${1:-}"
+
+if [ -z "$run_id" ]; then
+  run_id="$(gh run list \
+    --workflow build.yml \
+    --branch main \
+    --status success \
+    --limit 1 \
+    --json databaseId \
+    --jq '.[0].databaseId // empty')"
+  if [ -z "$run_id" ]; then
+    echo "No successful build found on main." >&2
+    exit 1
+  fi
+fi
+
+set -x
 
 rm -rf dist
 mkdir dist
+gh run download "$run_id" --name cookie-odyssey --dir dist
 
-just build
-
-cp target/release/cookie-odyssey dist/
-mkdir dist/assets
-cp -r assets/dist dist/assets/dist
-cp -r templates dist/templates
-
-(cd dist && tar -czf cookie-odyssey.tar.gz *)
+# Show what is being deployed.
+tar -xzOf dist/cookie-odyssey.tar.gz VERSION
 
 scp dist/cookie-odyssey.tar.gz cookie-odyssey:cookie-odyssey.tar.gz
 # ssh cookie-odyssey
