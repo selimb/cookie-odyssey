@@ -45,7 +45,7 @@ data/            Owned by cookie-odyssey.
 `templates` and `assets` are found relative to the binary, so they are part of a release.
 `.env` and the database are found relative to the working directory, so they are part of `data/`.
 
-To provision a new host, create `releases/` and `data/`, and write `data/.env`:
+To provision a new host, install `bun` (with `mise`), then create `releases/` and `data/`, and write `data/.env`:
 
 ```
 B=/home/cookie-odyssey
@@ -64,11 +64,13 @@ The `current` symlink is created by the first deploy.
 - Builds happen in GitHub Actions (`build.yml`), on push to main and on manual dispatch.
   Each build uploads a `cookie-odyssey` artifact containing `cookie-odyssey.tar.gz`.
   The tarball includes a `VERSION` file (sha, branch, run number, build date).
-- Run `./deploy/deploy.sh [run-id]` locally to download the artifact and scp it, along with `deploy-remote.sh`, to the VPS.
+- Run `./deploy/deploy.sh [run-id]` locally to download the artifact and scp it, along with `deploy-remote.ts`, to the VPS.
   It uses the latest successful build on main by default, and needs an authenticated `gh` CLI.
   Artifacts expire after 30 days, so re-run the build workflow if the latest one is older.
-- On the VPS, run `./deploy-remote.sh` inside tmux or screen (prompts for the sudo password).
-  If the SSH connection drops, recovery still runs, but `sudo` may have no terminal to authenticate on.
+- On the VPS, run `sudo "$(mise which bun)" deploy-remote.ts`, inside tmux or screen so that a dropped SSH connection does not interrupt it.
+  It must run as root, and prompts for your sudo password once.
+  (`sudo` does not see a `bun` installed by mise, so pass its path.)
+  If the connection drops anyway, the script recovers as it would for any failure.
   It installs the build as a new directory in `releases/`, and keeps the previous release for rollback.
   Only the newest 5 releases are kept.
 - If the new release has pending migrations (`cookie-odyssey migrate status`), the script lists them and asks before continuing.
@@ -79,7 +81,7 @@ The `current` symlink is created by the first deploy.
   If the new release then fails its health check, writes made in the few seconds since it started are lost by the restore.
   Migrations are never reverted with `down`; the backup is the way back.
   The first deploy has no previous release to switch back to, so a failure leaves the service stopped.
-- To roll back manually, run `./deploy-remote.sh --rollback` on the VPS.
+- To roll back manually, run `sudo "$(mise which bun)" deploy-remote.ts --rollback` on the VPS.
   This switches `current` and `previous`, so running it again undoes the rollback.
   It needs a previous release, so it is not available after the first deploy.
   If the database has newer migrations than that release, restore a backup from `~/backups` first.
