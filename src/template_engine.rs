@@ -1,3 +1,4 @@
+use std::path::Path;
 use std::sync::Arc;
 use std::{borrow::Cow, ops::Deref};
 
@@ -18,9 +19,9 @@ use crate::{AppState, AuthSession, AuthUser, Route, RouteError};
 
 pub type TemplateEngine = minijinja::Environment<'static>;
 
-pub fn init_templates(assets: AssetManifest) -> TemplateEngine {
+pub fn init_templates(assets: AssetManifest, templates_dir: &Path) -> TemplateEngine {
     let mut env = minijinja::Environment::new();
-    env.set_loader(minijinja::path_loader("templates"));
+    env.set_loader(minijinja::path_loader(templates_dir));
     env.set_undefined_behavior(minijinja::UndefinedBehavior::Strict);
     env.add_filter("splitlines", splitlines);
     env.add_filter("clsx", clsx);

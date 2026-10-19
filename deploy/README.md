@@ -29,6 +29,49 @@ sudo systemctl start cookie-odyssey-app.service
 sudo journalctl -u cookie-odyssey-app.service
 ```
 
+### Directory layout
+
+Everything lives under `/home/cookie-odyssey`:
+
+```
+releases/<id>/   One directory per build, owned by root.
+current          Symlink to the release that is running.
+previous         Symlink to the release that ran before it.
+data/            Owned by cookie-odyssey.
+                 Holds .env and db.sqlite.
+                 This is the working directory of the service.
+```
+
+`templates` and `assets` are found relative to the binary, so they are part of a release.
+`.env` and the database are found relative to the working directory, so they are part of `data/`.
+Set `APP.DATABASE_FILE=db.sqlite` in `data/.env`.
+
+### Cutover from the old layout
+
+The old layout was a single `app` directory holding the release files, `.env`, and `db.sqlite`.
+The old binary expects `templates` and `assets` in its working directory, so it cannot run from `data/`.
+Leave the service stopped until the first deploy with the new layout.
+
+```
+sudo systemctl stop cookie-odyssey-app.service
+cd /home/cookie-odyssey
+
+sudo mkdir releases data
+sudo sh -c 'mv app/db.sqlite* app/.env data/'
+sudo chown -R cookie-odyssey:cookie-odyssey data
+sudo vim data/.env  # Set APP.DATABASE_FILE=db.sqlite
+
+sudo mv app releases/initial
+sudo chown -R root:root releases
+sudo ln -s releases/initial current
+
+sudo cp <the new unit file> /etc/systemd/system/cookie-odyssey-app.service
+sudo systemctl daemon-reload
+```
+
+Then run the deploy as below.
+The script starts the service once the new release passes its checks.
+
 # Code Deploy
 
 - Builds happen in GitHub Actions (`build.yml`), on push to main and on manual dispatch.
@@ -38,13 +81,14 @@ sudo journalctl -u cookie-odyssey-app.service
   It uses the latest successful build on main by default, and needs an authenticated `gh` CLI.
   Artifacts expire after 30 days, so re-run the build workflow if the latest one is older.
 - On the VPS, run `./deploy-remote.sh` (prompts for the sudo password).
-  It keeps the previous release in `/home/cookie-odyssey/app.prev`.
+  It installs the build as a new directory in `releases/`, and keeps the previous release for rollback.
+  Only the newest 5 releases are kept.
 - If the new release has pending migrations (`cookie-odyssey migrate status`), the script lists them and asks before continuing.
   It then stops the service, backs up the database to `~/backups` (the newest 10 are kept), and runs `cookie-odyssey migrate up`.
-- It runs `cookie-odyssey check` (assets, templates, no pending migrations, database, storage) before starting the service, then health-checks the service.
-- If anything fails, the previous release is restored, along with the database backup if migrations were involved.
+- It runs `cookie-odyssey check` (assets, templates, no pending migrations, database, storage) before switching `current` to the new release, then restarts the service and health-checks it.
+- If anything fails, `current` is switched back to the previous release, along with the database backup if migrations were involved.
   Since the service was stopped during the migration, restoring the backup does not lose writes.
   Migrations are never reverted with `down`; the backup is the way back.
 - To roll back manually, run `./deploy-remote.sh --rollback` on the VPS.
-  This restores the previous release only.
+  This switches `current` and `previous`, so running it again undoes the rollback.
   If the database has newer migrations than that release, restore a backup from `~/backups` first.
