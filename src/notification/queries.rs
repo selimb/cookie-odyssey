@@ -131,11 +131,11 @@ fn rows_query() -> Select<NotificationRecipient> {
 pub async fn list_for_user(
     db: &impl ConnectionTrait,
     user_id: i32,
-    before: Option<i32>,
+    cursor: Option<i32>,
 ) -> Result<Vec<NotificationRow>, DbErr> {
     let mut q = rows_query().filter(notification_recipient::Column::UserId.eq(user_id));
-    if let Some(before) = before {
-        q = q.filter(notification_recipient::Column::Id.lt(before));
+    if let Some(cursor) = cursor {
+        q = q.filter(notification_recipient::Column::Id.lt(cursor));
     }
     q.order_by_desc(notification_recipient::Column::Id)
         .limit(PAGE_SIZE + 1)

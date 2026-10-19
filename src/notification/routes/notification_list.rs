@@ -40,14 +40,14 @@ impl From<NotificationRow> for NotificationItem {
 async fn list_ctx(
     state: &AppState,
     session: &AuthSession,
-    before: Option<i32>,
+    cursor: Option<i32>,
 ) -> Result<minijinja::Value, RouteError> {
-    let mut rows = list_for_user(&state.db, unwrap_user_from_session(session).0.id, before).await?;
+    let mut rows = list_for_user(&state.db, unwrap_user_from_session(session).0.id, cursor).await?;
     let has_more = rows.len() as u64 > PAGE_SIZE;
     rows.truncate(PAGE_SIZE as usize);
     let href_more = match (has_more, rows.last()) {
         (true, Some(last)) => Some(
-            Route::NotificationListMoreGet(Some(&NotificationListMoreQuery { before: last.id }))
+            Route::NotificationListMoreGet(Some(&NotificationListMoreQuery { cursor: last.id }))
                 .as_path(),
         ),
         _ => None,
@@ -76,7 +76,7 @@ pub async fn page_notification_list_get(
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct NotificationListMoreQuery {
-    pub before: i32,
+    pub cursor: i32,
 }
 
 pub async fn hx_notification_list_more_get(
@@ -85,7 +85,7 @@ pub async fn hx_notification_list_more_get(
     session: AuthSession,
     Query(query): Query<NotificationListMoreQuery>,
 ) -> RouteResult {
-    let ctx = list_ctx(&state, &session, Some(query.before)).await?;
+    let ctx = list_ctx(&state, &session, Some(query.cursor)).await?;
     let html = templ.render_ctx_fragment(
         "notification_list.html",
         ctx,
