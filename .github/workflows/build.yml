@@ -8,6 +8,9 @@ on:
 env:
   CARGO_TERM_COLOR: always
 
+# Run one build per ref at a time.
+# A newer push waits for the running build instead of cancelling it.
+# GitHub keeps only the latest waiting run, so rapid pushes may skip builds.
 concurrency:
   group: build-${{ github.ref }}
   cancel-in-progress: false
