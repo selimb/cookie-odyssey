@@ -11,9 +11,11 @@ use axum::{
 use itertools::Itertools;
 use minijinja::context;
 use once_cell::sync::Lazy;
+use sea_orm::DatabaseConnection;
 use serde::Serialize;
 
 use crate::assets::AssetManifest;
+use crate::notification::queries::{count_pending, count_unread};
 use crate::{AppState, AuthSession, AuthUser, Route, RouteError};
 
 pub type TemplateEngine = minijinja::Environment<'static>;
@@ -78,12 +80,18 @@ pub struct TemplContextLinks {
     home: Cow<'static, str>,
     admin_users_list: Cow<'static, str>,
     logout: Cow<'static, str>,
+    notifications: Cow<'static, str>,
+    notifications_pending: Cow<'static, str>,
+    profile: Cow<'static, str>,
 }
 
 static TEMPL_CONTEXT_LINKS: Lazy<TemplContextLinks> = Lazy::new(|| TemplContextLinks {
     home: "/".into(),
     admin_users_list: Route::UserListGet.as_path(),
     logout: Route::LogoutGet.as_path(),
+    notifications: Route::NotificationListGet.as_path(),
+    notifications_pending: Route::NotificationPendingGet.as_path(),
+    profile: Route::ProfileGet.as_path(),
 });
 
 /// Template renderer, which is pre-populated with common context variables (see [TemplContext]).
@@ -92,6 +100,8 @@ pub struct Templ {
     engine: Arc<TemplateEngine>,
     user: Option<TemplContextUser>,
     hx_boosted: bool,
+    unread_count: u64,
+    pending_count: u64,
 }
 
 impl Templ {
@@ -126,12 +136,41 @@ impl Templ {
         Ok(Html(body))
     }
 
+    /// Recomputes the navbar badge counts.
+    /// Handlers that change them must call this before rendering.
+    pub async fn refresh_badges(&mut self, db: &DatabaseConnection) -> Result<(), RouteError> {
+        let Some(user) = &self.user else {
+            return Ok(());
+        };
+        self.unread_count = count_unread(db, user.id)
+            .await
+            .context("Failed to count unread notifications")?;
+        if user.admin {
+            self.pending_count = count_pending(db)
+                .await
+                .context("Failed to count pending notifications")?;
+        }
+        Ok(())
+    }
+
+    /// Renders out-of-band updates of the navbar badges, to append to an HTMX
+    /// response.
+    pub async fn render_nav_badges_oob(
+        &mut self,
+        db: &DatabaseConnection,
+    ) -> Result<Html<String>, RouteError> {
+        self.refresh_badges(db).await?;
+        self.render("common/nav_badges_oob.html")
+    }
+
     fn build_default_ctx(&self) -> minijinja::Value {
         // See [TemplContext].
         context! {
             user => self.user,
             links => TEMPL_CONTEXT_LINKS.deref(),
             hx_boosted => self.hx_boosted,
+            unread_count => self.unread_count,
+            pending_count => self.pending_count,
             wide_layout => false,
         }
     }
@@ -144,6 +183,11 @@ struct TemplContext<'a> {
     links: &'a TemplContextLinks,
     /// Obsolete, but kept in case we need it in the future.
     hx_boosted: bool,
+    /// Number of unread Notifications, for the navbar badge.
+    /// See [`Templ::refresh_badges`].
+    unread_count: u64,
+    /// Number of Pending Notifications (Admin only), for the navbar badge.
+    pending_count: u64,
     /// Can be overridden.
     wide_layout: bool,
 }
@@ -174,10 +218,14 @@ where
             .expect("HeaderMap extractor is infallible");
         let hx_boosted = header_map.contains_key("HX-Boosted");
 
-        Ok(Self {
+        let mut templ = Self {
             engine: app_state.template_engine,
             user: user.map(TemplContextUser::from),
             hx_boosted,
-        })
+            unread_count: 0,
+            pending_count: 0,
+        };
+        templ.refresh_badges(&app_state.db).await?;
+        Ok(templ)
     }
 }

@@ -20,11 +20,13 @@ Marker comments (anchors, `// SYNC`) are exempt.
 ## Comment anchors
 
 Use `[anchor-name]` tags to link related comments across files or locations.
-A comment containing only an anchor marks a definition; a reference points to it:
+A definition is an anchor at the start of a comment, either alone or followed by the text it describes.
+A reference points to it, usually as "See [anchor-name]" or "Matches [anchor-name]":
 
 ```rust
-// [toast]              <- definition in toast.rs
-// See [toast]          <- reference elsewhere
+// [toast]                  <- definition in toast.rs
+// [toast] Shows a toast.   <- definition with text
+// See [toast]              <- reference elsewhere
 ```
 
 Anchors work in any comment syntax.

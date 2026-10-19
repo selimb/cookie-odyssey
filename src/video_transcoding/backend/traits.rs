@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-// Newer clippy flags the `#[must_use]` that `async_trait` generates.
+// async_trait adds a `must_use` of its own to the boxed future.
 #[allow(clippy::double_must_use)]
 #[async_trait::async_trait]
 pub trait VideoTranscodingBackend: Send + Sync + 'static + Debug {

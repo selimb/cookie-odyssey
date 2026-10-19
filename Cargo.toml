@@ -41,6 +41,7 @@ tracing-subscriber = { workspace = true }
 url = { workspace = true }
 dialoguer = { version = "0.11.0", features = [] }
 reqwest = { version = "0.12.24", features = ["json"] }
+lettre = { version = "0.11.23", default-features = false, features = ["builder", "smtp-transport", "tokio1-rustls-tls", "hostname", "tokio1"] }
 
 [workspace]
 members = ["app_config", "entities", "migration"]

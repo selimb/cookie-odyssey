@@ -1,0 +1,23 @@
+{# Navbar badges. The `oob` variants replace the badge in place (HTMX). #}
+
+{% macro count_text(count) %}
+  {% if count > 99 %}99+{% else %}{{ count }}{% endif %}
+{% endmacro %}
+
+{% macro unread(count, oob=false) %}
+  <span
+    id="nav-unread-badge"
+    {% if oob %}hx-swap-oob="true"{% endif %}
+    class="{% if count == 0 %}hidden{% endif %} badge indicator-item badge-secondary badge-sm"
+    >{{ count_text(count) }}</span
+  >
+{% endmacro %}
+
+{% macro pending(count, oob=false) %}
+  <span
+    id="nav-pending-badge"
+    {% if oob %}hx-swap-oob="true"{% endif %}
+    class="{% if count == 0 %}hidden{% endif %} badge indicator-item badge-warning badge-sm"
+    >{{ count_text(count) }}</span
+  >
+{% endmacro %}

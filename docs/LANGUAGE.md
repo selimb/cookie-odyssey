@@ -64,6 +64,27 @@ Admins can create and edit Journals and Entries, upload Media, and manage other 
 All other authenticated Users are read-only.
 _Avoid_: Superuser, editor, owner
 
+**Notification**:
+A record that something new is available for readers, shared by all of its Recipients.
+Currently the only kind is "Entry published".
+Appears under the bell icon, and is marked read for a Recipient when they view the Day containing its Entry.
+_Avoid_: Alert, update, message
+
+**Pending Notification**:
+A Notification that has not been flushed yet, so nobody has been told about it.
+Created when an Entry is published.
+_Avoid_: Queued notification, draft notification
+
+**Recipient**:
+A User who a Notification was delivered to, with their own read and email state.
+Determined at Flush time: all approved Users, Admins included.
+_Avoid_: Subscriber, target
+
+**Flush**:
+The Admin action that delivers every Pending Notification to all Recipients at once, and triggers at most one summary email per Recipient.
+Cannot be undone.
+_Avoid_: Send, publish, broadcast, announce
+
 **Slug**:
 A URL-safe string that uniquely identifies a Journal, used as its path parameter in page routes.
 _Avoid_: ID, handle, identifier, permalink
@@ -71,4 +92,4 @@ _Avoid_: ID, handle, identifier, permalink
 **Toast**:
 A transient UI notification shown to the user after an action, with a success or error variant.
 Delivered via the `HX-Trigger` response header.
-_Avoid_: Alert, notification, snackbar, banner
+_Avoid_: Alert, snackbar, banner
