@@ -54,7 +54,7 @@ pub fn init_templates(assets: AssetManifest, templates_dir: &Path) -> TemplateEn
 /// of when a page is first rendered.
 /// Templates that are extended, included or imported by another one are not
 /// resolved until they are rendered.
-pub fn compile_all(env: &TemplateEngine, dir: &Path) -> Result<usize, anyhow::Error> {
+pub fn compile_all_templates(env: &TemplateEngine, dir: &Path) -> Result<usize, anyhow::Error> {
     let mut names = Vec::new();
     collect_template_names(dir, dir, &mut names)?;
     names.sort();

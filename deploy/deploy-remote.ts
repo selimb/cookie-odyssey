@@ -2,12 +2,7 @@
  * To be run on the VPS, as root.
  * Uploaded to the VPS (along with the build) by deploy.sh.
  *
- * Layout under /home/cookie-odyssey:
- *   releases/<id>/  One directory per build, read-only to the service.
- *   current         Symlink to the release that is running.
- *   previous        Symlink to the release that ran before it.
- *   data/           State: .env, db.sqlite.
- *                   This is the working directory of the service.
+ * The layout under /home/cookie-odyssey is described at [release-dir].
  *
  * Installs ~/cookie-odyssey.tar.gz as a new release, and switches `current`
  * to it.
@@ -43,6 +38,7 @@ import { inspect } from "bun";
 const SERVICE_USER = "cookie-odyssey";
 const SERVICE = "cookie-odyssey-app.service";
 
+// See [release-dir]
 const BASE = "/home/cookie-odyssey";
 const RELEASES = path.join(BASE, "releases");
 const CURRENT = path.join(BASE, "current");

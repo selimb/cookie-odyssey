@@ -50,6 +50,8 @@ data/            Owned by cookie-odyssey.
                  This is the working directory of the service.
 ```
 
+<!-- [release-dir] -->
+
 `templates` and `assets` are found relative to the binary, so they are part of a release.
 `.env` and the database are found relative to the working directory, so they are part of `data/`.
 

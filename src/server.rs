@@ -26,8 +26,7 @@ const ASSETS_URL_BASE: &str = "/_assets";
 
 /// Directory that holds `templates` and `assets`.
 ///
-/// In prod, this is the directory of the executable, so that the working
-/// directory can be used for state (`.env`, the database) instead.
+/// In prod, this is the directory of the executable -- see [release-dir].
 /// In dev, the executable is in `target/`, so the working directory is used.
 pub fn release_dir() -> Result<PathBuf, anyhow::Error> {
     if AppEnv::is_dev() {

@@ -4,6 +4,7 @@ Description=The cookie-odyssey web application
 [Service]
 User=cookie-odyssey
 Group=cookie-odyssey
+# See [release-dir]
 WorkingDirectory=/home/cookie-odyssey/data
 ExecStart=/home/cookie-odyssey/current/cookie-odyssey server
 

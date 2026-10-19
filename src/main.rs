@@ -6,7 +6,7 @@ use cookie_odyssey::{
     auth::sessions::AuthBackend,
     server::{init_db, init_state, release_dir},
     storage::StorageCleanup,
-    template_engine::{compile_all, templates_dir},
+    template_engine::{compile_all_templates, templates_dir},
 };
 use migration::{Migrator, MigratorTrait};
 use sea_orm::EntityTrait;
@@ -195,7 +195,8 @@ impl Cli {
 
         let (state, _) = init_state(&self.conf, false).await?;
 
-        let templates = compile_all(&state.template_engine, &templates_dir(&release_dir()?))?;
+        let templates =
+            compile_all_templates(&state.template_engine, &templates_dir(&release_dir()?))?;
         info!("Templates: {templates} compiled");
 
         let containers = state.storage.list_containers().await?;
