@@ -94,7 +94,9 @@ and https://daisyui.com/components/navbar/
             {# FIXME #}
             <li><a>Profile</a></li>
             {# See [confetti-fn] #}
-            <li><button onclick="fireConfetti()">Confetti</button></li>
+            <li>
+              <button type="button" onclick="fireConfetti()">Confetti</button>
+            </li>
             <li><a href="{{ links.logout }}">Logout</a></li>
           </ul>
         </div>
