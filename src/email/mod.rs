@@ -33,10 +33,10 @@ pub struct EmailClient {
 
 impl EmailClient {
     pub fn new(conf: &EmailConfig) -> anyhow::Result<Self> {
-        let builder = if conf.smtp_implicit_tls {
-            AsyncSmtpTransport::<Tokio1Executor>::relay(&conf.smtp_host)
-        } else {
+        let builder = if conf.starttls {
             AsyncSmtpTransport::<Tokio1Executor>::starttls_relay(&conf.smtp_host)
+        } else {
+            AsyncSmtpTransport::<Tokio1Executor>::relay(&conf.smtp_host)
         }
         .context("Failed to build SMTP transport")?;
         let transport = builder

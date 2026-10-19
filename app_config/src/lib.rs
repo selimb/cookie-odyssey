@@ -82,9 +82,9 @@ pub struct EmailConfig {
     pub from_address: String,
     /// Replies from readers go here (the Admin's personal address).
     pub reply_to_address: String,
-    /// Use implicit TLS (port 465) instead of STARTTLS.
+    /// Use STARTTLS. When false (the default), use SMTPS.
     #[serde(default)]
-    pub smtp_implicit_tls: bool,
+    pub starttls: bool,
 }
 
 impl std::fmt::Debug for EmailConfig {
@@ -96,7 +96,7 @@ impl std::fmt::Debug for EmailConfig {
             .field("smtp_password", &"<redacted>")
             .field("from_address", &self.from_address)
             .field("reply_to_address", &self.reply_to_address)
-            .field("smtp_implicit_tls", &self.smtp_implicit_tls)
+            .field("starttls", &self.starttls)
             .finish()
     }
 }
