@@ -1,8 +1,8 @@
 use chrono::Utc;
 use sea_orm::{
-    sea_query::{Expr, Query},
-    ColumnTrait, ConnectionTrait, DbErr, EntityTrait, FromQueryResult, JoinType, PaginatorTrait,
-    QueryFilter, QueryOrder, QuerySelect, RelationTrait, Select, Statement, TransactionTrait,
+    sea_query::Expr, ColumnTrait, ConnectionTrait, DbErr, EntityTrait, FromQueryResult, JoinType,
+    PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, RelationTrait, Select, Statement,
+    TransactionTrait,
 };
 use serde::Serialize;
 
@@ -53,9 +53,9 @@ pub async fn count_pending(db: &impl ConnectionTrait) -> Result<u64, DbErr> {
 /// Delivers every Pending Notification to all approved Users.
 /// Returns the number of Notifications that were flushed.
 ///
-/// The recipients are inserted in reverse trip order, so that listing by
-/// `notification_recipient.id DESC` shows the newest Flush first and each Flush
-/// in trip order.
+/// [notification-recipient-order] The `notification_recipient` rows are inserted in
+/// reverse trip order, so that listing by `notification_recipient.id DESC`
+/// shows the newest Flush first and each Flush in trip order.
 pub async fn flush(db: &sea_orm::DatabaseConnection) -> Result<u64, DbErr> {
     let txn = db.begin().await?;
     // NOTE: This takes the write lock, so no publish can slip in before the
@@ -137,7 +137,9 @@ pub async fn list_for_user(
     if let Some(cursor) = cursor {
         q = q.filter(notification_recipient::Column::Id.lt(cursor));
     }
-    q.order_by_desc(notification_recipient::Column::Id)
+    q
+        // Relies on [notification-recipient-order].
+        .order_by_desc(notification_recipient::Column::Id)
         .limit(PAGE_SIZE + 1)
         .into_model::<NotificationRow>()
         .all(db)
@@ -164,30 +166,28 @@ pub async fn mark_day_read(
     journal_id: i32,
     date: chrono::NaiveDate,
 ) -> Result<(), DbErr> {
-    let entries_for_day = Query::select()
-        .column((notification::Entity, notification::Column::Id))
-        .from(notification::Entity)
-        .join(
-            JoinType::InnerJoin,
-            journal_entry::Entity,
-            Expr::col((notification::Entity, notification::Column::JournalEntryId))
-                .equals((journal_entry::Entity, journal_entry::Column::Id)),
-        )
-        .and_where(
-            Expr::col((journal_entry::Entity, journal_entry::Column::JournalId)).eq(journal_id),
-        )
-        .and_where(Expr::col((journal_entry::Entity, journal_entry::Column::Date)).eq(date))
-        .to_owned();
-    NotificationRecipient::update_many()
-        .col_expr(
-            notification_recipient::Column::ReadAt,
-            Expr::value(Utc::now()),
-        )
-        .filter(notification_recipient::Column::UserId.eq(user_id))
-        .filter(notification_recipient::Column::ReadAt.is_null())
-        .filter(notification_recipient::Column::NotificationId.in_subquery(entries_for_day))
-        .exec(db)
-        .await?;
+    db.execute(Statement::from_sql_and_values(
+        db.get_database_backend(),
+        r#"
+        UPDATE notification_recipient
+        SET read_at = $1
+        WHERE user_id = $2
+          AND read_at IS NULL
+          AND notification_id IN (
+              SELECT n.id
+              FROM notification n
+              JOIN journal_entry e ON e.id = n.journal_entry_id
+              WHERE e.journal_id = $3 AND e.date = $4
+          )
+        "#,
+        [
+            Utc::now().into(),
+            user_id.into(),
+            journal_id.into(),
+            date.into(),
+        ],
+    ))
+    .await?;
     Ok(())
 }
 
@@ -205,6 +205,7 @@ pub async fn list_pending(db: &impl ConnectionTrait) -> Result<Vec<PendingRow>, 
     let q = Notification::find()
         .filter(notification::Column::FlushedAt.is_null())
         .select_only();
+    // Matches [notification-recipient-order].
     select_entry_columns(q)
         .order_by_desc(journal_entry::Column::Date)
         .order_by_desc(journal_entry::Column::Time)
@@ -250,17 +251,15 @@ pub async fn list_users_with_unsent_email(db: &impl ConnectionTrait) -> Result<V
         .await
 }
 
-/// All of the User's unread Notifications whose email has not been sent, in
-/// trip order.
+/// All of the User's unread Notifications whose email has not been sent,
+/// newest Flush first and each Flush in trip order -- see [notification-recipient-order].
 pub async fn list_unsent_email_for_user(
     db: &impl ConnectionTrait,
     user_id: i32,
 ) -> Result<Vec<NotificationRow>, DbErr> {
     filter_unsent_email(rows_query())
         .filter(notification_recipient::Column::UserId.eq(user_id))
-        .order_by_asc(journal_entry::Column::Date)
-        .order_by_asc(journal_entry::Column::Time)
-        .order_by_asc(notification_recipient::Column::Id)
+        .order_by_desc(notification_recipient::Column::Id)
         .into_model::<NotificationRow>()
         .all(db)
         .await

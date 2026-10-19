@@ -129,8 +129,9 @@ struct EmailGroup {
 }
 
 /// Groups rows by Journal, in order of first appearance.
-/// Rows are expected to be in trip order already.
+/// `rows` are expected to be in the order of `list_unsent_email_for_user`.
 fn group_rows(rows: Vec<NotificationRow>, server_name: &str) -> Vec<EmailGroup> {
+    // Use a `Vec` instead of a `HashMap` to preserve the order of first appearance.
     let mut groups: Vec<(String, EmailGroup)> = Vec::new();
     for row in rows {
         let href = Route::JournalDayGet(Some(&JournalDayGetPath {
