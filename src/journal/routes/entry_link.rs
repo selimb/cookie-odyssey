@@ -5,9 +5,7 @@ use axum::{
 use entities::prelude::*;
 use sea_orm::EntityTrait;
 
-use crate::{
-    journal::routes::JournalDayGetPath, AppState, AuthSession, NotFound, Route, RouteResult, Templ,
-};
+use crate::{journal::links::entry_page_href, AppState, AuthSession, NotFound, RouteResult, Templ};
 
 /// See [entry-link].
 /// Redirects to the Entry's current page.
@@ -34,16 +32,4 @@ pub async fn page_entry_link_get(
 
     let href = entry_page_href(&journal.slug, entry.date, entry.id);
     Ok(Redirect::to(&href).into_response())
-}
-
-/// The current page of an Entry, scrolled to the Entry.
-/// Shared by [entry-link] and by pages that list Entries, which build the link
-/// at render time and so need no stable link.
-pub fn entry_page_href(slug: &str, date: chrono::NaiveDate, entry_id: i32) -> String {
-    let path = Route::JournalDayGet(Some(&JournalDayGetPath {
-        slug: slug.to_string(),
-        date,
-    }))
-    .as_path();
-    format!("{path}#entry-{entry_id}")
 }

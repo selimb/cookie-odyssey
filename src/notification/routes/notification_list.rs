@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     auth::utils::unwrap_user_from_session,
-    journal::routes::entry_page_href,
+    journal::links::entry_page_href,
     notification::queries::{list_for_user, mark_all_read, NotificationRow, PAGE_SIZE},
     AppState, AuthSession, Route, RouteError, RouteResult, Templ,
 };

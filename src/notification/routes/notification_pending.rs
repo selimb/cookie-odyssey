@@ -3,7 +3,7 @@ use minijinja::context;
 use serde::Serialize;
 
 use crate::{
-    journal::routes::entry_page_href,
+    journal::links::entry_page_href,
     notification::queries::{
         flush, flush_reach, list_pending, list_users_with_unsent_email, PendingRow,
     },
