@@ -10,7 +10,6 @@ use tracing::{error, info};
 
 use crate::{
     email::{EmailClient, EmailMessage, EmailRecipient},
-    journal::routes::JournalDayGetPath,
     notification::queries::{
         list_unsent_email_for_user, list_users_with_unsent_email, mark_email_sent, NotificationRow,
     },
@@ -132,12 +131,11 @@ struct EmailGroup {
 /// `rows` are expected to be in the order of `list_unsent_email_for_user`.
 fn group_rows(rows: Vec<NotificationRow>, server_name: &str) -> Vec<EmailGroup> {
     // Use a `Vec` instead of a `HashMap` to preserve the order of first appearance.
-    let mut groups: Vec<(String, EmailGroup)> = Vec::new();
+    let mut groups: Vec<(i32, EmailGroup)> = Vec::new();
     for row in rows {
-        let href = Route::JournalDayGet(Some(&JournalDayGetPath {
-            slug: row.journal_slug.clone(),
-            date: row.date,
-        }))
+        let href = Route::EntryLinkGet {
+            entry_id: Some(row.entry_id),
+        }
         .as_url(server_name);
         let entry = EmailEntry {
             title: row.title,
@@ -146,11 +144,11 @@ fn group_rows(rows: Vec<NotificationRow>, server_name: &str) -> Vec<EmailGroup> 
         };
         match groups
             .iter_mut()
-            .find(|(slug, _)| *slug == row.journal_slug)
+            .find(|(journal_id, _)| *journal_id == row.journal_id)
         {
             Some((_, group)) => group.entries.push(entry),
             None => groups.push((
-                row.journal_slug,
+                row.journal_id,
                 EmailGroup {
                     journal_name: row.journal_name,
                     entries: vec![entry],

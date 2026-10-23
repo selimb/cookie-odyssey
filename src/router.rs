@@ -48,6 +48,9 @@ pub enum Route<'a> {
         entry_id: Option<i32>,
     },
     JournalDayGet(Option<&'a journal::JournalDayGetPath>),
+    EntryLinkGet {
+        entry_id: Option<i32>,
+    },
     JournalEntryMediaCommitPost,
     JournalEntryMediaEditCaptionPost,
     JournalEntryMediaDelete,
@@ -120,6 +123,11 @@ impl<'a> Route<'a> {
             Route::JournalDayGet(params) => match params {
                 None => "/journal/{slug}/entry/{date}".into(),
                 Some(params) => format!("/journal/{}/entry/{}", params.slug, params.date).into(),
+            },
+            // [entry-link] Stable link to an Entry, resolved when followed.
+            Route::EntryLinkGet { entry_id } => match entry_id {
+                Some(entry_id) => format!("/x/entry/{entry_id}").into(),
+                None => "/x/entry/{entry_id}".into(),
             },
             Route::JournalCommentAddPost(params) => match params {
                 None => "/hx/add-comment".into(),
@@ -212,6 +220,10 @@ fn get_protected_routes() -> Router<AppState> {
         .route(
             &Route::JournalDayGet(None).as_path(),
             get(journal::page_journal_day_get),
+        )
+        .route(
+            &Route::EntryLinkGet { entry_id: None }.as_path(),
+            get(journal::page_entry_link_get),
         )
         .route(
             &Route::JournalCommentAddPost(None).as_path(),

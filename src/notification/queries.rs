@@ -96,7 +96,9 @@ pub struct NotificationRow {
     pub date: chrono::NaiveDate,
     pub time: chrono::NaiveTime,
     pub journal_name: String,
+    pub journal_id: i32,
     pub journal_slug: String,
+    pub entry_id: i32,
 }
 
 /// Joins the Notification's Entry and Journal, and selects the columns shared
@@ -111,7 +113,9 @@ fn select_entry_columns<E: EntityTrait>(q: Select<E>) -> Select<E> {
     .column_as(journal_entry::Column::Date, "date")
     .column_as(journal_entry::Column::Time, "time")
     .column_as(journal::Column::Name, "journal_name")
+    .column_as(journal::Column::Id, "journal_id")
     .column_as(journal::Column::Slug, "journal_slug")
+    .column_as(journal_entry::Column::Id, "entry_id")
 }
 
 fn rows_query() -> Select<NotificationRecipient> {
@@ -198,6 +202,7 @@ pub struct PendingRow {
     pub time: chrono::NaiveTime,
     pub journal_name: String,
     pub journal_slug: String,
+    pub entry_id: i32,
 }
 
 /// Lists Pending Notifications in the order that readers will see them.
