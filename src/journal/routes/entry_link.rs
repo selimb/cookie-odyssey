@@ -10,8 +10,7 @@ use crate::{
 };
 
 /// See [entry-link].
-/// Redirects to the Entry's current page, which is responsible for marking
-/// Notifications as read.
+/// Redirects to the Entry's current page.
 pub async fn page_entry_link_get(
     state: AppState,
     templ: Templ,
