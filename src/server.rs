@@ -24,7 +24,7 @@ use crate::{
 
 const ASSETS_URL_BASE: &str = "/_assets";
 
-/// Directory that holds `templates` and `assets`.
+/// Returns the directory that holds `templates` and `assets`.
 ///
 /// In prod, this is the directory of the executable -- see [release-dir].
 /// In dev, the executable is in `target/`, so the working directory is used.
@@ -99,7 +99,8 @@ pub async fn init_state(
     Ok((state, pool))
 }
 
-/// With `create_if_missing`, a missing database file is created.
+/// Connects to the database, creating a missing database file with
+/// `create_if_missing`.
 /// This is only wanted for migrations, so that a misconfigured path does not
 /// silently produce an empty database when serving.
 pub async fn init_db(

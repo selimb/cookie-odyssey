@@ -17,6 +17,11 @@ In code comments, break lines to keep within 80 characters _and_ at the end of e
 Put comments on their own line (not trailing), written as proper sentences (capitalized, end punctuation).
 Marker comments (anchors, `// SYNC`) are exempt.
 
+## Doc comments
+
+A doc comment (`///` in Rust, `/** */` in TypeScript) on a function or method starts with a verb in the third person, e.g. "Returns ...", "Lists ...", "Marks ...".
+Doc comments on types, fields, variants, constants and modules are noun phrases.
+
 ## Comment anchors
 
 Use `[anchor-name]` tags to link related comments across files or locations.

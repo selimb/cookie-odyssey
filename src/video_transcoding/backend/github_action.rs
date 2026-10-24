@@ -25,7 +25,8 @@ pub struct GithubActionVideoTranscoder {
 }
 
 impl GithubActionVideoTranscoder {
-    /// https://docs.github.com/en/rest/actions/workflows?apiVersion=2022-11-28#create-a-workflow-dispatch-event
+    /// Creates a workflow dispatch event.
+    /// See https://docs.github.com/en/rest/actions/workflows?apiVersion=2022-11-28#create-a-workflow-dispatch-event
     pub async fn trigger_github_workflow(
         &self,
         input_url: &str,

@@ -8,7 +8,7 @@ use sea_orm::EntityTrait;
 
 use crate::{journal::links::entry_page_href, AppState, AuthSession, NotFound, RouteResult, Templ};
 
-/// [entry-link] Stable link to an Entry, resolved when followed.
+/// [entry-link] Resolves a stable link to an Entry when it is followed.
 /// Redirects to the Entry's current page.
 pub async fn page_entry_link_get(
     state: AppState,

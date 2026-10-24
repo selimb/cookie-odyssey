@@ -9,26 +9,11 @@ use entities::{prelude::*, *};
 use serde::Serialize;
 
 use crate::{
+    journal::routes::{Direction, JournalEntryMediaCommitBody, JournalEntryMediaReorder},
     storage::FileStore,
     video_transcoding::{daemon::VideoTranscoder, manager::VideoTranscodingManager},
-    NotFound, RouteError,
+    RouteError,
 };
-
-use super::routes::{Direction, JournalEntryMediaCommitBody, JournalEntryMediaReorder};
-
-pub async fn query_journal_by_slug(
-    slug: String,
-    db: &DatabaseConnection,
-) -> Result<Result<journal::Model, NotFound>, DbErr> {
-    let journal = Journal::find()
-        .filter(journal::Column::Slug.eq(slug))
-        .one(db)
-        .await?;
-    match journal {
-        Some(journal) => Ok(Ok(journal)),
-        None => Ok(Err(NotFound::for_entity("journal"))),
-    }
-}
 
 #[derive(Serialize, Debug)]
 pub struct MediaFull {
@@ -42,37 +27,6 @@ pub struct MediaFull {
     pub url_thumbnail: String,
     pub width_thumbnail: i32,
     pub height_thumbnail: i32,
-}
-
-#[derive(Debug)]
-pub struct JournalEntryFull {
-    pub entry: journal_entry::Model,
-    pub journal: journal::Model,
-    pub media_list: Vec<MediaFull>,
-}
-
-pub async fn query_journal_entry_by_id(
-    id: i32,
-    db: &DatabaseConnection,
-    storage: &FileStore,
-) -> Result<Result<JournalEntryFull, NotFound>, anyhow::Error> {
-    let entry = JournalEntry::find_by_id(id)
-        .find_also_related(Journal)
-        .one(db)
-        .await?;
-    let (entry, journal) = match entry {
-        Some((entry, Some(journal))) => (entry, journal),
-        _ => {
-            return Ok(Err(NotFound::for_entity("entry")));
-        }
-    };
-    let media_list = query_media_for_journal_entry(entry.id, db, storage).await?;
-
-    Ok(Ok(JournalEntryFull {
-        entry,
-        journal,
-        media_list,
-    }))
 }
 
 pub async fn query_media_for_journal_entry(

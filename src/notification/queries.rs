@@ -245,7 +245,8 @@ fn filter_unsent_email(q: Select<NotificationRecipient>) -> Select<NotificationR
         .filter(notification_recipient::Column::ReadAt.is_null())
 }
 
-/// Ids of Users who have unread Notifications whose email has not been sent.
+/// Lists the ids of Users who have unread Notifications whose email has not
+/// been sent.
 pub async fn list_users_with_unsent_email(db: &impl ConnectionTrait) -> Result<Vec<i32>, DbErr> {
     filter_unsent_email(NotificationRecipient::find())
         .select_only()
@@ -256,7 +257,7 @@ pub async fn list_users_with_unsent_email(db: &impl ConnectionTrait) -> Result<V
         .await
 }
 
-/// All of the User's unread Notifications whose email has not been sent,
+/// Lists all of the User's unread Notifications whose email has not been sent,
 /// newest Flush first and each Flush in trip order -- see [notification-recipient-order].
 pub async fn list_unsent_email_for_user(
     db: &impl ConnectionTrait,
