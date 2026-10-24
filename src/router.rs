@@ -124,7 +124,6 @@ impl<'a> Route<'a> {
                 None => "/journal/{slug}/entry/{date}".into(),
                 Some(params) => format!("/journal/{}/entry/{}", params.slug, params.date).into(),
             },
-            // [entry-link] Stable link to an Entry, resolved when followed.
             Route::EntryLinkGet { entry_id } => match entry_id {
                 Some(entry_id) => format!("/x/entry/{entry_id}").into(),
                 None => "/x/entry/{entry_id}".into(),

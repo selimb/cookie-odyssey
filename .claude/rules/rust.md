@@ -8,14 +8,15 @@ paths:
 
 ## Route types and naming
 
-Three kinds of routes exist.
+Four kinds of routes exist.
 Both the URL prefix and the handler function name must reflect the kind:
 
-| Kind | URL prefix | Handler prefix | Returns                                     |
-| ---- | ---------- | -------------- | ------------------------------------------- |
-| Page | _(none)_   | `page_`        | Full HTML page via `Templ`                  |
-| HTMX | `/hx/`     | `hx_`          | HTML fragment or HTMX response headers      |
-| API  | `/api/`    | `api_`         | Non-HTML (JSON, binary, machine-to-machine) |
+| Kind | URL prefix | Handler prefix | Returns                                                     |
+| ---- | ---------- | -------------- | ----------------------------------------------------------- |
+| Page | _(none)_   | `page_`        | Full HTML page via `Templ`                                  |
+| HTMX | `/hx/`     | `hx_`          | HTML fragment or HTMX response headers                      |
+| API  | `/api/`    | `api_`         | Non-HTML (JSON, binary, machine-to-machine)                 |
+| Link | `/x/`      | `page_`        | Redirect to a page, for stable links resolved when followed |
 
 Handler names always end with the HTTP method: `_get`, `_post`, `_put`, or `_delete` (e.g. `page_login_get`, `page_login_post`, `api_media_upload_proxy_put`).
 POST/PUT/DELETE handlers do not need to share a URL with their corresponding GET -- prefer a `/hx/` URL for mutation handlers.
