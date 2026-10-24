@@ -18,8 +18,10 @@ Optimized for low bandwidth (mobile LTE) and cheap hosting (small VPS).
 - Lint Rust: `just lint-rust` or `just lint-rust-fix` to auto-fix
 - Lint Typescript: `just lint-js` or `just lint-js-fix` to auto-fix
 - Lint HTML: `just lint-html`
+- Test Rust: `cargo test`
 
-There are no automated tests.
+There is no test suite for the app as a whole, so verify behavior manually.
+Pure functions get unit tests in a `#[cfg(test)]` module next to them.
 
 ## Project layout
 
