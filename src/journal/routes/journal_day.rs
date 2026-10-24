@@ -1,6 +1,5 @@
 use axum::{extract::Path, response::IntoResponse as _};
 use minijinja::context;
-use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 use serde::Deserialize;
 
 use crate::{
@@ -9,13 +8,13 @@ use crate::{
     journal::{
         queries::{
             day_number, query_entry_views, query_journal_by_slug, query_neighbours, CardKey,
+            EntryScope,
         },
         routes::{JournalEntryNewPath, JournalEntryNewQuery},
     },
     notification::queries::{mark_read, ReadScope},
     AppState, AuthSession, Route, RouteResult, Templ,
 };
-use entities::{prelude::*, *};
 
 #[derive(Debug, Deserialize)]
 pub struct JournalDayGetPath {
@@ -51,13 +50,11 @@ pub async fn page_journal_day_get(
     .await?;
     templ.refresh_badges(&state.db).await?;
 
-    // In a Scrapbook, the Entries of a Getaway are shown with the Getaway.
-    // In a Journal, no Entry has a Getaway, see [journal-no-getaway].
-    let entries_q = JournalEntry::find()
-        .filter(journal_entry::Column::JournalId.eq(journal.id))
-        .filter(journal_entry::Column::Date.eq(date))
-        .filter(journal_entry::Column::GetawayId.is_null());
-    let entries = query_entry_views(entries_q, &state.db, &session, &state.storage).await?;
+    let scope = EntryScope::Day {
+        journal_id: journal.id,
+        date,
+    };
+    let entries = query_entry_views(&scope, &state.db, &session, &state.storage).await?;
     let comments = CommentList {
         scope: CommentScope {
             journal_id: journal.id,

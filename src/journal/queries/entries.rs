@@ -1,4 +1,4 @@
-use sea_orm::{DatabaseConnection, EntityTrait, QueryOrder, Select};
+use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QueryOrder};
 
 use entities::{prelude::*, *};
 use serde::Serialize;
@@ -21,13 +21,38 @@ pub struct EntryView {
     pub media: Vec<MediaFull>,
 }
 
-/// Lists the Entries selected by `q` that the User can see, in trip order.
+/// Which Entries a page shows.
+pub enum EntryScope {
+    /// The Loose Entries of a Day.
+    /// The Entries of a Getaway are shown with the Getaway, and in a Journal,
+    /// no Entry has a Getaway, see [journal-no-getaway].
+    Day {
+        journal_id: i32,
+        date: chrono::NaiveDate,
+    },
+    /// The Entries of a Getaway.
+    Getaway { journal_id: i32, getaway_id: i32 },
+}
+
+/// Lists the Entries in `scope` that the User can see, in trip order.
 pub async fn query_entry_views(
-    q: Select<JournalEntry>,
+    scope: &EntryScope,
     db: &DatabaseConnection,
     auth: &AuthSession,
     storage: &FileStore,
 ) -> Result<Vec<EntryView>, anyhow::Error> {
+    let q = match *scope {
+        EntryScope::Day { journal_id, date } => JournalEntry::find()
+            .filter(journal_entry::Column::JournalId.eq(journal_id))
+            .filter(journal_entry::Column::Date.eq(date))
+            .filter(journal_entry::Column::GetawayId.is_null()),
+        EntryScope::Getaway {
+            journal_id,
+            getaway_id,
+        } => JournalEntry::find()
+            .filter(journal_entry::Column::JournalId.eq(journal_id))
+            .filter(journal_entry::Column::GetawayId.eq(getaway_id)),
+    };
     let q = auth.backend.filter_journal_entries(auth, q).await?;
     let entries_db = q
         .order_by_asc(journal_entry::Column::Date)

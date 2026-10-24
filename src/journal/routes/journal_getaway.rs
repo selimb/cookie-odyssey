@@ -11,7 +11,9 @@ use crate::{
     auth::utils::unwrap_user_from_session,
     comment::{queries::CommentScope, routes::CommentList},
     journal::{
-        queries::{query_entry_views, query_journal_by_slug, query_neighbours, CardKey},
+        queries::{
+            query_entry_views, query_journal_by_slug, query_neighbours, CardKey, EntryScope,
+        },
         routes::{JournalEntryNewPath, JournalEntryNewQuery},
     },
     notification::queries::{mark_read, ReadScope},
@@ -47,8 +49,11 @@ pub async fn page_journal_getaway_get(
             .render(&templ)?
             .into_response());
     };
-    let entries_q = JournalEntry::find().filter(journal_entry::Column::GetawayId.eq(getaway_id));
-    let entries = query_entry_views(entries_q, &state.db, &session, &state.storage).await?;
+    let scope = EntryScope::Getaway {
+        journal_id: journal.id,
+        getaway_id,
+    };
+    let entries = query_entry_views(&scope, &state.db, &session, &state.storage).await?;
     // A Getaway without visible Entries does not exist for this User.
     let (start, end) = match (entries.first(), entries.last()) {
         (Some(first), Some(last)) => (first.datetime.date(), last.datetime.date()),
