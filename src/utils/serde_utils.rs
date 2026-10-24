@@ -10,6 +10,10 @@ where
 }
 
 /// Treats an empty (or blank) form value as `None`.
+/// Use it for optional fields that the browser submits even when empty, such
+/// as a non-required `<input>` or a hidden input.
+/// It is not needed for checkboxes, or for query strings built by `Route`,
+/// where the key is absent instead, and a plain `Option<T>` works.
 pub fn empty_as_none<'de, D, T>(d: D) -> Result<Option<T>, D::Error>
 where
     D: serde::de::Deserializer<'de>,
