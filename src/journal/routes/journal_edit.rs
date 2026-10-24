@@ -8,7 +8,7 @@ use sea_orm::{EntityTrait, SqlErr};
 use serde::Deserialize;
 
 use crate::{
-    journal::queries::query_journal_by_slug,
+    journal::{queries::query_journal_by_slug, validation::validate_slug},
     utils::serde_utils::{empty_as_none, string_trim},
     AppState, FormError, Route, RouteResult, Templ,
 };
@@ -32,19 +32,10 @@ pub struct JournalEdit {
 
 impl JournalEdit {
     fn validate(&self) -> Result<(), FormError> {
-        if self.name.is_empty() || self.slug.is_empty() {
-            return Err(FormError::new("Name and slug are required"));
+        if self.name.is_empty() {
+            return Err(FormError::new("Name is required"));
         }
-        // The slug is inserted into URLs as is.
-        if !self
-            .slug
-            .chars()
-            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
-        {
-            return Err(FormError::new(
-                "Slug may only contain letters, numbers, dashes and underscores",
-            ));
-        }
+        validate_slug(&self.slug)?;
         if self.end_date.is_some_and(|end| end < self.start_date) {
             return Err(FormError::new("End date must not be before start date"));
         }

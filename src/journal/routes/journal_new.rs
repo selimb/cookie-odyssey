@@ -8,7 +8,8 @@ use sea_orm::EntityTrait;
 use serde::Deserialize;
 
 use crate::{
-    utils::serde_utils::string_trim, AppState, FormError, Route, RouteError, RouteResult, Templ,
+    journal::validation::validate_slug, utils::serde_utils::string_trim, AppState, FormError,
+    Route, RouteError, RouteResult, Templ,
 };
 use entities::{prelude::*, *};
 
@@ -38,6 +39,9 @@ pub async fn page_journal_new_post(
         }
         Ok(form) => form,
     };
+    if let Err(err) = validate_slug(&form.slug) {
+        return Ok(err.render(&state)?.into_response());
+    }
     let data = journal::ActiveModel {
         name: sea_orm::ActiveValue::Set(form.name.clone()),
         slug: sea_orm::ActiveValue::Set(form.slug.clone()),
