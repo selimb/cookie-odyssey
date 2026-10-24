@@ -70,6 +70,11 @@ Apply `#[serde(deserialize_with = "string_trim")]` to every `String` field in a 
 Prefer moving complex or reused database queries into a `queries.rs` module within the feature directory.
 Simple one-liners (e.g. `User::delete_by_id(...).exec(&db).await?`) are fine inline in handlers.
 
+## Docstrings
+
+A `///` docstring on a function or method starts with a verb in the third person, e.g. "Returns ...", "Lists ...", "Marks ...".
+Docstrings on types, fields, variants and constants are noun phrases.
+
 ## Permissions
 
 The only permission levels are unauthenticated, authenticated, and `Admin`.
