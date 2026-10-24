@@ -9,5 +9,6 @@ pub fn entry_page_href(slug: &str, date: chrono::NaiveDate, entry_id: i32) -> St
         date,
     }))
     .as_path();
+    // [entry-fragment] Each page that lists Entries renders a matching id.
     format!("{path}#entry-{entry_id}")
 }
