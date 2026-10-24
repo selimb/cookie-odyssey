@@ -14,6 +14,16 @@
     <div class="space-y-4">
       {% for journal in journals %}
         <a href="{{ journal.href }}" class="app-card mx-auto">
+          {% if journal.cover_url %}
+            <figure>
+              <img
+                src="{{ journal.cover_url }}"
+                alt=""
+                loading="lazy"
+                class="w-full"
+              />
+            </figure>
+          {% endif %}
           <div class="card-body">
             <h2 class="card-title">{{ journal.name }}</h2>
             <div>

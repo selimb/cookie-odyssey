@@ -3,11 +3,11 @@ import htmx from "htmx.org";
 import { toast } from "../toast";
 import { TypedController } from "../utils/stimulus-typed";
 import {
-  THUMBNAIL_EXT,
   type ThumbnailFromAnyResult,
   thumbnailFromImage,
   thumbnailFromVideo,
 } from "./thumbnail";
+import { fetchUploadUrls, type MediaUploadUrlResultItem } from "./upload-url";
 
 export class JournalEntryMediaFormController extends TypedController(
   "media--form",
@@ -78,7 +78,10 @@ export class JournalEntryMediaFormController extends TypedController(
     });
 
     try {
-      var uploadParamsList = await fetchUploadUrls(files, dataGetUploadUrl);
+      var uploadParamsList = await fetchUploadUrls(
+        files.map((file) => file.name),
+        dataGetUploadUrl,
+      );
     } catch (error) {
       toast({
         message: "Failed to request upload URLs",
@@ -156,23 +159,6 @@ export class JournalEntryMediaFormController extends TypedController(
 // SYNC MediaType
 type MediaType = "image" | "video";
 
-// SYNC MediaUploadUrlBody
-type MediaUploadUrlBody = {
-  thumbnail_extension: string;
-  filenames: string[];
-};
-
-// SYNC MediaUploadUrlResultItem
-type MediaUploadUrlResultItem = {
-  upload_method: string;
-  upload_url_original: string;
-  upload_url_thumbnail: string;
-  upload_headers_original: Record<string, string>;
-  upload_headers_thumbnail: Record<string, string>;
-  file_id_original: number;
-  file_id_thumbnail: number;
-};
-
 // SYNC JournalEntryMediaCommitItem
 type JournalEntryMediaCommitItem = {
   media_type: MediaType;
@@ -189,28 +175,6 @@ type JournalEntryMediaCommitBody = {
   entry_id: number;
   items: JournalEntryMediaCommitItem[];
 };
-
-async function fetchUploadUrls(
-  files: File[],
-  getUploadUrl: string,
-): Promise<MediaUploadUrlResultItem[]> {
-  const body: MediaUploadUrlBody = {
-    thumbnail_extension: THUMBNAIL_EXT,
-    filenames: files.map((file) => file.name),
-  };
-  const resp = await fetch(getUploadUrl, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
-  if (!resp.ok) {
-    throw new Error(`Request failed with status ${resp.status}`);
-  }
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-return -- Trust.
-  return await resp.json();
-}
 
 async function uploadOne(
   file: File | Blob,

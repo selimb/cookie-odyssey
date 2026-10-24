@@ -40,13 +40,16 @@ pub async fn page_journal_detail_get(
     .await?;
 
     let href_journal_entry_new = Route::JournalEntryNewGet(Some((
-        &JournalEntryNewPath { slug },
+        &JournalEntryNewPath { slug: slug.clone() },
         &JournalEntryNewQuery::default(),
     )))
     .as_path();
 
+    let href_journal_edit = Route::JournalEditGet { slug: Some(&slug) }.as_path();
+
     let ctx = context! {
         journal,
+        href_journal_edit,
         entries_by_day,
         href_journal_entry_new,
         comments_fragment => comments.0,

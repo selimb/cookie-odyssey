@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% import "common/form.html" as form %}
+
+{% block content %}
+  <div>
+    <h1 class="app-title">
+      <a href="{{ href_journal_detail }}" class="link-hover link"
+        >{{ journal.name }}</a
+      >
+      <span> - </span>
+      <span>Edit Journal</span>
+    </h1>
+    <form
+      hx-post="{{ href_edit }}"
+      data-controller="journal-cover"
+      data-journal-cover-get-upload-url-value="{{ href_get_upload_url }}"
+    >
+      {{ form.form_error(error="") }}
+
+      {{ form.input("name", label="Name", value=journal.name) }}
+      {{ form.input("slug", label="Slug", value=journal.slug) }}
+      {{ form.input("start_date", label="Start Date", type="date", value=journal.start_date) }}
+      {{
+        form.input(
+          "end_date",
+          label="End Date",
+          type="date",
+          required=false,
+          value=journal.end_date
+        )
+      }}
+
+      <div class="form-control w-full">
+        <div class="label">
+          <label for="cover_photo" class="label-text">Cover Photo</label>
+        </div>
+        <img
+          data-journal-cover-target="preview"
+          {% if cover_url %}src="{{ cover_url }}"{% endif %}
+          alt="Cover photo"
+          class="{% if not cover_url %}hidden{% endif %} mb-2 w-full rounded-lg"
+        />
+        <input
+          type="hidden"
+          name="cover_file_id"
+          data-journal-cover-target="fileId"
+          value="{{ journal.cover_id or '' }}"
+        />
+        <input
+          id="cover_photo"
+          type="file"
+          accept="image/*"
+          data-journal-cover-target="fileInput"
+          class="file-input file-input-bordered w-full"
+        />
+        <button
+          type="button"
+          data-journal-cover-target="remove"
+          class="{% if not cover_url %}hidden{% endif %} btn btn-error mt-2"
+        >
+          Remove cover
+        </button>
+      </div>
+
+      <button
+        type="submit"
+        data-journal-cover-target="submit"
+        class="btn btn-primary my-8 w-full"
+      >
+        Save
+      </button>
+    </form>
+  </div>
+{% endblock content %}
