@@ -17,6 +17,7 @@
       />
       <datalist id="getaway_options">
         {% for option in options %}
+          {# Plain text, see [getaway-option-dates]. #}
           <option value="{{ option.name }}">{{ option.dates }}</option>
         {% endfor %}
       </datalist>

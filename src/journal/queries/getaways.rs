@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use chrono::Datelike as _;
 use sea_orm::{
     ColumnTrait, ConnectionTrait, DbErr, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
     QuerySelect,
@@ -71,6 +72,36 @@ pub struct GetawayOption {
     pub dates: String,
 }
 
+/// Formats the dates of a Getaway as a label, e.g. "Feb 6 - Feb 8".
+/// The year is left out only when both dates are in the year of `today`.
+///
+/// [getaway-option-dates] This is formatted on the server, unlike other dates,
+/// because it is the text of an `<option>`, which cannot hold the `<time>`
+/// element that the `datetime` macros render.
+/// See [date-as-datetime] for the usual way.
+fn format_date_range(
+    start: chrono::NaiveDate,
+    end: chrono::NaiveDate,
+    today: chrono::NaiveDate,
+) -> String {
+    let with_year = start.year() != today.year() || end.year() != today.year();
+    let format = |date: chrono::NaiveDate, with_year: bool| {
+        if with_year {
+            date.format("%b %-d, %Y").to_string()
+        } else {
+            date.format("%b %-d").to_string()
+        }
+    };
+    if start == end {
+        format(start, with_year)
+    } else if start.year() == end.year() {
+        // A shared year is only written once, at the end.
+        format!("{} - {}", format(start, false), format(end, with_year))
+    } else {
+        format!("{} - {}", format(start, true), format(end, true))
+    }
+}
+
 /// Lists the Scrapbook's Getaways, latest first.
 pub async fn query_getaway_options(
     db: &impl ConnectionTrait,
@@ -97,15 +128,12 @@ pub async fn query_getaway_options(
         range.1 = date;
     }
 
+    let today = chrono::Utc::now().date_naive();
     let mut options: Vec<(chrono::NaiveDate, GetawayOption)> = getaways
         .into_iter()
         .filter_map(|g| {
             let (start, end) = ranges.get(&g.id)?;
-            let dates = if start == end {
-                start.format("%b %-d").to_string()
-            } else {
-                format!("{} - {}", start.format("%b %-d"), end.format("%b %-d"))
-            };
+            let dates = format_date_range(*start, *end, today);
             Some((
                 *end,
                 GetawayOption {
@@ -117,4 +145,53 @@ pub async fn query_getaway_options(
         .collect();
     options.sort_by_key(|(end, _)| std::cmp::Reverse(*end));
     Ok(options.into_iter().map(|(_, o)| o).collect())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn date(y: i32, m: u32, d: u32) -> chrono::NaiveDate {
+        chrono::NaiveDate::from_ymd_opt(y, m, d).unwrap()
+    }
+
+    #[test]
+    fn format_date_range_current_year() {
+        let today = date(2026, 10, 24);
+        assert_eq!(
+            format_date_range(date(2026, 2, 6), date(2026, 2, 6), today),
+            "Feb 6"
+        );
+        assert_eq!(
+            format_date_range(date(2026, 2, 6), date(2026, 2, 8), today),
+            "Feb 6 - Feb 8"
+        );
+    }
+
+    #[test]
+    fn format_date_range_other_year() {
+        let today = date(2026, 10, 24);
+        assert_eq!(
+            format_date_range(date(2025, 10, 12), date(2025, 10, 12), today),
+            "Oct 12, 2025"
+        );
+        assert_eq!(
+            format_date_range(date(2025, 10, 12), date(2025, 10, 15), today),
+            "Oct 12 - Oct 15, 2025"
+        );
+    }
+
+    #[test]
+    fn format_date_range_across_years() {
+        let today = date(2026, 10, 24);
+        assert_eq!(
+            format_date_range(date(2025, 12, 30), date(2026, 1, 2), today),
+            "Dec 30, 2025 - Jan 2, 2026"
+        );
+        // The current year does not shorten a range that crosses years.
+        assert_eq!(
+            format_date_range(date(2026, 12, 30), date(2027, 1, 2), today),
+            "Dec 30, 2026 - Jan 2, 2027"
+        );
+    }
 }
