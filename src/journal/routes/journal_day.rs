@@ -93,6 +93,7 @@ pub async fn page_journal_day_get(
 
 #[derive(Serialize, Debug)]
 struct Entry {
+    id: i32,
     datetime: chrono::NaiveDateTime,
     time: chrono::NaiveTime,
     title: String,
@@ -132,6 +133,7 @@ async fn query_entries_for_day(
         let media = query_media_for_journal_entry(e.id, db, storage).await?;
 
         let entry = Entry {
+            id: e.id,
             title: e.title,
             address: e.address,
             text: e.text,

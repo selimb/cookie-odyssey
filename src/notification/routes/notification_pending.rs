@@ -3,7 +3,7 @@ use minijinja::context;
 use serde::Serialize;
 
 use crate::{
-    journal::routes::JournalDayGetPath,
+    journal::links::entry_page_href,
     notification::queries::{
         flush, flush_reach, list_pending, list_users_with_unsent_email, PendingRow,
     },
@@ -20,12 +20,7 @@ struct PendingItem {
 
 impl From<PendingRow> for PendingItem {
     fn from(row: PendingRow) -> Self {
-        let href = Route::JournalDayGet(Some(&JournalDayGetPath {
-            slug: row.journal_slug,
-            date: row.date,
-        }))
-        .as_path()
-        .into_owned();
+        let href = entry_page_href(&row.journal_slug, row.date, row.entry_id);
         Self {
             title: row.title,
             journal_name: row.journal_name,

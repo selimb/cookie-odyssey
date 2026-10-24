@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     auth::utils::unwrap_user_from_session,
-    journal::routes::JournalDayGetPath,
+    journal::links::entry_page_href,
     notification::queries::{list_for_user, mark_all_read, NotificationRow, PAGE_SIZE},
     AppState, AuthSession, Route, RouteError, RouteResult, Templ,
 };
@@ -20,12 +20,7 @@ struct NotificationItem {
 
 impl From<NotificationRow> for NotificationItem {
     fn from(row: NotificationRow) -> Self {
-        let href = Route::JournalDayGet(Some(&JournalDayGetPath {
-            slug: row.journal_slug,
-            date: row.date,
-        }))
-        .as_path()
-        .into_owned();
+        let href = entry_page_href(&row.journal_slug, row.date, row.entry_id);
         Self {
             read: row.read_at.is_some(),
             title: row.title,
