@@ -4,7 +4,7 @@ use axum::{
     Form,
 };
 use minijinja::context;
-use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
+use sea_orm::{EntityTrait, SqlErr};
 use serde::Deserialize;
 
 use crate::{
@@ -18,6 +18,8 @@ use entities::{prelude::*, *};
 pub struct JournalEdit {
     #[serde(deserialize_with = "string_trim")]
     pub name: String,
+    #[serde(deserialize_with = "string_trim")]
+    pub slug: String,
     pub start_date: chrono::NaiveDate,
     #[serde(deserialize_with = "empty_as_none")]
     pub end_date: Option<chrono::NaiveDate>,
@@ -26,6 +28,18 @@ pub struct JournalEdit {
     /// remove button clears it.
     #[serde(deserialize_with = "empty_as_none")]
     pub cover_file_id: Option<i32>,
+}
+
+impl JournalEdit {
+    fn validate(&self) -> Result<(), FormError> {
+        if self.name.is_empty() || self.slug.is_empty() {
+            return Err(FormError::new("Name and slug are required"));
+        }
+        if self.end_date.is_some_and(|end| end < self.start_date) {
+            return Err(FormError::new("End date must not be before start date"));
+        }
+        Ok(())
+    }
 }
 
 pub async fn page_journal_edit_get(
@@ -79,49 +93,36 @@ pub async fn hx_journal_edit_post(
         }
     };
 
-    if form.name.is_empty() {
-        let resp = FormError::new("Name is required").render(&state)?;
-        return Ok(resp.into_response());
+    if let Err(err) = form.validate() {
+        return Ok(err.render(&state)?.into_response());
     }
-    if let Some(end_date) = form.end_date {
-        if end_date < form.start_date {
-            let resp = FormError::new("End date must not be before start date").render(&state)?;
-            return Ok(resp.into_response());
-        }
-    }
-    let name_taken = Journal::find()
-        .filter(journal::Column::Name.eq(form.name.clone()))
-        .filter(journal::Column::Id.ne(journal.id))
-        .one(&state.db)
-        .await?
-        .is_some();
-    if name_taken {
-        let resp = FormError::new("A journal with this name already exists").render(&state)?;
-        return Ok(resp.into_response());
-    }
-
-    if let Some(cover_file_id) = form.cover_file_id {
-        let exists = File::find_by_id(cover_file_id)
-            .one(&state.db)
-            .await?
-            .is_some();
-        if !exists {
-            let resp = FormError::new("Unknown cover photo").render(&state)?;
-            return Ok(resp.into_response());
-        }
-    }
-    // The Slug is deliberately left alone, so that existing links keep working.
     let data = journal::ActiveModel {
         id: sea_orm::ActiveValue::Unchanged(journal.id),
         name: sea_orm::ActiveValue::Set(form.name),
+        slug: sea_orm::ActiveValue::Set(form.slug.clone()),
         start_date: sea_orm::ActiveValue::Set(form.start_date),
         end_date: sea_orm::ActiveValue::Set(form.end_date),
         cover_id: sea_orm::ActiveValue::Set(form.cover_file_id),
-        ..Default::default()
     };
-    Journal::update(data).exec(&state.db).await?;
+    if let Err(err) = Journal::update(data).exec(&state.db).await {
+        // Both name and slug are unique, and the message says which one.
+        let msg = match err.sql_err() {
+            Some(SqlErr::UniqueConstraintViolation(msg)) if msg.contains("journal.slug") => {
+                "A journal with this slug already exists"
+            }
+            Some(SqlErr::UniqueConstraintViolation(msg)) if msg.contains("journal.name") => {
+                "A journal with this name already exists"
+            }
+            _ => return Err(err.into()),
+        };
+        let resp = FormError::new(msg).render(&state)?;
+        return Ok(resp.into_response());
+    }
 
-    let href = Route::JournalDetailGet { slug: Some(&slug) }.as_path();
+    let href = Route::JournalDetailGet {
+        slug: Some(&form.slug),
+    }
+    .as_path();
     let resp = [("HX-Location", href.as_ref())];
     Ok(resp.into_response())
 }

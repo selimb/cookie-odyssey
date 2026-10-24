@@ -18,6 +18,7 @@
       {{ form.form_error(error="") }}
 
       {{ form.input("name", label="Name", value=journal.name) }}
+      {{ form.input("slug", label="Slug", value=journal.slug) }}
       {{ form.input("start_date", label="Start Date", type="date", value=journal.start_date) }}
       {{
         form.input(
