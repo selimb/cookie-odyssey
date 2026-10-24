@@ -21,7 +21,9 @@ pub struct JournalEdit {
     pub start_date: chrono::NaiveDate,
     #[serde(deserialize_with = "empty_as_none")]
     pub end_date: Option<chrono::NaiveDate>,
-    /// Set only when a new cover photo was uploaded.
+    /// The cover photo to keep, or `None` for no cover.
+    /// Prefilled with the current cover, so an upload replaces it and the
+    /// remove button clears it.
     #[serde(deserialize_with = "empty_as_none")]
     pub cover_file_id: Option<i32>,
 }
@@ -99,13 +101,6 @@ pub async fn hx_journal_edit_post(
     }
 
     // The Slug is deliberately left alone, so that existing links keep working.
-    let mut data = journal::ActiveModel {
-        id: sea_orm::ActiveValue::Unchanged(journal.id),
-        name: sea_orm::ActiveValue::Set(form.name),
-        start_date: sea_orm::ActiveValue::Set(form.start_date),
-        end_date: sea_orm::ActiveValue::Set(form.end_date),
-        ..Default::default()
-    };
     if let Some(cover_file_id) = form.cover_file_id {
         let exists = File::find_by_id(cover_file_id)
             .one(&state.db)
@@ -115,8 +110,15 @@ pub async fn hx_journal_edit_post(
             let resp = FormError::new("Unknown cover photo").render(&state)?;
             return Ok(resp.into_response());
         }
-        data.cover_id = sea_orm::ActiveValue::Set(Some(cover_file_id));
     }
+    let data = journal::ActiveModel {
+        id: sea_orm::ActiveValue::Unchanged(journal.id),
+        name: sea_orm::ActiveValue::Set(form.name),
+        start_date: sea_orm::ActiveValue::Set(form.start_date),
+        end_date: sea_orm::ActiveValue::Set(form.end_date),
+        cover_id: sea_orm::ActiveValue::Set(form.cover_file_id),
+        ..Default::default()
+    };
     Journal::update(data).exec(&state.db).await?;
 
     let href = Route::JournalDetailGet { slug: Some(&slug) }.as_path();

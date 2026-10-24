@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 import { THUMBNAIL_EXT, thumbnailFromImage } from "./media/thumbnail";
 import { toast } from "./toast";
 import { TypedController } from "./utils/stimulus-typed";
@@ -9,15 +11,17 @@ type MediaUploadUrlBody = {
 };
 
 // SYNC MediaUploadUrlResultItem
-type MediaUploadUrlResultItem = {
-  upload_method: string;
-  upload_url_original: string;
-  upload_url_thumbnail: string;
-  upload_headers_original: Record<string, string>;
-  upload_headers_thumbnail: Record<string, string>;
-  file_id_original: number;
-  file_id_thumbnail: number;
-};
+const MediaUploadUrlResultSchema = z.array(
+  z.object({
+    upload_method: z.string(),
+    upload_url_original: z.string(),
+    upload_url_thumbnail: z.string(),
+    upload_headers_original: z.record(z.string(), z.string()),
+    upload_headers_thumbnail: z.record(z.string(), z.string()),
+    file_id_original: z.number(),
+    file_id_thumbnail: z.number(),
+  }),
+);
 
 /**
  * Uploads a downscaled copy of the chosen image as the Journal's cover.
@@ -33,6 +37,7 @@ export class JournalCoverController extends TypedController(
       fileId: "input",
       preview: "img",
       submit: "button",
+      remove: "button",
     },
     values: {
       getUploadUrl: "string",
@@ -40,6 +45,9 @@ export class JournalCoverController extends TypedController(
   },
 ) {
   connect(): void {
+    this.getTarget("remove").addEventListener("click", () => {
+      this.removeCover();
+    });
     const $fileInput = this.getTarget("fileInput");
     // eslint-disable-next-line @typescript-eslint/no-misused-promises -- Hush.
     $fileInput.addEventListener("change", async () => {
@@ -51,6 +59,13 @@ export class JournalCoverController extends TypedController(
         $submit.disabled = false;
       }
     });
+  }
+
+  removeCover(): void {
+    this.getTarget("fileId").value = "";
+    this.getTarget("fileInput").value = "";
+    this.getTarget("preview").classList.add("hidden");
+    this.getTarget("remove").classList.add("hidden");
   }
 
   async handleFileInput($fileInput: HTMLInputElement): Promise<void> {
@@ -74,7 +89,7 @@ export class JournalCoverController extends TypedController(
       if (!resp.ok) {
         throw new Error(`Request failed with status ${resp.status}`);
       }
-      const [params] = (await resp.json()) as MediaUploadUrlResultItem[];
+      const [params] = MediaUploadUrlResultSchema.parse(await resp.json());
       const uploadResp = await fetch(params.upload_url_thumbnail, {
         method: params.upload_method,
         body: result.thumbnail,
@@ -88,6 +103,7 @@ export class JournalCoverController extends TypedController(
       const $preview = this.getTarget("preview");
       $preview.src = URL.createObjectURL(result.thumbnail);
       $preview.classList.remove("hidden");
+      this.getTarget("remove").classList.remove("hidden");
     } catch (error) {
       $fileInput.value = "";
       toast({

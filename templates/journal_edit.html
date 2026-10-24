@@ -43,6 +43,7 @@
           type="hidden"
           name="cover_file_id"
           data-journal-cover-target="fileId"
+          value="{{ journal.cover_id or '' }}"
         />
         <input
           type="file"
@@ -50,6 +51,13 @@
           data-journal-cover-target="fileInput"
           class="file-input file-input-bordered w-full"
         />
+        <button
+          type="button"
+          data-journal-cover-target="remove"
+          class="{% if not cover_url %}hidden{% endif %} btn btn-error mt-2"
+        >
+          Remove cover
+        </button>
       </div>
 
       <button
