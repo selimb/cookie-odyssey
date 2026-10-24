@@ -32,7 +32,7 @@
 
       <div class="form-control w-full">
         <div class="label">
-          <span class="label-text">Cover Photo</span>
+          <label for="cover_photo" class="label-text">Cover Photo</label>
         </div>
         <img
           data-journal-cover-target="preview"
@@ -47,6 +47,7 @@
           value="{{ journal.cover_id or '' }}"
         />
         <input
+          id="cover_photo"
           type="file"
           accept="image/*"
           data-journal-cover-target="fileInput"

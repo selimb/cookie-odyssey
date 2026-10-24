@@ -31,16 +31,22 @@ export class JournalCoverController extends TypedController(
     const $fileInput = this.getTarget("fileInput");
     // eslint-disable-next-line @typescript-eslint/no-misused-promises -- Hush.
     $fileInput.addEventListener("change", async () => {
-      // Remove is disabled too, since a finishing upload would undo it.
-      const $buttons = [this.getTarget("submit"), this.getTarget("remove")];
-      for (const $button of $buttons) {
-        $button.disabled = true;
+      // Everything is disabled during the upload, so that a second upload
+      // cannot race the first, and so that Remove cannot be undone by a
+      // finishing upload.
+      const $controls = [
+        $fileInput,
+        this.getTarget("submit"),
+        this.getTarget("remove"),
+      ];
+      for (const $control of $controls) {
+        $control.disabled = true;
       }
       try {
         await this.handleFileInput($fileInput);
       } finally {
-        for (const $button of $buttons) {
-          $button.disabled = false;
+        for (const $control of $controls) {
+          $control.disabled = false;
         }
       }
     });

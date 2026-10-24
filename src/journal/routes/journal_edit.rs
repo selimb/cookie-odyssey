@@ -35,6 +35,16 @@ impl JournalEdit {
         if self.name.is_empty() || self.slug.is_empty() {
             return Err(FormError::new("Name and slug are required"));
         }
+        // The slug is inserted into URLs as is.
+        if !self
+            .slug
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+        {
+            return Err(FormError::new(
+                "Slug may only contain letters, numbers, dashes and underscores",
+            ));
+        }
         if self.end_date.is_some_and(|end| end < self.start_date) {
             return Err(FormError::new("End date must not be before start date"));
         }
