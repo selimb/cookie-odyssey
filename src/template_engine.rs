@@ -21,7 +21,7 @@ use crate::{AppState, AuthSession, AuthUser, Route, RouteError};
 
 pub type TemplateEngine = minijinja::Environment<'static>;
 
-/// The directory of templates in a release.
+/// Returns the directory of templates in a release.
 pub fn templates_dir(release_dir: &Path) -> PathBuf {
     release_dir.join("templates")
 }

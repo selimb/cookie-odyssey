@@ -263,7 +263,7 @@ impl FileStore {
         self.sign_url2(bucket, key, perms, expiry).await
     }
 
-    /// Like [`sign_url`], but more customizable.
+    /// Signs a URL like [`sign_url`] does, but is more customizable.
     pub async fn sign_url2(
         &self,
         bucket: impl AsRef<str>,
