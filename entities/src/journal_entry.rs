@@ -19,6 +19,7 @@ pub struct Model {
     pub lat: Option<f32>,
     #[sea_orm(column_type = "Float", nullable)]
     pub lng: Option<f32>,
+    pub getaway_id: Option<i32>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -31,6 +32,14 @@ pub enum Relation {
         on_delete = "NoAction"
     )]
     Journal,
+    #[sea_orm(
+        belongs_to = "super::journal_getaway::Entity",
+        from = "Column::GetawayId",
+        to = "super::journal_getaway::Column::Id",
+        on_update = "NoAction",
+        on_delete = "NoAction"
+    )]
+    JournalGetaway,
     #[sea_orm(has_many = "super::journal_entry_media::Entity")]
     JournalEntryMedia,
     #[sea_orm(has_many = "super::notification::Entity")]
@@ -40,6 +49,12 @@ pub enum Relation {
 impl Related<super::journal::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Journal.def()
+    }
+}
+
+impl Related<super::journal_getaway::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::JournalGetaway.def()
     }
 }
 

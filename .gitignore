@@ -22,3 +22,6 @@ assets/dist
 
 # Deploy output
 dist
+
+# PRDs are kept out of Git.
+docs/prd/

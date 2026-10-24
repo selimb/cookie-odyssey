@@ -5,22 +5,18 @@ use axum::{
 };
 use minijinja::context;
 use sea_orm::{DatabaseConnection, EntityTrait};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 use entities::{prelude::*, *};
 
 use crate::{
     auth::utils::unwrap_user_from_session,
-    comment::queries::{add_comment_to_journal, query_comments_for_journal, AddCommentToJournal},
+    comment::queries::{
+        add_comment_to_journal, query_comments_for_journal, AddCommentToJournal, CommentScope,
+    },
     utils::serde_utils::string_trim,
     AppState, AuthSession, Route, RouteError, RouteResult, Templ, Toast,
 };
-
-#[derive(Deserialize, Serialize, Debug)]
-pub struct JournalCommentAddQuery {
-    journal_id: i32,
-    date: Option<chrono::NaiveDate>,
-}
 
 #[derive(Deserialize, Debug)]
 pub struct JournalCommentAddForm {
@@ -32,7 +28,7 @@ pub async fn hx_journal_comment_add_post(
     state: AppState,
     templ: Templ,
     session: AuthSession,
-    query: Query<JournalCommentAddQuery>,
+    Query(scope): Query<CommentScope>,
     form: Result<Form<JournalCommentAddForm>, FormRejection>,
 ) -> RouteResult {
     let form = match form {
@@ -46,8 +42,7 @@ pub async fn hx_journal_comment_add_post(
     let text = form.0.text;
     let user_id = unwrap_user_from_session(&session).0.id;
     let params = AddCommentToJournal {
-        date: query.date,
-        journal_id: query.journal_id,
+        scope: &scope,
         text,
         user_id,
     };
@@ -55,20 +50,13 @@ pub async fn hx_journal_comment_add_post(
     add_comment_to_journal(params, &state.db).await?;
 
     let html = CommentList {
-        journal_id: query.journal_id,
-        date: query.date,
+        scope,
         partial: true,
     }
     .query_and_render(&state.db, &templ, &session)
     .await?;
 
     Ok(html.into_response())
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-pub struct JournalCommentEditQuery {
-    journal_id: i32,
-    date: Option<chrono::NaiveDate>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -82,7 +70,7 @@ pub async fn hx_journal_comment_edit_post(
     state: AppState,
     templ: Templ,
     session: AuthSession,
-    query: Query<JournalCommentEditQuery>,
+    Query(scope): Query<CommentScope>,
     form: Result<Form<JournalCommentEditForm>, FormRejection>,
 ) -> RouteResult {
     let form = match form {
@@ -102,20 +90,13 @@ pub async fn hx_journal_comment_edit_post(
     JournalComment::update(data).exec(&state.db).await?;
 
     let html = CommentList {
-        journal_id: query.journal_id,
-        date: query.date,
+        scope,
         partial: true,
     }
     .query_and_render(&state.db, &templ, &session)
     .await?;
 
     Ok(html.into_response())
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-pub struct JournalCommentDeleteQuery {
-    journal_id: i32,
-    date: Option<chrono::NaiveDate>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -127,7 +108,7 @@ pub async fn hx_journal_comment_delete_post(
     state: AppState,
     templ: Templ,
     session: AuthSession,
-    query: Query<JournalCommentDeleteQuery>,
+    Query(scope): Query<CommentScope>,
     form: Result<Form<JournalCommentDeleteForm>, FormRejection>,
 ) -> RouteResult {
     let form = match form {
@@ -144,8 +125,7 @@ pub async fn hx_journal_comment_delete_post(
         .await?;
 
     let html = CommentList {
-        journal_id: query.journal_id,
-        date: query.date,
+        scope,
         partial: true,
     }
     .query_and_render(&state.db, &templ, &session)
@@ -155,8 +135,7 @@ pub async fn hx_journal_comment_delete_post(
 }
 
 pub struct CommentList {
-    pub journal_id: i32,
-    pub date: Option<chrono::NaiveDate>,
+    pub scope: CommentScope,
     pub partial: bool,
 }
 
@@ -167,28 +146,13 @@ impl CommentList {
         templ: &Templ,
         auth: &AuthSession,
     ) -> Result<Html<String>, RouteError> {
-        let comments = query_comments_for_journal(self.journal_id, self.date, db).await?;
+        let comments = query_comments_for_journal(&self.scope, db).await?;
 
-        let href_add_comment = Route::JournalCommentAddPost(Some(&JournalCommentAddQuery {
-            date: self.date,
-            journal_id: self.journal_id,
-        }))
-        .as_path();
-        let href_edit_comment = Route::JournalCommentEditPost(Some(&JournalCommentEditQuery {
-            date: self.date,
-            journal_id: self.journal_id,
-        }))
-        .as_path();
-        let href_delete_comment =
-            Route::JournalCommentDeletePost(Some(&JournalCommentDeleteQuery {
-                date: self.date,
-                journal_id: self.journal_id,
-            }))
-            .as_path();
+        let href_add_comment = Route::JournalCommentAddPost(Some(&self.scope)).as_path();
+        let href_edit_comment = Route::JournalCommentEditPost(Some(&self.scope)).as_path();
+        let href_delete_comment = Route::JournalCommentDeletePost(Some(&self.scope)).as_path();
 
         let ctx = context! {
-            journal_id=> self.journal_id,
-            date=> self.date,
             comments,
             user => auth.user,
             href_add_comment,

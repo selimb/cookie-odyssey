@@ -15,6 +15,7 @@ pub struct Model {
     pub start_date: Date,
     pub end_date: Option<Date>,
     pub cover_id: Option<i32>,
+    pub scrapbook: bool,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -31,6 +32,8 @@ pub enum Relation {
     JournalComment,
     #[sea_orm(has_many = "super::journal_entry::Entity")]
     JournalEntry,
+    #[sea_orm(has_many = "super::journal_getaway::Entity")]
+    JournalGetaway,
 }
 
 impl Related<super::file::Entity> for Entity {
@@ -48,6 +51,12 @@ impl Related<super::journal_comment::Entity> for Entity {
 impl Related<super::journal_entry::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::JournalEntry.def()
+    }
+}
+
+impl Related<super::journal_getaway::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::JournalGetaway.def()
     }
 }
 

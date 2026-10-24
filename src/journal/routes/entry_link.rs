@@ -32,7 +32,7 @@ pub async fn page_entry_link_get(
         .await?
         .ok_or_else(|| anyhow::anyhow!("Entry {} has no Journal", entry.id))?;
 
-    let href = entry_page_href(&journal.slug, entry.date, entry.id);
+    let href = entry_page_href(&journal.slug, entry.date, entry.getaway_id, entry.id);
     if headers.contains_key("HX-Request") {
         // HTMX requests follow redirects with XHR, which drops the fragment of
         // the destination.

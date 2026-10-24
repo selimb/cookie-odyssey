@@ -99,9 +99,11 @@ pub struct NotificationRow {
     pub journal_id: i32,
     pub journal_slug: String,
     pub entry_id: i32,
+    pub getaway_id: Option<i32>,
+    pub getaway_name: Option<String>,
 }
 
-/// Joins the Notification's Entry and Journal, and selects the columns shared
+/// Joins the Notification's Entry, Journal and Getaway, and selects the columns shared
 /// by [`NotificationRow`] and [`PendingRow`].
 fn select_entry_columns<E: EntityTrait>(q: Select<E>) -> Select<E> {
     q.join(
@@ -109,6 +111,10 @@ fn select_entry_columns<E: EntityTrait>(q: Select<E>) -> Select<E> {
         notification::Relation::JournalEntry.def(),
     )
     .join(JoinType::InnerJoin, journal_entry::Relation::Journal.def())
+    .join(
+        JoinType::LeftJoin,
+        journal_entry::Relation::JournalGetaway.def(),
+    )
     .column_as(journal_entry::Column::Title, "title")
     .column_as(journal_entry::Column::Date, "date")
     .column_as(journal_entry::Column::Time, "time")
@@ -116,6 +122,8 @@ fn select_entry_columns<E: EntityTrait>(q: Select<E>) -> Select<E> {
     .column_as(journal::Column::Id, "journal_id")
     .column_as(journal::Column::Slug, "journal_slug")
     .column_as(journal_entry::Column::Id, "entry_id")
+    .column_as(journal_entry::Column::GetawayId, "getaway_id")
+    .column_as(journal_getaway::Column::Name, "getaway_name")
 }
 
 fn rows_query() -> Select<NotificationRecipient> {
@@ -163,33 +171,50 @@ pub async fn mark_all_read(db: &impl ConnectionTrait, user_id: i32) -> Result<()
     Ok(())
 }
 
-/// Marks as read all of the User's Notifications for Entries on the given Day.
-pub async fn mark_day_read(
+/// The Entries whose Notifications are marked as read when a page is viewed.
+pub enum ReadScope {
+    /// The Loose Entries of a Day.
+    /// In a Journal, every Entry is loose, see [journal-no-getaway].
+    Day {
+        journal_id: i32,
+        date: chrono::NaiveDate,
+    },
+    /// The Entries of a Getaway.
+    Getaway { getaway_id: i32 },
+}
+
+/// Marks as read all of the User's Notifications for the Entries in `scope`.
+pub async fn mark_read(
     db: &impl ConnectionTrait,
     user_id: i32,
-    journal_id: i32,
-    date: chrono::NaiveDate,
+    scope: ReadScope,
 ) -> Result<(), DbErr> {
+    let (entry_filter, scope_values): (&str, Vec<sea_orm::Value>) = match scope {
+        ReadScope::Day { journal_id, date } => (
+            "e.journal_id = $3 AND e.date = $4 AND e.getaway_id IS NULL",
+            vec![journal_id.into(), date.into()],
+        ),
+        ReadScope::Getaway { getaway_id } => ("e.getaway_id = $3", vec![getaway_id.into()]),
+    };
+    let mut values: Vec<sea_orm::Value> = vec![Utc::now().into(), user_id.into()];
+    values.extend(scope_values);
     db.execute(Statement::from_sql_and_values(
         db.get_database_backend(),
-        r#"
-        UPDATE notification_recipient
-        SET read_at = $1
-        WHERE user_id = $2
-          AND read_at IS NULL
-          AND notification_id IN (
-              SELECT n.id
-              FROM notification n
-              JOIN journal_entry e ON e.id = n.journal_entry_id
-              WHERE e.journal_id = $3 AND e.date = $4
-          )
-        "#,
-        [
-            Utc::now().into(),
-            user_id.into(),
-            journal_id.into(),
-            date.into(),
-        ],
+        format!(
+            r#"
+            UPDATE notification_recipient
+            SET read_at = $1
+            WHERE user_id = $2
+              AND read_at IS NULL
+              AND notification_id IN (
+                  SELECT n.id
+                  FROM notification n
+                  JOIN journal_entry e ON e.id = n.journal_entry_id
+                  WHERE {entry_filter}
+              )
+            "#
+        ),
+        values,
     ))
     .await?;
     Ok(())
@@ -203,6 +228,8 @@ pub struct PendingRow {
     pub journal_name: String,
     pub journal_slug: String,
     pub entry_id: i32,
+    pub getaway_id: Option<i32>,
+    pub getaway_name: Option<String>,
 }
 
 /// Lists Pending Notifications in the order that readers will see them.

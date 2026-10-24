@@ -1,0 +1,37 @@
+{% import "common/datetime.html" as dt %}
+
+{# What a card is called: the name of a Getaway, or the date of a Day. #}
+{% macro card_label(card) %}
+  {% if card.getaway_name %}
+    {{ card.getaway_name }}
+  {% else %}
+    {% if card.day_number is not none %}Day {{ card.day_number }} -{% endif %}
+    {{ dt.date(card.start, "medium") }}
+  {% endif %}
+{% endmacro %}
+
+{# Previous is always earlier and next is always later. #}
+{% macro pager(prev, next) %}
+  <div class="mt-4 flex justify-between gap-2">
+    {% if prev %}
+      <a
+        href="{{ prev.href }}"
+        class="btn min-w-0 flex-1 justify-start border-neutral"
+      >
+        <span class="truncate">{{ card_label(prev) }}</span>
+      </a>
+    {% else %}
+      <a class="btn flex-1 border-neutral" disabled>Previous</a>
+    {% endif %}
+    {% if next %}
+      <a
+        href="{{ next.href }}"
+        class="btn min-w-0 flex-1 justify-end border-neutral"
+      >
+        <span class="truncate">{{ card_label(next) }}</span>
+      </a>
+    {% else %}
+      <a class="btn flex-1 border-neutral" disabled>Next</a>
+    {% endif %}
+  </div>
+{% endmacro %}

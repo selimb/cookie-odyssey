@@ -5,6 +5,7 @@ pub use super::journal::Entity as Journal;
 pub use super::journal_comment::Entity as JournalComment;
 pub use super::journal_entry::Entity as JournalEntry;
 pub use super::journal_entry_media::Entity as JournalEntryMedia;
+pub use super::journal_getaway::Entity as JournalGetaway;
 pub use super::notification::Entity as Notification;
 pub use super::notification_recipient::Entity as NotificationRecipient;
 pub use super::user::Entity as User;

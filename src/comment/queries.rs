@@ -2,24 +2,38 @@ use itertools::{zip_eq, Itertools};
 use sea_orm::{
     ColumnTrait, DatabaseConnection, DbErr, EntityTrait, LoaderTrait, QueryFilter, QueryOrder,
 };
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
-pub struct AddCommentToJournal {
+/// What a Comment is on.
+///
+/// - Journal: neither `date` nor `getaway_id` is set.
+/// - Day: only `date` is set.
+/// - Getaway: only `getaway_id` is set.
+///
+/// The database does not allow both, see [comment-scope-check].
+#[derive(Deserialize, Serialize, Debug)]
+pub struct CommentScope {
     pub journal_id: i32,
+    pub date: Option<chrono::NaiveDate>,
+    pub getaway_id: Option<i32>,
+}
+
+pub struct AddCommentToJournal<'a> {
+    pub scope: &'a CommentScope,
     pub user_id: i32,
     pub text: String,
-    pub date: Option<chrono::NaiveDate>,
 }
 
 pub async fn add_comment_to_journal(
-    params: AddCommentToJournal,
+    params: AddCommentToJournal<'_>,
     db: &DatabaseConnection,
 ) -> Result<(), DbErr> {
     let created_at = chrono::Utc::now().timestamp();
     let data = entities::journal_comment::ActiveModel {
         created_at: sea_orm::ActiveValue::Set(created_at),
-        date: sea_orm::ActiveValue::Set(params.date),
-        journal_id: sea_orm::ActiveValue::Set(params.journal_id),
+        date: sea_orm::ActiveValue::Set(params.scope.date),
+        getaway_id: sea_orm::ActiveValue::Set(params.scope.getaway_id),
+        journal_id: sea_orm::ActiveValue::Set(params.scope.journal_id),
         user_id: sea_orm::ActiveValue::Set(params.user_id),
         text: sea_orm::ActiveValue::Set(params.text),
         id: sea_orm::ActiveValue::NotSet,
@@ -47,16 +61,19 @@ pub struct JournalComment {
 }
 
 pub async fn query_comments_for_journal(
-    journal_id: i32,
-    date: Option<chrono::NaiveDate>,
+    scope: &CommentScope,
     db: &DatabaseConnection,
 ) -> Result<Vec<JournalComment>, DbErr> {
     let mut q = entities::journal_comment::Entity::find()
-        .filter(entities::journal_comment::Column::JournalId.eq(journal_id))
+        .filter(entities::journal_comment::Column::JournalId.eq(scope.journal_id))
         .order_by_asc(entities::journal_comment::Column::CreatedAt);
-    q = match date {
+    q = match scope.date {
         Some(date) => q.filter(entities::journal_comment::Column::Date.eq(date)),
         None => q.filter(entities::journal_comment::Column::Date.is_null()),
+    };
+    q = match scope.getaway_id {
+        Some(getaway_id) => q.filter(entities::journal_comment::Column::GetawayId.eq(getaway_id)),
+        None => q.filter(entities::journal_comment::Column::GetawayId.is_null()),
     };
     let comments = q.all(db).await?;
     let users = comments.load_one(entities::user::Entity, db).await?;

@@ -57,7 +57,7 @@ impl MigrationTrait for Migration {
 }
 
 #[derive(DeriveIden)]
-enum JournalComment {
+pub enum JournalComment {
     Table,
     Id,
     JournalId,

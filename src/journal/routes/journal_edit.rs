@@ -28,16 +28,26 @@ pub struct JournalEdit {
     /// remove button clears it.
     #[serde(deserialize_with = "empty_as_none")]
     pub cover_file_id: Option<i32>,
+    /// See [checkbox-unchecked].
+    /// The checkbox of a Scrapbook is disabled, see [checkbox-disabled].
+    #[serde(default)]
+    pub scrapbook: bool,
 }
 
 impl JournalEdit {
-    fn validate(&self) -> Result<(), FormError> {
+    fn validate(&self, current: &journal::Model) -> Result<(), FormError> {
         if self.name.is_empty() {
             return Err(FormError::new("Name is required"));
         }
         validate_slug(&self.slug)?;
         if self.end_date.is_some_and(|end| end < self.start_date) {
             return Err(FormError::new("End date must not be before start date"));
+        }
+        // Turning a Scrapbook back into a Journal would throw away its Getaways.
+        if current.scrapbook && !self.scrapbook {
+            return Err(FormError::new(
+                "A Scrapbook cannot be turned back into a Journal",
+            ));
         }
         Ok(())
     }
@@ -94,7 +104,7 @@ pub async fn hx_journal_edit_post(
         }
     };
 
-    if let Err(err) = form.validate() {
+    if let Err(err) = form.validate(&journal) {
         return Ok(err.render(&state)?.into_response());
     }
     let data = journal::ActiveModel {
@@ -104,6 +114,7 @@ pub async fn hx_journal_edit_post(
         start_date: sea_orm::ActiveValue::Set(form.start_date),
         end_date: sea_orm::ActiveValue::Set(form.end_date),
         cover_id: sea_orm::ActiveValue::Set(form.cover_file_id),
+        scrapbook: sea_orm::ActiveValue::Set(form.scrapbook),
     };
     if let Err(err) = Journal::update(data).exec(&state.db).await {
         // Both name and slug are unique, and the message says which one.

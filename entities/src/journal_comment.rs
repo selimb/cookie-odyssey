@@ -13,6 +13,7 @@ pub struct Model {
     pub created_at: i64,
     pub date: Option<Date>,
     pub text: String,
+    pub getaway_id: Option<i32>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -26,6 +27,14 @@ pub enum Relation {
     )]
     Journal,
     #[sea_orm(
+        belongs_to = "super::journal_getaway::Entity",
+        from = "Column::GetawayId",
+        to = "super::journal_getaway::Column::Id",
+        on_update = "NoAction",
+        on_delete = "Cascade"
+    )]
+    JournalGetaway,
+    #[sea_orm(
         belongs_to = "super::user::Entity",
         from = "Column::UserId",
         to = "super::user::Column::Id",
@@ -38,6 +47,12 @@ pub enum Relation {
 impl Related<super::journal::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Journal.def()
+    }
+}
+
+impl Related<super::journal_getaway::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::JournalGetaway.def()
     }
 }
 

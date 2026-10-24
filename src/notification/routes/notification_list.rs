@@ -14,17 +14,19 @@ struct NotificationItem {
     read: bool,
     title: String,
     journal_name: String,
+    getaway_name: Option<String>,
     datetime: chrono::NaiveDateTime,
     href: String,
 }
 
 impl From<NotificationRow> for NotificationItem {
     fn from(row: NotificationRow) -> Self {
-        let href = entry_page_href(&row.journal_slug, row.date, row.entry_id);
+        let href = entry_page_href(&row.journal_slug, row.date, row.getaway_id, row.entry_id);
         Self {
             read: row.read_at.is_some(),
             title: row.title,
             journal_name: row.journal_name,
+            getaway_name: row.getaway_name,
             datetime: chrono::NaiveDateTime::new(row.date, row.time),
             href,
         }

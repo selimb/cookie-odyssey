@@ -10,6 +10,7 @@ use crate::auth::{
     github_action_auth::github_action_auth_middleware, perms::Permission, routes as auth,
     sessions::AuthBackend,
 };
+use crate::comment::queries::CommentScope;
 use crate::comment::routes as comment;
 use crate::demo::routes as demo;
 use crate::journal::routes as journal;
@@ -54,6 +55,10 @@ pub enum Route<'a> {
         entry_id: Option<i32>,
     },
     JournalDayGet(Option<&'a journal::JournalDayGetPath>),
+    JournalGetawayGet(Option<&'a journal::JournalGetawayGetPath>),
+    JournalGetawayRenamePost {
+        getaway_id: Option<i32>,
+    },
     EntryLinkGet {
         entry_id: Option<i32>,
     },
@@ -61,9 +66,9 @@ pub enum Route<'a> {
     JournalEntryMediaEditCaptionPost,
     JournalEntryMediaDelete,
     JournalEntryMediaReorder,
-    JournalCommentAddPost(Option<&'a comment::JournalCommentAddQuery>),
-    JournalCommentEditPost(Option<&'a comment::JournalCommentEditQuery>),
-    JournalCommentDeletePost(Option<&'a comment::JournalCommentDeleteQuery>),
+    JournalCommentAddPost(Option<&'a CommentScope>),
+    JournalCommentEditPost(Option<&'a CommentScope>),
+    JournalCommentDeletePost(Option<&'a CommentScope>),
     LoginGet,
     LoginPost,
     LogoutGet,
@@ -137,6 +142,16 @@ impl<'a> Route<'a> {
             Route::JournalDayGet(params) => match params {
                 None => "/journal/{slug}/entry/{date}".into(),
                 Some(params) => format!("/journal/{}/entry/{}", params.slug, params.date).into(),
+            },
+            Route::JournalGetawayGet(params) => match params {
+                None => "/journal/{slug}/getaway/{getaway_id}".into(),
+                Some(params) => {
+                    format!("/journal/{}/getaway/{}", params.slug, params.getaway_id).into()
+                }
+            },
+            Route::JournalGetawayRenamePost { getaway_id } => match getaway_id {
+                Some(getaway_id) => format!("/hx/getaway/{getaway_id}/rename").into(),
+                None => "/hx/getaway/{getaway_id}/rename".into(),
             },
             Route::EntryLinkGet { entry_id } => match entry_id {
                 Some(entry_id) => format!("/x/entry/{entry_id}").into(),
@@ -235,6 +250,10 @@ fn get_protected_routes() -> Router<AppState> {
             get(journal::page_journal_day_get),
         )
         .route(
+            &Route::JournalGetawayGet(None).as_path(),
+            get(journal::page_journal_getaway_get),
+        )
+        .route(
             &Route::EntryLinkGet { entry_id: None }.as_path(),
             get(journal::page_entry_link_get),
         )
@@ -294,6 +313,10 @@ fn get_protected_routes() -> Router<AppState> {
         .route(
             &Route::JournalEditPost { slug: None }.as_path(),
             admin!(post(journal::hx_journal_edit_post)),
+        )
+        .route(
+            &Route::JournalGetawayRenamePost { getaway_id: None }.as_path(),
+            admin!(post(journal::hx_journal_getaway_rename_post)),
         )
         .route(
             &Route::JournalEntryNewGet(None).as_path(),

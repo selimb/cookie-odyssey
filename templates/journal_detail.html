@@ -18,15 +18,22 @@
 
   {# Main #}
   <div class="space-y-4">
-    {% for day in entries_by_day %}
-      <a class="app-card mx-auto" href="{{ day.href }}">
+    {% for card in cards %}
+      <a class="app-card mx-auto" href="{{ card.href }}">
         <div class="card-body">
-          <h2 class="card-title">
-            <span>{{ loop.index }}</span>
-            <span> - </span>
-            {{ dt.date(day.date) }}
-          </h2>
-          {% for entry in day.entries %}
+          {% if card.getaway_name %}
+            <h2 class="card-title">{{ card.getaway_name }}</h2>
+            <div class="text-sm">{{ dt.date_range(card.start, card.end) }}</div>
+          {% else %}
+            <h2 class="card-title">
+              {% if card.day_number is not none %}
+                <span>Day {{ card.day_number }}</span>
+                <span> - </span>
+              {% endif %}
+              {{ dt.date(card.start) }}
+            </h2>
+          {% endif %}
+          {% for entry in card.entries %}
             <p {% if entry.draft %}class="italic"{% endif %}>
               {{ entry.title }}
             </p>
