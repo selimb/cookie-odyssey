@@ -1,17 +1,18 @@
 use axum::{extract::Path, response::IntoResponse as _};
 use minijinja::context;
-use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QueryOrder};
-use serde::{Deserialize, Serialize};
+use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
+use serde::Deserialize;
 
 use crate::{
     auth::utils::unwrap_user_from_session,
-    comment::routes::CommentList,
+    comment::{queries::CommentScope, routes::CommentList},
     journal::{
-        queries::{query_journal_by_slug, query_media_for_journal_entry, MediaFull},
+        queries::{
+            day_number, query_entry_views, query_journal_by_slug, query_neighbours, CardKey,
+        },
         routes::{JournalEntryNewPath, JournalEntryNewQuery},
     },
-    notification::queries::mark_day_read,
-    storage::FileStore,
+    notification::queries::{mark_read, ReadScope},
     AppState, AuthSession, Route, RouteResult, Templ,
 };
 use entities::{prelude::*, *};
@@ -39,140 +40,62 @@ pub async fn page_journal_day_get(
     // Viewing a Day marks its Notifications as read, regardless of how the User
     // got here.
     let user_id = unwrap_user_from_session(&session).0.id;
-    mark_day_read(&state.db, user_id, journal.id, date).await?;
+    mark_read(
+        &state.db,
+        user_id,
+        ReadScope::Day {
+            journal_id: journal.id,
+            date,
+        },
+    )
+    .await?;
     templ.refresh_badges(&state.db).await?;
 
-    let entries =
-        query_entries_for_day(&journal, &date, &state.db, &session, &state.storage).await?;
+    // In a Scrapbook, the Entries of a Getaway are shown with the Getaway.
+    // In a Journal, no Entry has a Getaway, see [journal-no-getaway].
+    let entries_q = JournalEntry::find()
+        .filter(journal_entry::Column::JournalId.eq(journal.id))
+        .filter(journal_entry::Column::Date.eq(date))
+        .filter(journal_entry::Column::GetawayId.is_null());
+    let entries = query_entry_views(entries_q, &state.db, &session, &state.storage).await?;
     let comments = CommentList {
-        journal_id: journal.id,
-        date: Some(date),
+        scope: CommentScope {
+            journal_id: journal.id,
+            date: Some(date),
+            getaway_id: None,
+        },
         partial: false,
     }
     .query_and_render(&state.db, &templ, &session)
     .await?;
 
-    let (day_prev, day_next) = query_surrounding_days(&journal, &date, &state.db, &session).await?;
+    let (nav_prev, nav_next) =
+        query_neighbours(&journal, &CardKey::day(date), &state.db, &session).await?;
 
     let datetime = chrono::NaiveDateTime::new(date, Default::default());
+    let day_number = day_number(&journal, date);
     let href_journal_detail = Route::JournalDetailGet { slug: Some(&slug) }.as_path();
     let href_journal_entry_new = Route::JournalEntryNewGet(Some((
         &JournalEntryNewPath { slug: slug.clone() },
-        &JournalEntryNewQuery { date: Some(date) },
+        &JournalEntryNewQuery {
+            date: Some(date),
+            getaway_id: None,
+        },
     )))
     .as_path();
-    let href_journal_day_prev = day_prev.map(|day| {
-        Route::JournalDayGet(Some(&JournalDayGetPath {
-            slug: slug.clone(),
-            date: day,
-        }))
-        .as_path()
-    });
-    let href_journal_day_next = day_next.map(|day| {
-        Route::JournalDayGet(Some(&JournalDayGetPath {
-            slug: slug.clone(),
-            date: day,
-        }))
-        .as_path()
-    });
 
     let ctx = context! {
         journal,
         datetime,
+        day_number,
         entries,
         comments_fragment => comments.0,
         href_journal_detail,
         href_journal_entry_new,
-        href_journal_day_prev,
-        href_journal_day_next,
+        nav_prev,
+        nav_next,
     };
 
     let html = templ.render_ctx("journal_day.html", ctx)?;
     Ok(html.into_response())
-}
-
-#[derive(Serialize, Debug)]
-struct Entry {
-    id: i32,
-    datetime: chrono::NaiveDateTime,
-    time: chrono::NaiveTime,
-    title: String,
-    address: String,
-    text: String,
-    draft: bool,
-    href_edit: String,
-    media: Vec<MediaFull>,
-}
-
-async fn query_entries_for_day(
-    journal: &journal::Model,
-    date: &chrono::NaiveDate,
-    db: &DatabaseConnection,
-    auth: &AuthSession,
-    storage: &FileStore,
-) -> Result<Vec<Entry>, anyhow::Error> {
-    let mut q = JournalEntry::find()
-        .filter(journal_entry::Column::JournalId.eq(journal.id))
-        .filter(journal_entry::Column::Date.eq(*date));
-    q = auth.backend.filter_journal_entries(auth, q).await?;
-    let entries_db = q.all(db).await?;
-
-    // TODO: Avoid N+1 query, but in this case `N` should not be greater than 5, so meh.
-    let mut entries: Vec<Entry> = Vec::new();
-    for e in entries_db {
-        let date = e.date;
-        let time = e.time;
-        let datetime = chrono::NaiveDateTime::new(date, time);
-
-        let href_edit = Route::JournalEntryEditGet {
-            entry_id: Some(e.id),
-        }
-        .as_path()
-        .into_owned();
-
-        let media = query_media_for_journal_entry(e.id, db, storage).await?;
-
-        let entry = Entry {
-            id: e.id,
-            title: e.title,
-            address: e.address,
-            text: e.text,
-            draft: e.draft,
-            datetime,
-            time,
-            href_edit,
-            media,
-        };
-        entries.push(entry);
-    }
-    entries.sort_by_key(|e| e.datetime);
-
-    Ok(entries)
-}
-
-async fn query_surrounding_days(
-    journal: &journal::Model,
-    date: &chrono::NaiveDate,
-    db: &DatabaseConnection,
-    auth: &AuthSession,
-) -> Result<(Option<chrono::NaiveDate>, Option<chrono::NaiveDate>), anyhow::Error> {
-    // TODO: Only select date.
-    let mut q_base = JournalEntry::find().filter(journal_entry::Column::JournalId.eq(journal.id));
-    q_base = auth.backend.filter_journal_entries(auth, q_base).await?;
-
-    let q_prev = q_base
-        .clone()
-        .filter(journal_entry::Column::Date.lt(*date))
-        .order_by_desc(journal_entry::Column::Date);
-    let q_next = q_base
-        .filter(journal_entry::Column::Date.gt(*date))
-        .order_by_asc(journal_entry::Column::Date);
-
-    let entry_prev = q_prev.one(db).await?;
-    let entry_next = q_next.one(db).await?;
-
-    let day_prev = entry_prev.map(|entry| entry.date);
-    let day_next = entry_next.map(|entry| entry.date);
-
-    Ok((day_prev, day_next))
 }

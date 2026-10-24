@@ -5,7 +5,7 @@ There is new content on Cookie Odyssey.
 
 {{ group.journal_name }}
 {% for entry in group.entries %}
-- {{ entry.title }} ({{ entry.date }})
+- {{ entry.title }} ({{ entry.secondary }})
   {{ entry.href }}
 {% endfor %}
 {% endfor %}

@@ -29,6 +29,15 @@
           value=journal.end_date
         )
       }}
+      {{
+        form.checkbox(
+          "scrapbook",
+          "Scrapbook",
+          checked=journal.scrapbook,
+          disabled=journal.scrapbook,
+          hint="Collects Getaways and loose Entries over time, instead of covering a single trip. Cannot be turned off."
+        )
+      }}
 
       <div class="form-control w-full">
         <div class="label">

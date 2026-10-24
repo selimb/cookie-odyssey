@@ -28,3 +28,29 @@
     {% endif %}
   </div>
 {% endmacro %}
+
+{# [checkbox-unchecked] Unchecked checkboxes are not submitted, so the field is absent. #}
+{# [checkbox-disabled] A disabled checkbox is not submitted either, so a checked one is also sent as a hidden field. #}
+{% macro checkbox(name, label, checked=false, disabled=false, hint="") %}
+  <div class="form-control w-full">
+    <label class="label cursor-pointer justify-start gap-3">
+      <input
+        type="checkbox"
+        name="{{ name }}"
+        value="true"
+        {% if checked %}checked{% endif %}
+        {% if disabled %}disabled{% endif %}
+        class="checkbox"
+      />
+      <span class="label-text">{{ label }}</span>
+    </label>
+    {% if disabled and checked %}
+      <input type="hidden" name="{{ name }}" value="true" />
+    {% endif %}
+    {% if hint %}
+      <div class="label">
+        <span class="label-text-alt">{{ hint }}</span>
+      </div>
+    {% endif %}
+  </div>
+{% endmacro %}

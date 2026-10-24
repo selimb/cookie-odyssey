@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% import "common/datetime.html" as dt %}
-{% import "common/media.html" as m %}
+{% import "common/entry.html" as e %}
+{% import "common/card_nav.html" as nav %}
 
 {% block content %}
   <div>
@@ -12,6 +13,10 @@
         >{{ journal.name }}</a
       >
       <span> - </span>
+      {% if day_number is not none %}
+        Day {{ day_number }}
+        <span> - </span>
+      {% endif %}
       {{ dt.date(datetime) }}
     </h1>
 
@@ -30,67 +35,11 @@
     #}
     <div class="space-y-4" data-controller="media--gallery">
       {% for entry in entries %}
-        {# See [entry-fragment]. #}
-        <div id="entry-{{ entry.id }}">
-          <div>
-            {% set aclass %}
-              class="font-semibold leading-tight
-              {% if entry.draft %}italic{% endif %}
-              {% if user.admin %}link-hover link{% endif %}"
-            {% endset %}
-            <a
-              {% if user.admin %}href="{{ entry.href_edit }}"{% endif %}
-              {{ aclass | clsx }}
-            >
-              <div>{{ dt.time(entry.datetime) }}</div>
-              <div>
-                <span>{{ entry.title }}</span>
-              </div>
-              <div>
-                <span>{{ entry.address }}</span>
-              </div>
-            </a>
-          </div>
-          <div class="mt-2 space-y-2 leading-snug">
-            {% for chunk in entry.text | splitlines %}
-              <p>{{ chunk }}</p>
-            {% endfor %}
-          </div>
-          <div class="mt-2 space-y-2">
-            {% for media in entry.media %}
-              <figure class="w-full">
-                {{ m.gallery_item(media, "w-full") }}
-                <figcaption class="mt-2 text-center text-sm">
-                  {{ media.caption }}
-                </figcaption>
-              </figure>
-            {% endfor %}
-          </div>
-        </div>
+        {{ e.entry(entry, user.admin) }}
       {% endfor %}
     </div>
 
-    {# Footer #}
-    <div class="mt-4 flex justify-between">
-      <a
-        class="btn border-neutral"
-        {% if href_journal_day_prev %}
-          href="{{ href_journal_day_prev }}"
-        {% else %}
-          disabled
-        {% endif %}
-        >Previous</a
-      >
-      <a
-        class="btn border-neutral"
-        {% if href_journal_day_next %}
-          href="{{ href_journal_day_next }}"
-        {% else %}
-          disabled
-        {% endif %}
-        >Next</a
-      >
-    </div>
+    {{ nav.pager(nav_prev, nav_next) }}
 
     {#
     Comments

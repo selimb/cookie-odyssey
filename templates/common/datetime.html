@@ -1,7 +1,19 @@
-{% macro date(d) %}
-  <time data-controller="datetime" datetime="{{ d }}" data-date-style="long"
+{% macro date(d, style="long") %}
+  <time
+    data-controller="datetime"
+    datetime="{{ d }}"
+    data-date-style="{{ style }}"
     >{{ d }}</time
   >
+{% endmacro %}
+
+{# `start` and `end` are the same when it is a single day. #}
+{% macro date_range(start, end) %}
+  {{ date(start, "medium") }}
+  {% if start != end %}
+    <span> - </span>
+    {{ date(end, "medium") }}
+  {% endif %}
 {% endmacro %}
 
 {% macro time(d) %}

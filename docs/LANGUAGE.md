@@ -7,18 +7,38 @@ A personal travel journal application where Admins publish Journals and Entries,
 **Journal**:
 A named collection of travel Entries, identified by a URL Slug.
 Has a start and end date and an optional cover image.
+Either covers a single continuous trip, or is a Scrapbook.
 _Avoid_: Trip, album, book
+
+**Scrapbook**:
+A Journal that collects Getaways and loose Entries over time, instead of covering a single continuous trip.
+Its Days are not numbered.
+A Journal can be turned into a Scrapbook, but a Scrapbook cannot be turned back into a Journal.
+_Avoid_: Collection, getaway journal, multi-trip journal
 
 **Entry**:
 A record within a Journal representing a single event on a given day.
 A Journal may have multiple Entries on the same day.
 Has a title, date, time, address, body text, and attached Media.
 Can be in Draft or published state.
+May belong to at most one Getaway.
 _Avoid_: Post, article, log
+
+**Getaway**:
+A named group of Entries within a Scrapbook, typically a short trip of a few days.
+Has only a name; its dates are those of the Entries it contains.
+Its Entries may span several Days, and not every Entry in the Scrapbook needs to belong to one.
+_Avoid_: Trip, chapter, episode, outing, group
+
+**Loose Entry**:
+An Entry in a Scrapbook that does not belong to any Getaway.
+_Avoid_: Ungrouped entry, standalone entry
 
 **Day**:
 A view of all Entries within a Journal on a given date.
 A Day may contain multiple Entries.
+In a Journal, Days are numbered by calendar days since the Journal's start date, so Day 1 is the start date.
+In a Scrapbook, a Day only shows the loose Entries, since Entries in a Getaway are shown with their Getaway.
 _Avoid_: Date view, daily log, day page
 
 **Media**:
@@ -49,7 +69,7 @@ Created automatically when a video Media item is committed.
 _Avoid_: Video job, encoding task, conversion
 
 **Comment**:
-A text note left by any authenticated User on a Journal, optionally associated with a specific date.
+A text note left by any authenticated User on a Journal, a Day, or a Getaway.
 Comments are not attached to individual Entries.
 _Avoid_: Note, reply, message
 
@@ -67,7 +87,7 @@ _Avoid_: Superuser, editor, owner
 **Notification**:
 A record that something new is available for readers, shared by all of its Recipients.
 Currently the only kind is "Entry published".
-Appears under the bell icon, and is marked read for a Recipient when they view the Day containing its Entry.
+Appears under the bell icon, and is marked read for a Recipient when they view the Day or Getaway containing its Entry.
 _Avoid_: Alert, update, message
 
 **Pending Notification**:

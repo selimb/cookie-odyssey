@@ -14,6 +14,10 @@
               <div class="text-sm">
                 {{ item.journal_name }}
                 <span> - </span>
+                {% if item.getaway_name %}
+                  {{ item.getaway_name }}
+                  <span> - </span>
+                {% endif %}
                 {{ dt.date(item.datetime) }}
               </div>
             </div>

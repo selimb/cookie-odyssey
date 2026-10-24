@@ -34,6 +34,10 @@ A reference points to it, usually as "See [anchor-name]" or "Matches [anchor-nam
 // See [toast]              <- reference elsewhere
 ```
 
+A comment that mentions behavior defined or enforced somewhere else (a constraint, a query, a handler, a macro) must reference an anchor on that thing, rather than describe it from memory or point at it in prose.
+Define the anchor where the behavior lives.
+E.g. write "See [getaway-comment-cascade]", not "Its Comments are deleted by the database".
+
 Anchors are also how to avoid duplicating information.
 Where the same convention or explanation would otherwise be repeated in several places, describe it once at the definition and make the other comments references.
 

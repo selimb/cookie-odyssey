@@ -21,6 +21,9 @@ pub struct JournalNew {
     pub slug: String,
     pub start_date: chrono::NaiveDate,
     pub end_date: Option<chrono::NaiveDate>,
+    /// See [checkbox-unchecked].
+    #[serde(default)]
+    pub scrapbook: bool,
 }
 
 pub async fn page_journal_new_get(templ: Templ) -> RouteResult {
@@ -47,6 +50,7 @@ pub async fn page_journal_new_post(
         slug: sea_orm::ActiveValue::Set(form.slug.clone()),
         start_date: sea_orm::ActiveValue::Set(form.start_date),
         end_date: sea_orm::ActiveValue::Set(form.end_date),
+        scrapbook: sea_orm::ActiveValue::Set(form.scrapbook),
         ..Default::default()
     };
     // TODO: Handle conflict (can't use on_conflict, since we have two unique constraints).

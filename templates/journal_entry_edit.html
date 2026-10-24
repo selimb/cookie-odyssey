@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% import "common/form.html" as form %}
 {% import "common/media.html" as m %}
+{% import "common/getaway_field.html" as gf %}
 
 {% macro icon_check() %}
   <!-- https://flowbite.com/icons/ check -->
@@ -57,6 +58,7 @@
 
       {{ form.input("title", "Title", value=entry.title) }}
       {{ form.input("address", "Location", value=entry.address) }}
+      {{ gf.getaway_input(journal, getaway_options, value=getaway_name) }}
       <div class="my-4 flex w-full gap-2">
         <input
           type="date"

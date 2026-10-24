@@ -11,6 +11,7 @@
       {{ form.input("slug", label="Slug") }}
       {{ form.input("start_date", label="Start Date", type="date") }}
       {{ form.input("end_date", label="End Date", type="date") }}
+      {{ form.checkbox("scrapbook", "Scrapbook", hint="Collects Getaways and loose Entries over time, instead of covering a single trip.") }}
 
       <button type="submit" class="btn btn-primary my-8 w-full">Create</button>
     </form>

@@ -4,13 +4,14 @@ use axum::{
     Form,
 };
 use minijinja::context;
-use sea_orm::EntityTrait;
+use sea_orm::{EntityTrait, TransactionTrait as _};
 use serde::Deserialize;
 
 use crate::{
     journal::queries::{
-        append_journal_entry_media, delete_journal_entry_media, query_journal_entry_by_id,
-        query_media_for_journal_entry, reorder_journal_entry_media, MediaFull,
+        append_journal_entry_media, delete_getaway_if_empty, delete_journal_entry_media,
+        query_getaway_options, query_journal_entry_by_id, query_media_for_journal_entry,
+        reorder_journal_entry_media, resolve_entry_getaway, MediaFull,
     },
     notification::queries::publish_entry,
     utils::serde_utils::string_trim,
@@ -24,6 +25,10 @@ pub struct JournalEntryEdit {
     title: String,
     #[serde(deserialize_with = "string_trim")]
     address: String,
+    /// The name of the Getaway.
+    /// Absent outside of a Scrapbook, see [getaway-field].
+    #[serde(default, deserialize_with = "string_trim")]
+    getaway: String,
     date: chrono::NaiveDate,
     time: chrono::NaiveTime,
     #[serde(deserialize_with = "string_trim")]
@@ -57,6 +62,11 @@ pub async fn page_journal_entry_edit_get(
         slug: Some(&entry_full.journal.slug),
     }
     .as_path();
+    let getaway_options = if entry_full.journal.scrapbook {
+        query_getaway_options(&state.db, entry_full.journal.id).await?
+    } else {
+        Vec::new()
+    };
 
     let ctx = context! {
         ..context! {
@@ -67,6 +77,8 @@ pub async fn page_journal_entry_edit_get(
             href_journal_detail,
             entry => entry_full.entry,
             journal => entry_full.journal,
+            getaway_name => entry_full.getaway_name,
+            getaway_options,
         },
         ..get_media_list_ctx(entry_full.media_list, entry_id)
     };
@@ -87,12 +99,35 @@ pub async fn hx_journal_entry_edit_post(
         Ok(Form(JournalEntryEdit {
             title,
             address,
+            getaway,
             date,
             time,
             text,
         })) => {
+            // [deferred-txn] This reads before it writes, so another write
+            // sneaking in between fails with SQLITE_BUSY_SNAPSHOT.
+            // There is one Admin, and they are not racing themselves, so meh.
+            let txn = state.db.begin().await?;
+            let found = JournalEntry::find_by_id(entry_id)
+                .find_also_related(Journal)
+                .one(&txn)
+                .await?;
+            let (entry, journal) = match found {
+                Some((entry, Some(journal))) => (entry, journal),
+                _ => {
+                    let resp = FormError::new("This Entry no longer exists").render(&state)?;
+                    return Ok(resp.into_response());
+                }
+            };
+            let getaway_id = match resolve_entry_getaway(&txn, &journal, &getaway).await? {
+                Ok(getaway_id) => getaway_id,
+                Err(err) => {
+                    return Ok(err.render(&state)?.into_response());
+                }
+            };
             let data = journal_entry::ActiveModel {
                 id: sea_orm::ActiveValue::Set(entry_id),
+                getaway_id: sea_orm::ActiveValue::Set(getaway_id),
                 title: sea_orm::ActiveValue::Set(title),
                 address: sea_orm::ActiveValue::Set(address),
                 date: sea_orm::ActiveValue::Set(date),
@@ -100,7 +135,13 @@ pub async fn hx_journal_entry_edit_post(
                 text: sea_orm::ActiveValue::Set(text),
                 ..Default::default()
             };
-            JournalEntry::update(data).exec(&state.db).await?;
+            JournalEntry::update(data).exec(&txn).await?;
+            // A Getaway that lost its last Entry goes away, with its Comments.
+            // See [getaway-comment-cascade].
+            if let Some(old_getaway_id) = entry.getaway_id.filter(|id| Some(*id) != getaway_id) {
+                delete_getaway_if_empty(&txn, old_getaway_id).await?;
+            }
+            txn.commit().await?;
             let resp = Toast::success("Saved");
             Ok(resp.into_response())
         }

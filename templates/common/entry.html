@@ -1,0 +1,42 @@
+{% import "common/datetime.html" as dt %}
+{% import "common/media.html" as m %}
+
+{# Renders an Entry of a Day or Getaway page, inside of a `media--gallery` controller. #}
+{% macro entry(entry, admin) %}
+  {# See [entry-fragment]. #}
+  <div id="entry-{{ entry.id }}">
+    <div>
+      {% set aclass %}
+        class="font-semibold leading-tight {% if entry.draft %}italic{% endif %}
+        {% if admin %}link-hover link{% endif %}"
+      {% endset %}
+      <a
+        {% if admin %}href="{{ entry.href_edit }}"{% endif %}
+        {{ aclass | clsx }}
+      >
+        <div>{{ dt.time(entry.datetime) }}</div>
+        <div>
+          <span>{{ entry.title }}</span>
+        </div>
+        <div>
+          <span>{{ entry.address }}</span>
+        </div>
+      </a>
+    </div>
+    <div class="mt-2 space-y-2 leading-snug">
+      {% for chunk in entry.text | splitlines %}
+        <p>{{ chunk }}</p>
+      {% endfor %}
+    </div>
+    <div class="mt-2 space-y-2">
+      {% for media in entry.media %}
+        <figure class="w-full">
+          {{ m.gallery_item(media, "w-full") }}
+          <figcaption class="mt-2 text-center text-sm">
+            {{ media.caption }}
+          </figcaption>
+        </figure>
+      {% endfor %}
+    </div>
+  </div>
+{% endmacro %}

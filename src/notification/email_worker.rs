@@ -117,7 +117,8 @@ async fn email_user(state: &WorkerState, user_id: i32) -> anyhow::Result<()> {
 #[derive(Serialize)]
 struct EmailEntry {
     title: String,
-    date: String,
+    /// The Getaway, if any, and the date.
+    secondary: String,
     href: String,
 }
 
@@ -137,9 +138,14 @@ fn group_rows(rows: Vec<NotificationRow>, server_name: &str) -> Vec<EmailGroup> 
             entry_id: Some(row.entry_id),
         }
         .as_url(server_name);
+        let date = row.date.format("%a, %b %-d, %Y").to_string();
+        let secondary = match row.getaway_name {
+            Some(getaway) => format!("{getaway} - {date}"),
+            None => date,
+        };
         let entry = EmailEntry {
             title: row.title,
-            date: row.date.format("%a, %b %-d, %Y").to_string(),
+            secondary,
             href,
         };
         match groups

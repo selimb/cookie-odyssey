@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% import "common/form.html" as form %}
+{% import "common/getaway_field.html" as gf %}
 
 {% block content %}
   <div>
@@ -9,6 +10,7 @@
 
       {{ form.input("", "Journal", disabled=true, value=journal.name, autocomplete="off") }}
       {{ form.input("title", label="Title") }}
+      {{ gf.getaway_input(journal, getaway_options, value=default_getaway) }}
       <div class="my-4 flex w-full gap-2">
         <input
           type="date"

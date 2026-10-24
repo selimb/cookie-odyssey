@@ -1,0 +1,25 @@
+{# [getaway-field] The Getaway of an Entry, only rendered in a Scrapbook. #}
+{# The typed name is resolved by [entry-getaway-resolve]. #}
+{% macro getaway_input(journal, options, value="") %}
+  {% if journal.scrapbook %}
+    <label class="form-control w-full">
+      <div class="label">
+        <span class="label-text">Getaway</span>
+      </div>
+      <input
+        name="getaway"
+        type="text"
+        list="getaway_options"
+        autocomplete="off"
+        placeholder="None"
+        {% if value %}value="{{ value }}"{% endif %}
+        class="input input-bordered w-full"
+      />
+      <datalist id="getaway_options">
+        {% for option in options %}
+          <option value="{{ option.name }}">{{ option.dates }}</option>
+        {% endfor %}
+      </datalist>
+    </label>
+  {% endif %}
+{% endmacro %}
