@@ -1,27 +1,7 @@
-import { z } from "zod";
-
-import { THUMBNAIL_EXT, thumbnailFromImage } from "./media/thumbnail";
+import { thumbnailFromImage } from "./media/thumbnail";
+import { fetchUploadUrls } from "./media/upload-url";
 import { toast } from "./toast";
 import { TypedController } from "./utils/stimulus-typed";
-
-// SYNC MediaUploadUrlBody
-type MediaUploadUrlBody = {
-  thumbnail_extension: string;
-  filenames: string[];
-};
-
-// SYNC MediaUploadUrlResultItem
-const MediaUploadUrlResultSchema = z.array(
-  z.object({
-    upload_method: z.string(),
-    upload_url_original: z.string(),
-    upload_url_thumbnail: z.string(),
-    upload_headers_original: z.record(z.string(), z.string()),
-    upload_headers_thumbnail: z.record(z.string(), z.string()),
-    file_id_original: z.number(),
-    file_id_thumbnail: z.number(),
-  }),
-);
 
 /**
  * Uploads a downscaled copy of the chosen image as the Journal's cover.
@@ -51,12 +31,17 @@ export class JournalCoverController extends TypedController(
     const $fileInput = this.getTarget("fileInput");
     // eslint-disable-next-line @typescript-eslint/no-misused-promises -- Hush.
     $fileInput.addEventListener("change", async () => {
-      const $submit = this.getTarget("submit");
-      $submit.disabled = true;
+      // Remove is disabled too, since a finishing upload would undo it.
+      const $buttons = [this.getTarget("submit"), this.getTarget("remove")];
+      for (const $button of $buttons) {
+        $button.disabled = true;
+      }
       try {
         await this.handleFileInput($fileInput);
       } finally {
-        $submit.disabled = false;
+        for (const $button of $buttons) {
+          $button.disabled = false;
+        }
       }
     });
   }
@@ -74,22 +59,13 @@ export class JournalCoverController extends TypedController(
       return;
     }
     const $fileId = this.getTarget("fileId");
-    $fileId.value = "";
+    // The id is only written on success, so a failed upload keeps the old cover.
     try {
       const result = await thumbnailFromImage(file);
-      const body: MediaUploadUrlBody = {
-        thumbnail_extension: THUMBNAIL_EXT,
-        filenames: [file.name],
-      };
-      const resp = await fetch(this.getValue("getUploadUrl"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      if (!resp.ok) {
-        throw new Error(`Request failed with status ${resp.status}`);
-      }
-      const [params] = MediaUploadUrlResultSchema.parse(await resp.json());
+      const [params] = await fetchUploadUrls(
+        [file.name],
+        this.getValue("getUploadUrl"),
+      );
       const uploadResp = await fetch(params.upload_url_thumbnail, {
         method: params.upload_method,
         body: result.thumbnail,

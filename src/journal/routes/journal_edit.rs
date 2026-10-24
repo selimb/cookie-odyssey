@@ -1,6 +1,6 @@
 use axum::{
     extract::{rejection::FormRejection, Path, State},
-    response::{IntoResponse, Response},
+    response::IntoResponse,
     Form,
 };
 use minijinja::context;
@@ -10,7 +10,7 @@ use serde::Deserialize;
 use crate::{
     journal::queries::query_journal_by_slug,
     utils::serde_utils::{empty_as_none, string_trim},
-    AppState, FormError, Route, RouteError, RouteResult, Templ,
+    AppState, FormError, Route, RouteResult, Templ,
 };
 use entities::{prelude::*, *};
 
@@ -64,7 +64,7 @@ pub async fn hx_journal_edit_post(
     templ: Templ,
     Path(slug): Path<String>,
     form: Result<Form<JournalEdit>, FormRejection>,
-) -> Result<Response, RouteError> {
+) -> RouteResult {
     let form = match form {
         Err(err) => {
             let resp = FormError::from(err).render(&state)?;
@@ -100,7 +100,6 @@ pub async fn hx_journal_edit_post(
         return Ok(resp.into_response());
     }
 
-    // The Slug is deliberately left alone, so that existing links keep working.
     if let Some(cover_file_id) = form.cover_file_id {
         let exists = File::find_by_id(cover_file_id)
             .one(&state.db)
@@ -111,6 +110,7 @@ pub async fn hx_journal_edit_post(
             return Ok(resp.into_response());
         }
     }
+    // The Slug is deliberately left alone, so that existing links keep working.
     let data = journal::ActiveModel {
         id: sea_orm::ActiveValue::Unchanged(journal.id),
         name: sea_orm::ActiveValue::Set(form.name),
