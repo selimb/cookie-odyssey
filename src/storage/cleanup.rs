@@ -107,13 +107,14 @@ impl StorageCleanup {
                 f.id,
                 f.key,
                 CASE
-                    WHEN m1.id IS NULL AND m2.id IS NULL THEN TRUE
+                    WHEN m1.id IS NULL AND m2.id IS NULL AND j.id IS NULL THEN TRUE
                     ELSE FALSE
                 END AS orphaned
             FROM
                 file f
                 LEFT JOIN journal_entry_media m1 ON m1.file_id = f.id
                 LEFT JOIN journal_entry_media m2 ON m2.thumbnail_file_id = f.id
+                LEFT JOIN journal j ON j.cover_id = f.id
             WHERE f.bucket = ?
             "#,
             [bucket.into()],

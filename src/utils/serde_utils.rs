@@ -8,3 +8,18 @@ where
     let ret = String::deserialize(d)?;
     Ok(ret.trim().to_string())
 }
+
+/// Treats an empty (or blank) form value as `None`.
+pub fn empty_as_none<'de, D, T>(d: D) -> Result<Option<T>, D::Error>
+where
+    D: serde::de::Deserializer<'de>,
+    T: std::str::FromStr,
+    T::Err: std::fmt::Display,
+{
+    let raw = String::deserialize(d)?;
+    let raw = raw.trim();
+    if raw.is_empty() {
+        return Ok(None);
+    }
+    raw.parse().map(Some).map_err(serde::de::Error::custom)
+}

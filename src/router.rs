@@ -29,6 +29,12 @@ pub enum Route<'a> {
     JournalListGet,
     JournalNewGet,
     JournalNewPost,
+    JournalEditGet {
+        slug: Option<&'a str>,
+    },
+    JournalEditPost {
+        slug: Option<&'a str>,
+    },
     JournalEntryNewGet(
         Option<(
             &'a journal::JournalEntryNewPath,
@@ -95,6 +101,14 @@ impl<'a> Route<'a> {
             Route::JournalListGet => "/".into(),
             Route::JournalNewGet => "/new-journal".into(),
             Route::JournalNewPost => "/new-journal".into(),
+            Route::JournalEditGet { slug } => match slug {
+                Some(slug) => format!("/journal/{slug}/edit").into(),
+                None => "/journal/{slug}/edit".into(),
+            },
+            Route::JournalEditPost { slug } => match slug {
+                Some(slug) => format!("/hx/journal/{slug}/edit").into(),
+                None => "/hx/journal/{slug}/edit".into(),
+            },
             Route::JournalEntryNewGet(params) => match params {
                 None => "/journal/{slug}/new-entry".into(),
                 Some((path, query)) => {
@@ -272,6 +286,14 @@ fn get_protected_routes() -> Router<AppState> {
         .route(
             &Route::JournalNewPost.as_path(),
             admin!(post(journal::page_journal_new_post)),
+        )
+        .route(
+            &Route::JournalEditGet { slug: None }.as_path(),
+            admin!(get(journal::page_journal_edit_get)),
+        )
+        .route(
+            &Route::JournalEditPost { slug: None }.as_path(),
+            admin!(post(journal::hx_journal_edit_post)),
         )
         .route(
             &Route::JournalEntryNewGet(None).as_path(),

@@ -7,7 +7,7 @@
   {# Header #}
   {% if user.admin %}
     <div class="my-4 flex items-center justify-between">
-      <div></div>
+      <a href="{{ href_journal_edit }}" class="btn btn-ghost">Edit</a>
       <a
         href="{{ href_journal_entry_new }}"
         class="btn btn-primary max-md:flex-1"
