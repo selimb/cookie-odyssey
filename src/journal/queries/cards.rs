@@ -216,6 +216,7 @@ impl CardView {
             href: href.into_owned(),
             day_number,
             getaway_name,
+            // See [date-as-datetime].
             start: chrono::NaiveDateTime::new(card.start, Default::default()),
             end: chrono::NaiveDateTime::new(card.end, Default::default()),
             entries: card.entries.clone(),

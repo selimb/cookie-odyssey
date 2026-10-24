@@ -28,6 +28,7 @@ pub async fn page_journal_list_get(State(state): State<AppState>, templ: Templ) 
             None => None,
             Some(cover) => Some(state.storage.sign_url(cover.bucket, cover.key).await?),
         };
+        // See [date-as-datetime].
         let start_date = chrono::NaiveDateTime::new(journal.start_date, Default::default());
         let end_date = journal
             .end_date

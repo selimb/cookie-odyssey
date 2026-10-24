@@ -72,6 +72,7 @@ pub async fn page_journal_day_get(
     let (nav_prev, nav_next) =
         query_neighbours(&journal, &CardKey::day(date), &state.db, &session).await?;
 
+    // See [date-as-datetime].
     let datetime = chrono::NaiveDateTime::new(date, Default::default());
     let day_number = day_number(&journal, date);
     let href_journal_detail = Route::JournalDetailGet { slug: Some(&slug) }.as_path();

@@ -96,6 +96,7 @@ pub async fn page_journal_getaway_get(
     let ctx = context! {
         journal,
         getaway,
+        // See [date-as-datetime].
         start => chrono::NaiveDateTime::new(start, Default::default()),
         end => chrono::NaiveDateTime::new(end, Default::default()),
         entries,

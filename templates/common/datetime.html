@@ -1,3 +1,4 @@
+{# `d` is a datetime at midnight, not a date, see [date-as-datetime]. #}
 {% macro date(d, style="long") %}
   <time
     data-controller="datetime"
