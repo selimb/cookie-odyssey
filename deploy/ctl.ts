@@ -2,6 +2,7 @@
 /**
  * Various commands for interacting with the remote server.
  */
+import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
@@ -19,13 +20,30 @@ const REMOTE_HOST = "cookie-odyssey";
 
 const DB_PATH_LOCAL = "data/prod.sqlite";
 const DB_PATH_REMOTE = "/home/cookie-odyssey/data/db.sqlite";
+const SERVICE = "cookie-odyssey-app.service";
 const DB_PATH_BACKUP_REMOTE = "/tmp/cookie-odyssey.sqlite.bak";
+// Separate from the backup, since that file is owned by the app user and so
+// cannot be overwritten over SFTP.
+const DB_PATH_PUSH_REMOTE = "/tmp/cookie-odyssey.sqlite.push";
 
 // eslint-disable-next-line unicorn/template-indent -- No.
 const DB_BACKUP_SCRIPT = `
 set -eux
 sqlite3 "${DB_PATH_REMOTE}" ".backup ${DB_PATH_BACKUP_REMOTE}"
 chmod a+r "${DB_PATH_BACKUP_REMOTE}"
+`.trim();
+
+// Replaces the remote database with the one uploaded to DB_PATH_PUSH_REMOTE.
+// Must run as the app user, with the service stopped.
+// The `-wal` and `-shm` files belong to the old database, so they are removed.
+// The file is staged next to the target so that the final mv is atomic.
+// eslint-disable-next-line unicorn/template-indent -- No.
+const DB_PUSH_SCRIPT = `
+set -eux
+DB="${DB_PATH_REMOTE}"
+cp "${DB_PATH_PUSH_REMOTE}" "$DB.push"
+rm -f "$DB-wal" "$DB-shm"
+mv -f "$DB.push" "$DB"
 `.trim();
 
 const logger = console;
@@ -72,16 +90,17 @@ async function sshConnect<T>(fn: (ssh: NodeSSH) => Promise<T>): Promise<T> {
 async function sshExec(
   ssh: NodeSSH,
   command: string,
-  options?: SSHExecCommandOptions,
+  options?: SSHExecCommandOptions & { checkCode?: boolean },
   displayScript?: string,
 ): Promise<SSHExecCommandResponse> {
   logger.debug(`Running command:\n${displayScript ?? command}\n`);
+  const { checkCode = true, ...sshOptions } = options ?? {};
   try {
-    var result = await ssh.execCommand(command, options);
+    var result = await ssh.execCommand(command, sshOptions);
   } catch (error) {
     throw new Error(`Failed to run command:\n${command}`, { cause: error });
   }
-  if (result.code !== 0) {
+  if (checkCode && result.code !== 0) {
     const lines = [
       `Command failed with code ${result.code}.`,
       "# command:",
@@ -117,6 +136,27 @@ async function sshExecScript(
   return await sshExec(ssh, command, undefined, script);
 }
 
+/**
+ * Writes a consistent snapshot of the local database to a new temporary file.
+ * Unlike copying the file, `.backup` includes whatever is still in the `-wal`
+ * file.
+ */
+async function snapshotLocalDb(): Promise<string> {
+  if (!fs.existsSync(DB_PATH_LOCAL)) {
+    throw new Error(`${DB_PATH_LOCAL} does not exist.`);
+  }
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "cookie-odyssey-push-"));
+  const snapshot = path.join(dir, "db.sqlite");
+  await Bun.$`sqlite3 ${DB_PATH_LOCAL} ${`.backup '${snapshot}'`}`;
+  const check = (
+    await Bun.$`sqlite3 ${snapshot} "PRAGMA integrity_check"`.text()
+  ).trim();
+  if (check !== "ok") {
+    throw new Error(`Integrity check failed for ${DB_PATH_LOCAL}:\n${check}`);
+  }
+  return snapshot;
+}
+
 async function main(): Promise<void> {
   const program = commander.program;
   program.command("db-pull").action(async () => {
@@ -129,9 +169,31 @@ async function main(): Promise<void> {
 
   program.command("db-push").action(async () => {
     await sshConnect(async (ssh) => {
-      await ssh.putFile(DB_PATH_LOCAL, DB_PATH_BACKUP_REMOTE);
-      logger.info(`Database pushed to ${DB_PATH_BACKUP_REMOTE}.`);
-      // TODO: Copy it to the right place, and get rid of `wal`/`shm` files.
+      const state = (
+        await sshExec(ssh, `systemctl is-active "${SERVICE}"`, {
+          // A non-zero exit code (3) is expected if the service is inactive or failed.
+          checkCode: false,
+        })
+      ).stdout.trim();
+      if (state !== "inactive" && state !== "failed") {
+        throw new Error(
+          `The service is ${state}. Stop it first, then run db-push again:\n  sudo systemctl stop ${SERVICE}`,
+        );
+      }
+
+      const snapshot = await snapshotLocalDb();
+      try {
+        await ssh.putFile(snapshot, DB_PATH_PUSH_REMOTE);
+      } finally {
+        fs.rmSync(path.dirname(snapshot), { recursive: true, force: true });
+      }
+      // The app user needs to read it.
+      await sshExec(ssh, `chmod a+r "${DB_PATH_PUSH_REMOTE}"`);
+      await sshExecScript(ssh, DB_PUSH_SCRIPT, { user: "cookie-odyssey" });
+      await sshExec(ssh, `rm -f "${DB_PATH_PUSH_REMOTE}"`);
+      logger.info(
+        `Database pushed. Start the service:\n  sudo systemctl start ${SERVICE}`,
+      );
     });
   });
 
