@@ -4,13 +4,11 @@ import {
   clampScale,
   clampTransform,
   distance,
-  DOUBLE_TAP_SCALE,
   fitSize,
   IDENTITY,
   midpoint,
   pinch,
   type Point,
-  SNAP_BACK_SCALE,
   type Transform,
   zoomAt,
 } from "./zoom";
@@ -36,16 +34,25 @@ type Slide = {
 /** How a zoom change is written to the DOM. */
 type ZoomWrite = "frame" | "now" | "animate";
 
+/** A touch that may turn out to be a tap. */
+type Tap = { point: Point; time: number };
+
 /** Maximum movement, in px, for a touch to still count as a tap. */
 const TAP_SLOP = 10;
 /** Maximum duration, in ms, of a touch that counts as a tap. */
 const TAP_MAX_MS = 500;
-/** Maximum delay, in ms, between the taps of a double-tap. */
+/**
+ * Maximum delay, in ms, between the taps of a double-tap.
+ * Also the delay before a single tap is acted upon, since it may still turn
+ * out to be the first tap of a double-tap.
+ */
 const DOUBLE_TAP_MS = 300;
 /** Maximum distance, in px, between the taps of a double-tap. */
 const DOUBLE_TAP_SLOP = 40;
-/** Delay, in ms, before a single tap is acted upon. */
-const SINGLE_TAP_DELAY_MS = 250;
+/** Scale used by double-tap and double-click. */
+const DOUBLE_TAP_SCALE = 2.5;
+/** Scale below which a finished pinch snaps back to no zoom. */
+const SNAP_BACK_SCALE = 1.05;
 
 /**
  * Full-screen viewer for the images and videos of a page.
@@ -73,15 +80,9 @@ export class JournalEntryMediaGalleryController extends TypedController(
   private slides: Slide[] = [];
   private index = 0;
   private isOpen = false;
-  // Whether `history.back()` was requested and its popstate is pending.
-  private backPending = false;
-  // Identifies the history entry of the page that opened the viewer.
-  private homeToken = "";
-  private previousOnPopState: typeof window.onpopstate = null;
   private previousHtmlOverflow = "";
   private abort: AbortController | undefined;
 
-  private chromeHidden = false;
   private zoom: Transform = IDENTITY;
   private zoomFrame: number | undefined;
   private resizeObserver: ResizeObserver | undefined;
@@ -91,8 +92,8 @@ export class JournalEntryMediaGalleryController extends TypedController(
     | { transform: Transform; distance: number; mid: Point }
     | undefined;
   private panStart: Point | undefined;
-  private tapStart: { point: Point; time: number } | undefined;
-  private lastTap: { point: Point; time: number } | undefined;
+  private tapStart: Tap | undefined;
+  private lastTap: Tap | undefined;
   private singleTapTimer: number | undefined;
   private mouseDown: Point | undefined;
 
@@ -128,10 +129,7 @@ export class JournalEntryMediaGalleryController extends TypedController(
     this.abort = undefined;
     this.resizeObserver?.disconnect();
     this.resizeObserver = undefined;
-    if (this.isOpen) {
-      // The element is going away, so there is no point in popping history.
-      this.teardown();
-    }
+    if (this.isOpen) this.teardown();
   }
 
   /** Opens the viewer on the clicked item. */
@@ -144,29 +142,13 @@ export class JournalEntryMediaGalleryController extends TypedController(
     const index = this.itemTargets.indexOf(anchor);
     if (index === -1) return;
     event.preventDefault();
-    // E.g. between Esc closing the dialog and its popstate.
-    if (this.isOpen) return;
 
     this.buildSlides();
     this.isOpen = true;
     this.index = index;
-    this.chromeHidden = false;
-    this.applyChromeClasses();
 
     this.previousHtmlOverflow = document.documentElement.style.overflow;
     document.documentElement.style.overflow = "hidden";
-
-    // Pushed so that the back button closes the viewer. See [gallery-popstate].
-    this.homeToken = `${Date.now()}-${Math.random()}`;
-    history.replaceState(
-      { ...(history.state as object | null), galleryHome: this.homeToken },
-      "",
-    );
-    history.pushState({ gallery: true }, "", location.href);
-    this.backPending = false;
-    this.previousOnPopState = window.onpopstate;
-    // eslint-disable-next-line unicorn/prefer-add-event-listener -- Replaces htmx's handler, see [gallery-popstate].
-    window.onpopstate = this.onPopState;
 
     this.getTarget("dialog").showModal();
     this.scrollToIndex(index, "instant");
@@ -174,11 +156,11 @@ export class JournalEntryMediaGalleryController extends TypedController(
   }
 
   /**
-   * Requests closing the viewer through history, from the close button or
-   * when the dialog closed on its own (e.g. Esc).
+   * Closes the viewer, from the close button or when the dialog closed on its
+   * own (e.g. Esc, or the Android back gesture).
    */
   close(): void {
-    this.requestBack();
+    if (this.isOpen) this.teardown();
   }
 
   prev(): void {
@@ -208,37 +190,8 @@ export class JournalEntryMediaGalleryController extends TypedController(
     this.syncIndex();
   }
 
-  // [gallery-popstate] htmx handles `popstate` with `window.onpopstate`, and
-  // restores its history cache when the popped state has `htmx: true`.
-  // It would do so when popping back to the page that opened the viewer,
-  // after snapshotting the page with the viewer open.
-  // A capture listener does not reliably run before it, so the viewer
-  // replaces `window.onpopstate` while open, and only hands over events that
-  // go elsewhere than the page's own entry (e.g. from the history menu).
-  private onPopState = (event: PopStateEvent): void => {
-    const state = event.state as { galleryHome?: string } | null;
-    const home = state?.galleryHome === this.homeToken;
-    const previous = this.previousOnPopState;
-    this.backPending = false;
-    // Restores `window.onpopstate`, and closes the dialog before htmx can
-    // snapshot the page.
-    if (this.isOpen) this.teardown();
-    if (!home) previous?.call(window, event);
-  };
-
-  private requestBack(): void {
-    if (!this.isOpen || this.backPending) return;
-    this.backPending = true;
-    history.back();
-  }
-
   /** Closes the dialog and releases everything that open acquired. */
   private teardown(): void {
-    if (window.onpopstate === this.onPopState) {
-      // eslint-disable-next-line unicorn/prefer-add-event-listener -- See [gallery-popstate].
-      window.onpopstate = this.previousOnPopState;
-    }
-    this.previousOnPopState = null;
     this.cancelSingleTap();
     this.resetTouch();
     this.cancelZoomFrame();
@@ -295,8 +248,7 @@ export class JournalEntryMediaGalleryController extends TypedController(
       // Taps on videos are left to the native controls, so the chrome could
       // not be brought back.
       if (this.slides[index]?.media instanceof HTMLVideoElement) {
-        this.chromeHidden = false;
-        this.applyChromeClasses();
+        this.getTarget("dialog").classList.remove("chrome-hidden");
       }
     }
     for (const [i, slide] of this.slides.entries()) {
@@ -319,20 +271,6 @@ export class JournalEntryMediaGalleryController extends TypedController(
     this.resetZoom();
     this.scrollToIndex(this.index, "instant");
   };
-
-  // Chrome.
-
-  private toggleChrome(): void {
-    this.chromeHidden = !this.chromeHidden;
-    this.applyChromeClasses();
-  }
-
-  private applyChromeClasses(): void {
-    this.getTarget("dialog").classList.toggle(
-      "chrome-hidden",
-      this.chromeHidden,
-    );
-  }
 
   // Zoom.
 
@@ -539,7 +477,7 @@ export class JournalEntryMediaGalleryController extends TypedController(
     this.singleTapTimer = window.setTimeout(() => {
       this.singleTapTimer = undefined;
       this.onSingleTap();
-    }, SINGLE_TAP_DELAY_MS);
+    }, DOUBLE_TAP_MS);
   }
 
   private cancelSingleTap(): void {
@@ -551,7 +489,7 @@ export class JournalEntryMediaGalleryController extends TypedController(
 
   private onSingleTap(): void {
     if (!this.isOpen || this.isZoomed()) return;
-    this.toggleChrome();
+    this.getTarget("dialog").classList.toggle("chrome-hidden");
   }
 
   // Mouse handling.

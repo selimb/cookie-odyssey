@@ -13,10 +13,6 @@ export type Transform = { scale: number; x: number; y: number };
 
 export const MIN_SCALE = 1;
 export const MAX_SCALE = 4;
-/** Scale used by double-tap and double-click. */
-export const DOUBLE_TAP_SCALE = 2.5;
-/** Scale below which a finished pinch snaps back to `MIN_SCALE`. */
-export const SNAP_BACK_SCALE = 1.05;
 
 export const IDENTITY: Transform = { scale: 1, x: 0, y: 0 };
 

@@ -24,4 +24,6 @@ Most users are on phones, and no library gave a good mobile experience for a jou
   Native-quality zoom would mean rewriting PhotoSwipe.
 - Gesture bugs are ours, and iOS Safari quirks have to be tested on a real phone.
 - The viewer is always black, whatever the theme, so its controls are custom styles rather than DaisyUI components.
-- Closing the viewer with the back button has to coexist with HTMX Boost's own history handling.
+- Opening the viewer does not add a history entry, like other blog galleries.
+  The Android back gesture still closes it, since browsers close a modal `<dialog>` on it, but elsewhere (e.g. an iOS edge swipe) Back leaves the page.
+  Adding an entry was tried and dropped: it had to work around HTMX Boost's own history handling, and left a dead entry for the Forward button.
