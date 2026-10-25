@@ -3,11 +3,8 @@ import type { MediaType } from "./form-controller";
 import {
   clampScale,
   clampTransform,
-  distance,
   fitSize,
   IDENTITY,
-  midpoint,
-  pinch,
   type Point,
   type Transform,
   zoomAt,
@@ -34,32 +31,23 @@ type Slide = {
 /** How a zoom change is written to the DOM. */
 type ZoomWrite = "frame" | "now" | "animate";
 
-/** A touch that may turn out to be a tap. */
-type Tap = { point: Point; time: number };
-
-/** Maximum movement, in px, for a touch to still count as a tap. */
-const TAP_SLOP = 10;
-/** Maximum duration, in ms, of a touch that counts as a tap. */
-const TAP_MAX_MS = 500;
 /**
- * Maximum delay, in ms, between the taps of a double-tap.
- * Also the delay before a single tap is acted upon, since it may still turn
- * out to be the first tap of a double-tap.
+ * Delay, in ms, before a single mouse click is acted upon, since it may still
+ * turn out to be the first click of a double-click.
  */
-const DOUBLE_TAP_MS = 300;
-/** Maximum distance, in px, between the taps of a double-tap. */
-const DOUBLE_TAP_SLOP = 40;
-/** Scale used by double-tap and double-click. */
-const DOUBLE_TAP_SCALE = 2.5;
-/** Scale below which a finished pinch snaps back to no zoom. */
-const SNAP_BACK_SCALE = 1.05;
+const DOUBLE_CLICK_MS = 300;
+/** Scale used by double-click. */
+const DOUBLE_CLICK_SCALE = 2.5;
 
 /**
  * Full-screen viewer for the images and videos of a page.
  *
  * Swiping is native scroll snapping.
- * Zoom (images only) is a CSS transform driven by touch events.
- * See [gallery-zoom].
+ * [gallery-native-zoom] On touch screens, zoom is the browser's own pinch
+ * zoom of the visual viewport, which feels much better than anything driven by
+ * touch events.
+ * The viewer only locks swiping and hides its chrome while the page is zoomed.
+ * With a mouse, zoom (images only) is a CSS transform, see [gallery-zoom].
  */
 export class JournalEntryMediaGalleryController extends TypedController(
   "media--gallery",
@@ -87,36 +75,26 @@ export class JournalEntryMediaGalleryController extends TypedController(
   private zoomFrame: number | undefined;
   private resizeObserver: ResizeObserver | undefined;
 
-  // Touch gesture state.
-  private pinchStart:
-    | { transform: Transform; distance: number; mid: Point }
-    | undefined;
-  private panStart: Point | undefined;
-  private tapStart: Tap | undefined;
-  private lastTap: Tap | undefined;
-  private singleTapTimer: number | undefined;
+  /** Type of the pointer that started the latest click. */
+  private pointerType = "";
+  private singleClickTimer: number | undefined;
   private mouseDown: Point | undefined;
 
   connect(): void {
     this.abort = new AbortController();
     const { signal } = this.abort;
     const scroller = this.getTarget("scroller");
-    const dialog = this.getTarget("dialog");
 
-    // Touch listeners must be non-passive to be able to cancel native
-    // scrolling, pinch and clicks.
-    const active = { passive: false, signal };
-    scroller.addEventListener("touchstart", this.onTouchStart, active);
-    scroller.addEventListener("touchmove", this.onTouchMove, active);
-    scroller.addEventListener("touchend", this.onTouchEnd, active);
-    scroller.addEventListener("touchcancel", this.resetTouch, { signal });
+    scroller.addEventListener("pointerdown", this.onPointerDown, { signal });
     scroller.addEventListener("dblclick", this.onDoubleClick, { signal });
     scroller.addEventListener("click", this.onClick, { signal });
     scroller.addEventListener("mousedown", this.onMouseDown, { signal });
     window.addEventListener("mousemove", this.onMouseMove, { signal });
     window.addEventListener("mouseup", this.onMouseUp, { signal });
-    // Stops iOS Safari from zooming the page on pinch.
-    dialog.addEventListener("gesturestart", preventDefault, { signal });
+    // See [gallery-native-zoom].
+    window.visualViewport?.addEventListener("resize", this.onViewportResize, {
+      signal,
+    });
     // Observes the scroller rather than the window, since its size can
     // change on its own (e.g. the dynamic viewport height on mobile), and
     // since the callback runs before the stale scroll position is reported.
@@ -153,6 +131,7 @@ export class JournalEntryMediaGalleryController extends TypedController(
     this.getTarget("dialog").showModal();
     this.scrollToIndex(index, "instant");
     this.syncIndex();
+    this.onViewportResize();
   }
 
   /**
@@ -192,8 +171,8 @@ export class JournalEntryMediaGalleryController extends TypedController(
 
   /** Closes the dialog and releases everything that open acquired. */
   private teardown(): void {
-    this.cancelSingleTap();
-    this.resetTouch();
+    this.cancelSingleClick();
+    this.mouseDown = undefined;
     this.cancelZoomFrame();
     for (const slide of this.slides) {
       if (slide.media instanceof HTMLVideoElement) slide.media.pause();
@@ -201,7 +180,7 @@ export class JournalEntryMediaGalleryController extends TypedController(
     this.isOpen = false;
     this.getTarget("dialog").classList.remove(
       "is-zoomed",
-      "is-pinching",
+      "is-viewport-zoomed",
       "chrome-hidden",
     );
     this.getTarget("dialog").close();
@@ -244,7 +223,6 @@ export class JournalEntryMediaGalleryController extends TypedController(
     if (index !== this.index) {
       this.resetZoom();
       this.index = index;
-      this.lastTap = undefined;
       // Taps on videos are left to the native controls, so the chrome could
       // not be brought back.
       if (this.slides[index]?.media instanceof HTMLVideoElement) {
@@ -265,6 +243,17 @@ export class JournalEntryMediaGalleryController extends TypedController(
     this.getTarget("prev").disabled = index === 0;
     this.getTarget("next").disabled = index === this.slides.length - 1;
   }
+
+  /** Tracks the browser's pinch zoom, see [gallery-native-zoom]. */
+  private onViewportResize = (): void => {
+    if (!this.isOpen) return;
+    const scale = window.visualViewport?.scale ?? 1;
+    this.getTarget("dialog").classList.toggle(
+      "is-viewport-zoomed",
+      // Leaves some room for rounding.
+      scale > 1.01,
+    );
+  };
 
   private onResize = (): void => {
     if (!this.isOpen || this.getTarget("scroller").clientWidth === 0) return;
@@ -342,7 +331,7 @@ export class JournalEntryMediaGalleryController extends TypedController(
     if (this.isZoomed()) {
       this.setZoom(IDENTITY, "animate");
     } else {
-      this.setZoom(zoomAt(this.zoom, DOUBLE_TAP_SCALE, point), "animate");
+      this.setZoom(zoomAt(this.zoom, DOUBLE_CLICK_SCALE, point), "animate");
     }
   }
 
@@ -352,158 +341,48 @@ export class JournalEntryMediaGalleryController extends TypedController(
     return image !== undefined && event.target === image;
   }
 
-  // Touch handling.
+  // Click handling.
 
-  private onTouchStart = (event: TouchEvent): void => {
-    if (!this.hitsImage(event) && !this.pinchStart) return;
-    const touches = event.touches;
-    if (touches.length === 2) {
-      const [a, b] = [touches.item(0), touches.item(1)];
-      if (!a || !b) return;
-      const pa = this.toLocal(a.clientX, a.clientY);
-      const pb = this.toLocal(b.clientX, b.clientY);
-      this.pinchStart = {
-        transform: this.zoom,
-        distance: Math.max(1, distance(pa, pb)),
-        mid: midpoint(pa, pb),
-      };
-      this.panStart = undefined;
-      this.tapStart = undefined;
-      this.cancelSingleTap();
-      this.lastTap = undefined;
-      // The first finger may have started scrolling the slides already, in
-      // which case touch events can no longer cancel it.
-      // Stops the scrolling and puts the current slide back in place.
-      this.getTarget("dialog").classList.add("is-pinching");
-      this.scrollToIndex(this.index, "instant");
-      if (event.cancelable) event.preventDefault();
-      return;
-    }
-    if (touches.length === 1) {
-      const t = touches.item(0);
-      if (!t) return;
-      const point = this.toLocal(t.clientX, t.clientY);
-      this.tapStart = { point, time: event.timeStamp };
-      if (this.isZoomed()) {
-        this.panStart = point;
-      }
-    }
+  private onPointerDown = (event: PointerEvent): void => {
+    this.pointerType = event.pointerType;
   };
-
-  private onTouchMove = (event: TouchEvent): void => {
-    const touches = event.touches;
-    if (this.pinchStart && touches.length >= 2) {
-      const [a, b] = [touches.item(0), touches.item(1)];
-      if (!a || !b) return;
-      const pa = this.toLocal(a.clientX, a.clientY);
-      const pb = this.toLocal(b.clientX, b.clientY);
-      this.setZoom(
-        pinch(
-          this.pinchStart.transform,
-          this.pinchStart.distance,
-          this.pinchStart.mid,
-          distance(pa, pb),
-          midpoint(pa, pb),
-        ),
-      );
-      event.preventDefault();
-      return;
-    }
-    const t = touches.item(0);
-    if (!t) return;
-    const point = this.toLocal(t.clientX, t.clientY);
-    if (this.tapStart && distance(point, this.tapStart.point) > TAP_SLOP) {
-      this.tapStart = undefined;
-    }
-    if (this.panStart && touches.length === 1) {
-      this.setZoom(panBy(this.zoom, this.panStart, point));
-      // Pans incrementally, so that moving back after hitting an edge moves
-      // the image right away.
-      this.panStart = point;
-      if (event.cancelable) event.preventDefault();
-    }
-  };
-
-  private onTouchEnd = (event: TouchEvent): void => {
-    if (event.touches.length === 0) {
-      this.getTarget("dialog").classList.remove("is-pinching");
-    }
-    if (this.pinchStart) {
-      if (event.touches.length < 2) {
-        this.pinchStart = undefined;
-        if (this.zoom.scale < SNAP_BACK_SCALE) {
-          this.setZoom(IDENTITY, "animate");
-        }
-        // Prevents the remaining finger from panning or tapping.
-        this.panStart = undefined;
-        this.tapStart = undefined;
-      }
-      if (event.cancelable) event.preventDefault();
-      return;
-    }
-    this.panStart = undefined;
-    const tap = this.tapStart;
-    this.tapStart = undefined;
-    if (!tap || event.touches.length > 0) return;
-    if (event.timeStamp - tap.time > TAP_MAX_MS) return;
-    // Suppresses the synthesized mouse events and click.
-    if (event.cancelable) event.preventDefault();
-
-    const last = this.lastTap;
-    if (
-      last &&
-      event.timeStamp - last.time < DOUBLE_TAP_MS &&
-      distance(last.point, tap.point) < DOUBLE_TAP_SLOP
-    ) {
-      this.lastTap = undefined;
-      this.cancelSingleTap();
-      this.toggleZoomAt(tap.point);
-      return;
-    }
-    this.lastTap = { point: tap.point, time: event.timeStamp };
-    this.scheduleSingleTap();
-  };
-
-  private resetTouch = (): void => {
-    this.getTarget("dialog").classList.remove("is-pinching");
-    this.pinchStart = undefined;
-    this.panStart = undefined;
-    this.tapStart = undefined;
-    this.mouseDown = undefined;
-  };
-
-  private scheduleSingleTap(): void {
-    this.cancelSingleTap();
-    this.singleTapTimer = window.setTimeout(() => {
-      this.singleTapTimer = undefined;
-      this.onSingleTap();
-    }, DOUBLE_TAP_MS);
-  }
-
-  private cancelSingleTap(): void {
-    if (this.singleTapTimer !== undefined) {
-      clearTimeout(this.singleTapTimer);
-      this.singleTapTimer = undefined;
-    }
-  }
-
-  private onSingleTap(): void {
-    if (!this.isOpen || this.isZoomed()) return;
-    this.getTarget("dialog").classList.toggle("chrome-hidden");
-  }
-
-  // Mouse handling.
 
   private onClick = (event: MouseEvent): void => {
     if (!this.hitsImage(event)) return;
+    if (this.pointerType !== "mouse") {
+      // Touch screens have no double-click to wait for, see
+      // [gallery-native-zoom].
+      this.toggleChrome();
+      return;
+    }
     // Second click of a double-click is handled by `onDoubleClick`.
     if (event.detail > 1) return;
-    this.scheduleSingleTap();
+    this.cancelSingleClick();
+    this.singleClickTimer = window.setTimeout(() => {
+      this.singleClickTimer = undefined;
+      this.toggleChrome();
+    }, DOUBLE_CLICK_MS);
   };
 
+  private cancelSingleClick(): void {
+    if (this.singleClickTimer !== undefined) {
+      clearTimeout(this.singleClickTimer);
+      this.singleClickTimer = undefined;
+    }
+  }
+
+  private toggleChrome(): void {
+    const dialog = this.getTarget("dialog");
+    if (!this.isOpen || this.isZoomed()) return;
+    if (dialog.classList.contains("is-viewport-zoomed")) return;
+    dialog.classList.toggle("chrome-hidden");
+  }
+
+  // Mouse zoom.
+
   private onDoubleClick = (event: MouseEvent): void => {
-    if (!this.hitsImage(event)) return;
-    this.cancelSingleTap();
+    if (!this.hitsImage(event) || this.pointerType !== "mouse") return;
+    this.cancelSingleClick();
     this.toggleZoomAt(this.toLocal(event.clientX, event.clientY));
   };
 
@@ -529,10 +408,6 @@ export class JournalEntryMediaGalleryController extends TypedController(
 /** Returns `t` translated by the movement from `from` to `to`. */
 function panBy(t: Transform, from: Point, to: Point): Transform {
   return { scale: t.scale, x: t.x + to.x - from.x, y: t.y + to.y - from.y };
-}
-
-function preventDefault(event: Event): void {
-  event.preventDefault();
 }
 
 function writeTransform(

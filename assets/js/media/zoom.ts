@@ -1,5 +1,5 @@
 /**
- * [gallery-zoom] Pure math for the gallery image zoom.
+ * [gallery-zoom] Pure math for the gallery image zoom with a mouse.
  *
  * All transforms are expressed as `translate(x, y) scale(scale)` with the
  * transform origin at the top-left corner of the zoomed element, and the
@@ -72,35 +72,4 @@ export function zoomAt(t: Transform, scale: number, point: Point): Transform {
     x: point.x - (point.x - t.x) * ratio,
     y: point.y - (point.y - t.y) * ratio,
   };
-}
-
-/**
- * Returns the transform of a pinch in progress.
- * The content under `startMid` at the start of the gesture follows `mid`.
- */
-export function pinch(
-  start: Transform,
-  startDistance: number,
-  startMid: Point,
-  distance: number,
-  mid: Point,
-): Transform {
-  const scale = clampScale(start.scale * (distance / startDistance));
-  const contentX = (startMid.x - start.x) / start.scale;
-  const contentY = (startMid.y - start.y) / start.scale;
-  return {
-    scale,
-    x: mid.x - contentX * scale,
-    y: mid.y - contentY * scale,
-  };
-}
-
-/** Returns the distance between two points. */
-export function distance(a: Point, b: Point): number {
-  return Math.hypot(a.x - b.x, a.y - b.y);
-}
-
-/** Returns the midpoint of two points. */
-export function midpoint(a: Point, b: Point): Point {
-  return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
 }

@@ -94,9 +94,9 @@
     overscroll-behavior: contain;
     scroll-snap-type: x mandatory;
     scrollbar-width: none;
-    /* Disables native pinch and double-tap zoom, see [gallery-zoom]. */
-    /* Keeps pan-y so that long captions can scroll. */
-    touch-action: pan-x pan-y;
+    /* Keeps the browser's pinch zoom but disables its double-tap zoom, so */
+    /* that taps are not delayed. See [gallery-native-zoom]. */
+    touch-action: manipulation;
   }
 
   /* The scroller gets the initial focus of the dialog, a ring around the */
@@ -164,24 +164,22 @@
   }
 
   .gallery-dialog.chrome-hidden .gallery-chrome,
-  .gallery-dialog.is-zoomed .gallery-chrome {
+  .gallery-dialog.is-zoomed .gallery-chrome,
+  .gallery-dialog.is-viewport-zoomed .gallery-chrome {
     opacity: 0;
     pointer-events: none;
   }
 
   /* Overrides `pointer-events-auto` on the buttons inside hidden chrome. */
   .gallery-dialog.chrome-hidden .gallery-chrome *,
-  .gallery-dialog.is-zoomed .gallery-chrome * {
+  .gallery-dialog.is-zoomed .gallery-chrome *,
+  .gallery-dialog.is-viewport-zoomed .gallery-chrome * {
     pointer-events: none;
   }
 
   .gallery-dialog.is-zoomed .gallery-scroller,
-  .gallery-dialog.is-pinching .gallery-scroller {
+  .gallery-dialog.is-viewport-zoomed .gallery-scroller {
     overflow-x: hidden;
-  }
-
-  .gallery-dialog.is-zoomed .gallery-media {
-    touch-action: none;
   }
 
   .gallery-button {

@@ -3,13 +3,10 @@ import { describe, expect, test } from "bun:test";
 import {
   clampScale,
   clampTransform,
-  distance,
   fitSize,
   IDENTITY,
   MAX_SCALE,
-  midpoint,
   MIN_SCALE,
-  pinch,
   type Point,
   type Transform,
   zoomAt,
@@ -92,36 +89,5 @@ describe("zoomAt", () => {
       y: (point.y - start.y) / start.scale,
     };
     expect(apply(t, content)).toEqual(point);
-  });
-});
-
-describe("pinch", () => {
-  test("scales by the ratio of finger distances", () => {
-    const mid = { x: 200, y: 400 };
-    const t = pinch(IDENTITY, 100, mid, 250, mid);
-    expect(t.scale).toBe(2.5);
-    expect(apply(t, mid)).toEqual(mid);
-  });
-
-  test("makes the pinched content follow the midpoint", () => {
-    const startMid = { x: 200, y: 400 };
-    const mid = { x: 250, y: 350 };
-    const t = pinch(IDENTITY, 100, startMid, 200, mid);
-    expect(apply(t, startMid)).toEqual(mid);
-  });
-
-  test("clamps the scale", () => {
-    const mid = { x: 0, y: 0 };
-    expect(pinch(IDENTITY, 100, mid, 1000, mid).scale).toBe(MAX_SCALE);
-    expect(pinch(IDENTITY, 100, mid, 10, mid).scale).toBe(MIN_SCALE);
-  });
-});
-
-describe("distance and midpoint", () => {
-  test("computes the distance and midpoint of two points", () => {
-    const a = { x: 0, y: 0 };
-    const b = { x: 30, y: 40 };
-    expect(distance(a, b)).toBe(50);
-    expect(midpoint(a, b)).toEqual({ x: 15, y: 20 });
   });
 });

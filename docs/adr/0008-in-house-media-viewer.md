@@ -1,7 +1,7 @@
 # In-house media viewer
 
 The full-screen viewer for the images and videos of a Day or Getaway page is our own Stimulus controller, not a gallery library.
-Swiping between slides is native CSS scroll snapping, videos are plain `<video>` elements, and zoom is a small hand-written pinch and double-tap on a single image.
+Swiping between slides is native CSS scroll snapping, videos are plain `<video>` elements, and zoom on touch screens is the browser's own pinch zoom.
 Most users are on phones, and no library gave a good mobile experience for a journal with lots of videos.
 
 ## Considered Options
@@ -20,8 +20,11 @@ Most users are on phones, and no library gave a good mobile experience for a jou
 
 ## Consequences
 
-- Zoom is basic: no momentum or rubber-banding, and no swiping to the next slide while zoomed.
-  Native-quality zoom would mean rewriting PhotoSwipe.
+- Zoom on touch screens is the browser's pinch zoom of the whole page, not a zoom of the image.
+  A hand-written pinch zoom (CSS transform driven by touch events) was tried first and dropped: it still felt janky next to native apps, and the browser's own zoom felt better even on the page's thumbnails.
+  The viewer locks swiping and hides its controls while the page is zoomed, and there is no double-tap zoom.
+  There is no API to reset the page zoom, so closing the viewer while zoomed leaves the page zoomed.
+- With a mouse, double-click zooms the image and dragging pans it, with a CSS transform.
 - Gesture bugs are ours, and iOS Safari quirks have to be tested on a real phone.
 - The viewer is always black, whatever the theme, so its controls are custom styles rather than DaisyUI components.
 - Opening the viewer does not add a history entry, like other blog galleries.
