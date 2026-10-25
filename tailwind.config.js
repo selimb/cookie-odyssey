@@ -13,7 +13,12 @@ export default {
   darkMode: ["selector", `[data-theme="${darkMode}"]`],
   // Includes the TypeScript sources for classes added at runtime, e.g. the
   // gallery slides.
-  content: ["templates/**/*.html", "src/**/*.rs", "assets/js/**/*.ts"],
+  content: [
+    "templates/**/*.html",
+    "src/**/*.rs",
+    "assets/js/**/*.ts",
+    "!assets/js/**/*.test.ts",
+  ],
   theme: { extend: {} },
   plugins: [daisyuiPlugin],
   daisyui,

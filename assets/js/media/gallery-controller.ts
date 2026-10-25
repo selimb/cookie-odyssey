@@ -89,6 +89,11 @@ export class JournalEntryMediaGalleryController extends TypedController(
     scroller.addEventListener("mousedown", this.onMouseDown, { signal });
     window.addEventListener("mousemove", this.onMouseMove, { signal });
     window.addEventListener("mouseup", this.onMouseUp, { signal });
+    // Keeps the open viewer out of the history snapshot of HTMX Boost, which
+    // would restore a dialog that nothing can close.
+    document.body.addEventListener("htmx:beforeHistorySave", this.close, {
+      signal,
+    });
     // [gallery-native-zoom] On touch screens, zoom is the browser's own pinch
     // zoom of the visual viewport, which feels much better than anything
     // driven by touch events.
@@ -123,7 +128,7 @@ export class JournalEntryMediaGalleryController extends TypedController(
     if (index === -1) return;
     event.preventDefault();
 
-    this.buildSlides();
+    this.buildSlides(index);
     this.isOpen = true;
     this.index = index;
 
@@ -137,12 +142,13 @@ export class JournalEntryMediaGalleryController extends TypedController(
   }
 
   /**
-   * Closes the viewer, from the close button or when the dialog closed on its
-   * own (e.g. Esc, or the Android back gesture).
+   * Closes the viewer, from the close button, before HTMX Boost saves the page
+   * to history, or when the dialog closed on its own (e.g. Esc, or the Android
+   * back gesture).
    */
-  close(): void {
+  close = (): void => {
     if (this.isOpen) this.teardown();
-  }
+  };
 
   prev(): void {
     this.go(-1);
@@ -192,11 +198,15 @@ export class JournalEntryMediaGalleryController extends TypedController(
     document.documentElement.style.overflow = this.previousHtmlOverflow;
   }
 
-  private buildSlides(): void {
+  /** [gallery-slides] Creates a slide for each item, on opening the viewer. */
+  private buildSlides(current: number): void {
     const scroller = this.getTarget("scroller");
-    this.slides = this.itemTargets.map((anchor) => {
+    this.slides = this.itemTargets.map((anchor, i) => {
       const item = readItem(anchor);
       const slide = createSlide(item);
+      // Keeps the other slides out of the focus order, so that Tab and the
+      // initial focus of the dialog cannot land on their video controls.
+      slide.element.inert = i !== current;
       scroller.append(slide.element);
       return slide;
     });
@@ -227,11 +237,13 @@ export class JournalEntryMediaGalleryController extends TypedController(
       this.index = index;
       // Taps on videos are left to the native controls, so the chrome could
       // not be brought back.
+      // See [gallery-video-taps].
       if (this.slides[index]?.media instanceof HTMLVideoElement) {
         this.getTarget("dialog").classList.remove("chrome-hidden");
       }
     }
     for (const [i, slide] of this.slides.entries()) {
+      slide.element.inert = i !== index;
       if (i !== index && slide.media instanceof HTMLVideoElement) {
         slide.media.pause();
       }
@@ -295,8 +307,9 @@ export class JournalEntryMediaGalleryController extends TypedController(
       width: slide.element.clientWidth,
       height: slide.element.clientHeight,
     };
-    // The thumbnail and the original have the same aspect ratio, and the
-    // natural size is more reliable than the stored one.
+    // The thumbnail and the original have the same aspect ratio (see
+    // [thumbnail-aspect-ratio]), and the natural size is more reliable than
+    // the stored one.
     const natural =
       image.naturalWidth > 0
         ? { width: image.naturalWidth, height: image.naturalHeight }
@@ -350,6 +363,7 @@ export class JournalEntryMediaGalleryController extends TypedController(
   };
 
   private onClick = (event: MouseEvent): void => {
+    // [gallery-video-taps] Leaves taps on videos to their native controls.
     if (!this.hitsImage(event)) return;
     if (this.pointerType !== "mouse") {
       // Touch screens have no double-tap to wait for, see
@@ -456,6 +470,13 @@ function createSlide(item: GalleryItem): Slide {
     video.controls = true;
     video.preload = "none";
     video.poster = item.urlThumbnail;
+    // See [gallery-video-playing].
+    // Browsers fire `pause` when a video ends, so `ended` needs no listener.
+    const syncPlaying = (): void => {
+      element.classList.toggle("is-playing", !video.paused);
+    };
+    video.addEventListener("play", syncPlaying);
+    video.addEventListener("pause", syncPlaying);
     media = video;
   }
   media.classList.add("gallery-media");

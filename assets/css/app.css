@@ -52,7 +52,7 @@
   .gallery-dialog {
     position: fixed;
     inset: 0;
-    width: 100vw;
+    width: 100%;
     height: 100vh;
     height: 100dvh;
     max-width: none;
@@ -154,7 +154,12 @@
   /* not intercept taps on them. */
   .gallery-caption-video {
     bottom: 4.5rem;
-    padding-bottom: 1rem;
+  }
+
+  /* [gallery-video-playing] Hides the caption while the video plays. */
+  .gallery-slide.is-playing .gallery-caption {
+    opacity: 0;
+    pointer-events: none;
   }
 
   .gallery-safe-top {
