@@ -32,14 +32,6 @@ let result = await Bun.build({
 });
 accManifest(result);
 
-result = await Bun.build({
-  entrypoints: ["assets/css/vendor/lightgallery.css"],
-  outdir: "assets/dist/vendor",
-  target: "browser",
-  naming: NAMING,
-});
-accManifest(result);
-
 await $`tailwindcss -i assets/css/app.css -o tmp/app.css`.quiet();
 
 result = await Bun.build({

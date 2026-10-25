@@ -1,43 +1,117 @@
+{#
+Renders a thumbnail that opens the viewer of the enclosing `media--gallery`
+controller.
+The data attributes are read by the controller, see [gallery-item-data].
+#}
 {% macro gallery_item(media, class) %}
-  {% if media.media_type == "image" %}
-    <a
-      href="{{ media.url_original }}"
-      target="_blank"
-      data-media--gallery-target="item"
-      data-lg-size="{{ media.width_original }}-{{ media.height_original }}"
-    >
-      <img
-        src="{{ media.url_thumbnail }}"
-        alt="{{ media.caption }}"
-        class="{{ class }}"
-        width="{{ media.width_thumbnail }}"
-        height="{{ media.height_thumbnail }}"
-      />
-    </a>
-  {% else %}
-    <!-- IMPORTANT: Set `data-src=""` here, otherwise lightGallery chokes. -->
-    <a
-      href="{{ media.url_original }}"
-      data-src=""
-      target="_blank"
-      data-media--gallery-target="item"
-      data-lg-size="{{ media.width_original }}-{{ media.height_original }}"
-      data-video='{
-        "source": [{"src":"{{ media.url_original }}"}],
-        "attributes": {"preload": "metadata", "poster": "{{ media.url_thumbnail }}", "playsinline": true, "controls": true}
-      }'
-      class="video-indicator-wrapper"
-    >
-      <img
-        src="{{ media.url_thumbnail }}"
-        alt="{{ media.caption }}"
-        class="{{ class }}"
-        width="{{ media.width_thumbnail }}"
-        height="{{ media.height_thumbnail }}"
-      />
+  <a
+    href="{{ media.url_original }}"
+    target="_blank"
+    data-media--gallery-target="item"
+    data-action="click->media--gallery#open"
+    data-media-type="{{ media.media_type }}"
+    data-url-original="{{ media.url_original }}"
+    data-url-thumbnail="{{ media.url_thumbnail }}"
+    data-width="{{ media.width_original }}"
+    data-height="{{ media.height_original }}"
+    data-caption="{{ media.caption }}"
+    {% if media.media_type != "image" %}class="video-indicator-wrapper"{% endif %}
+  >
+    <img
+      src="{{ media.url_thumbnail }}"
+      alt="{{ media.caption }}"
+      class="{{ class }}"
+      width="{{ media.width_thumbnail }}"
+      height="{{ media.height_thumbnail }}"
+    />
+    {% if media.media_type != "image" %}
       <span class="video-indicator"></span>
-    </a>
-  {% endif %}
+    {% endif %}
+  </a>
+{% endmacro %}
+
+{#
+[gallery-viewer-markup]
+Renders the full-screen viewer, to be included once inside each `media--gallery`
+controller.
+Slides are added by the controller when the viewer is opened.
+#}
+{% macro viewer() %}
+  <dialog
+    class="gallery-dialog"
+    data-media--gallery-target="dialog"
+    data-action="cancel->media--gallery#cancel keydown->media--gallery#key"
+    aria-label="Media viewer"
+  >
+    <div
+      class="gallery-scroller"
+      data-media--gallery-target="scroller"
+      data-action="scroll->media--gallery#scrolled"
+    ></div>
+    <div
+      class="gallery-chrome gallery-safe-top pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-3"
+    >
+      <span
+        class="pointer-events-auto rounded-full bg-black/50 px-3 py-1 text-sm tabular-nums text-white"
+        data-media--gallery-target="counter"
+      ></span>
+      <button
+        type="button"
+        class="gallery-button pointer-events-auto"
+        aria-label="Close"
+        data-action="media--gallery#close"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          class="h-6 w-6"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+        >
+          <path d="M6 6l12 12M18 6L6 18" />
+        </svg>
+      </button>
+    </div>
+    <button
+      type="button"
+      class="gallery-button gallery-chrome gallery-nav absolute left-3 top-1/2 -translate-y-1/2"
+      aria-label="Previous"
+      data-media--gallery-target="prev"
+      data-action="media--gallery#prev"
+    >
+      <svg
+        viewBox="0 0 24 24"
+        class="h-6 w-6"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <path d="M15 5l-7 7 7 7" />
+      </svg>
+    </button>
+    <button
+      type="button"
+      class="gallery-button gallery-chrome gallery-nav absolute right-3 top-1/2 -translate-y-1/2"
+      aria-label="Next"
+      data-media--gallery-target="next"
+      data-action="media--gallery#next"
+    >
+      <svg
+        viewBox="0 0 24 24"
+        class="h-6 w-6"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <path d="M9 5l7 7-7 7" />
+      </svg>
+    </button>
+  </dialog>
 {% endmacro %}
 
 {% macro standalone_item(media, class) %}

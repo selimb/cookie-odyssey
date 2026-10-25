@@ -16,7 +16,6 @@
     "canvas-confetti": "^1.9.3",
     "htmx-ext-response-targets": "^2.0.3",
     "htmx.org": "^2.0.5",
-    "lightgallery": "^2.8",
     "zod": "^4.1.12"
   },
   "peerDependencies": {

@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% import "common/datetime.html" as dt %}
 {% import "common/entry.html" as e %}
+{% import "common/media.html" as m %}
 {% import "common/card_nav.html" as nav %}
 {% import "common/form.html" as form %}
 
@@ -66,6 +67,7 @@
         {% endif %}
         {{ e.entry(entry, user.admin) }}
       {% endfor %}
+      {{ m.viewer() }}
     </div>
 
     {{ nav.pager(nav_prev, nav_next) }}
