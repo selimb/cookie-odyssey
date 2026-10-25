@@ -43,10 +43,8 @@ const DOUBLE_CLICK_SCALE = 2.5;
  * Full-screen viewer for the images and videos of a page.
  *
  * Swiping is native scroll snapping.
- * [gallery-native-zoom] On touch screens, zoom is the browser's own pinch
- * zoom of the visual viewport, which feels much better than anything driven by
- * touch events.
- * The viewer only locks swiping and hides its chrome while the page is zoomed.
+ * On touch screens, zoom is the browser's own pinch zoom, see
+ * [gallery-native-zoom].
  * With a mouse, zoom (images only) is a CSS transform, see [gallery-zoom].
  */
 export class JournalEntryMediaGalleryController extends TypedController(
@@ -91,7 +89,11 @@ export class JournalEntryMediaGalleryController extends TypedController(
     scroller.addEventListener("mousedown", this.onMouseDown, { signal });
     window.addEventListener("mousemove", this.onMouseMove, { signal });
     window.addEventListener("mouseup", this.onMouseUp, { signal });
-    // See [gallery-native-zoom].
+    // [gallery-native-zoom] On touch screens, zoom is the browser's own pinch
+    // zoom of the visual viewport, which feels much better than anything
+    // driven by touch events.
+    // The viewer only locks swiping and hides its chrome while the page is
+    // zoomed.
     window.visualViewport?.addEventListener("resize", this.onViewportResize, {
       signal,
     });
@@ -350,8 +352,8 @@ export class JournalEntryMediaGalleryController extends TypedController(
   private onClick = (event: MouseEvent): void => {
     if (!this.hitsImage(event)) return;
     if (this.pointerType !== "mouse") {
-      // Touch screens have no double-click to wait for, see
-      // [gallery-native-zoom].
+      // Touch screens have no double-tap to wait for, see
+      // [gallery-no-double-tap].
       this.toggleChrome();
       return;
     }

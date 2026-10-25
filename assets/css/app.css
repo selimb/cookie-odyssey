@@ -94,8 +94,9 @@
     overscroll-behavior: contain;
     scroll-snap-type: x mandatory;
     scrollbar-width: none;
-    /* Keeps the browser's pinch zoom but disables its double-tap zoom, so */
-    /* that taps are not delayed. See [gallery-native-zoom]. */
+    /* [gallery-no-double-tap] Keeps the browser's pinch zoom but disables */
+    /* its double-tap zoom, so that taps are not delayed. */
+    /* See [gallery-native-zoom]. */
     touch-action: manipulation;
   }
 
@@ -119,7 +120,8 @@
     scroll-snap-stop: always;
   }
 
-  /* [gallery-media-fit] Fills the slide, with the image centered inside it. */
+  /* [gallery-media-fit] Fills the slide, with the image centered inside it, */
+  /* and zooms from its top-left corner. */
   .gallery-media {
     display: block;
     width: 100%;
