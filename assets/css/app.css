@@ -94,7 +94,15 @@
     overscroll-behavior: contain;
     scroll-snap-type: x mandatory;
     scrollbar-width: none;
-    touch-action: pan-x;
+    /* Disables native pinch and double-tap zoom, see [gallery-zoom]. */
+    /* Keeps pan-y so that long captions can scroll. */
+    touch-action: pan-x pan-y;
+  }
+
+  /* The scroller gets the initial focus of the dialog, a ring around the */
+  /* whole screen is only noise. */
+  .gallery-scroller:focus {
+    outline: none;
   }
 
   .gallery-scroller::-webkit-scrollbar {
@@ -111,6 +119,7 @@
     scroll-snap-stop: always;
   }
 
+  /* [gallery-media-fit] Fills the slide, with the image centered inside it. */
   .gallery-media {
     display: block;
     width: 100%;
@@ -139,9 +148,11 @@
     background: linear-gradient(to top, rgb(0 0 0 / 0.8), transparent);
   }
 
-  /* Keeps the caption clear of the native video controls. */
+  /* Keeps the caption box clear of the native video controls, so it does */
+  /* not intercept taps on them. */
   .gallery-caption-video {
-    padding-bottom: calc(env(safe-area-inset-bottom) + 4.5rem);
+    bottom: 4.5rem;
+    padding-bottom: 1rem;
   }
 
   .gallery-safe-top {
@@ -158,7 +169,14 @@
     pointer-events: none;
   }
 
-  .gallery-dialog.is-zoomed .gallery-scroller {
+  /* Overrides `pointer-events-auto` on the buttons inside hidden chrome. */
+  .gallery-dialog.chrome-hidden .gallery-chrome *,
+  .gallery-dialog.is-zoomed .gallery-chrome * {
+    pointer-events: none;
+  }
+
+  .gallery-dialog.is-zoomed .gallery-scroller,
+  .gallery-dialog.is-pinching .gallery-scroller {
     overflow-x: hidden;
   }
 

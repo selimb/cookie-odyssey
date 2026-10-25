@@ -1,10 +1,10 @@
 /**
- * Pure math for the gallery image zoom.
+ * [gallery-zoom] Pure math for the gallery image zoom.
  *
  * All transforms are expressed as `translate(x, y) scale(scale)` with the
  * transform origin at the top-left corner of the zoomed element, and the
- * element is assumed to fill the viewport (the image inside it is centered
- * with `object-fit: contain`).
+ * element is assumed to fill the viewport with the image centered inside it.
+ * See [gallery-media-fit].
  */
 
 export type Size = { width: number; height: number };
@@ -15,7 +15,7 @@ export const MIN_SCALE = 1;
 export const MAX_SCALE = 4;
 /** Scale used by double-tap and double-click. */
 export const DOUBLE_TAP_SCALE = 2.5;
-/** A gesture ending below this scale snaps back to `MIN_SCALE`. */
+/** Scale below which a finished pinch snaps back to `MIN_SCALE`. */
 export const SNAP_BACK_SCALE = 1.05;
 
 export const IDENTITY: Transform = { scale: 1, x: 0, y: 0 };

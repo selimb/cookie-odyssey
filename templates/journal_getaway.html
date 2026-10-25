@@ -60,13 +60,17 @@
     {#
     Entries
     #}
-    <div class="space-y-4" data-controller="media--gallery">
-      {% for entry in entries %}
-        {% if entry.new_date %}
-          <h2 class="pt-2 text-lg font-bold">{{ dt.date(entry.datetime) }}</h2>
-        {% endif %}
-        {{ e.entry(entry, user.admin) }}
-      {% endfor %}
+    <div data-controller="media--gallery">
+      <div class="space-y-4">
+        {% for entry in entries %}
+          {% if entry.new_date %}
+            <h2 class="pt-2 text-lg font-bold">
+              {{ dt.date(entry.datetime) }}
+            </h2>
+          {% endif %}
+          {{ e.entry(entry, user.admin) }}
+        {% endfor %}
+      </div>
       {{ m.viewer() }}
     </div>
 

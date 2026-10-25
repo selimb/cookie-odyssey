@@ -1,7 +1,7 @@
 {#
 Renders a thumbnail that opens the viewer of the enclosing `media--gallery`
 controller.
-The data attributes are read by the controller, see [gallery-item-data].
+The anchor and its thumbnail are read by the controller, see [gallery-item-data].
 #}
 {% macro gallery_item(media, class) %}
   <a
@@ -10,11 +10,8 @@ The data attributes are read by the controller, see [gallery-item-data].
     data-media--gallery-target="item"
     data-action="click->media--gallery#open"
     data-media-type="{{ media.media_type }}"
-    data-url-original="{{ media.url_original }}"
-    data-url-thumbnail="{{ media.url_thumbnail }}"
     data-width="{{ media.width_original }}"
     data-height="{{ media.height_original }}"
-    data-caption="{{ media.caption }}"
     {% if media.media_type != "image" %}class="video-indicator-wrapper"{% endif %}
   >
     <img
@@ -34,13 +31,14 @@ The data attributes are read by the controller, see [gallery-item-data].
 [gallery-viewer-markup]
 Renders the full-screen viewer, to be included once inside each `media--gallery`
 controller.
+Must not be a child of a `space-y-*` container, which would give it a margin.
 Slides are added by the controller when the viewer is opened.
 #}
 {% macro viewer() %}
   <dialog
     class="gallery-dialog"
     data-media--gallery-target="dialog"
-    data-action="cancel->media--gallery#cancel keydown->media--gallery#key"
+    data-action="close->media--gallery#close keydown->media--gallery#key"
     aria-label="Media viewer"
   >
     <div
@@ -49,7 +47,7 @@ Slides are added by the controller when the viewer is opened.
       data-action="scroll->media--gallery#scrolled"
     ></div>
     <div
-      class="gallery-chrome gallery-safe-top pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-3"
+      class="gallery-chrome gallery-safe-top pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between px-3 pb-3"
     >
       <span
         class="pointer-events-auto rounded-full bg-black/50 px-3 py-1 text-sm tabular-nums text-white"

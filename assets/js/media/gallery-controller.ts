@@ -1,4 +1,5 @@
 import { TypedController } from "../utils/stimulus-typed";
+import type { MediaType } from "./form-controller";
 import {
   clampScale,
   clampTransform,
@@ -14,10 +15,9 @@ import {
   zoomAt,
 } from "./zoom";
 
-// [gallery-item-data] Data read from each item anchor, rendered by
-// `gallery_item` in `templates/common/media.html`.
+// [gallery-item-data] Data read from each item anchor and its thumbnail.
 type GalleryItem = {
-  type: "image" | "video";
+  type: MediaType;
   urlOriginal: string;
   urlThumbnail: string;
   width: number;
@@ -33,10 +33,17 @@ type Slide = {
   loaded: boolean;
 };
 
+/** How a zoom change is written to the DOM. */
+type ZoomWrite = "frame" | "now" | "animate";
+
 /** Maximum movement, in px, for a touch to still count as a tap. */
 const TAP_SLOP = 10;
+/** Maximum duration, in ms, of a touch that counts as a tap. */
+const TAP_MAX_MS = 500;
 /** Maximum delay, in ms, between the taps of a double-tap. */
 const DOUBLE_TAP_MS = 300;
+/** Maximum distance, in px, between the taps of a double-tap. */
+const DOUBLE_TAP_SLOP = 40;
 /** Delay, in ms, before a single tap is acted upon. */
 const SINGLE_TAP_DELAY_MS = 250;
 
@@ -44,8 +51,8 @@ const SINGLE_TAP_DELAY_MS = 250;
  * Full-screen viewer for the images and videos of a page.
  *
  * Swiping is native scroll snapping.
- * Zoom (images only) is a CSS transform driven by touch events, see
- * `./zoom.ts` for the math.
+ * Zoom (images only) is a CSS transform driven by touch events.
+ * See [gallery-zoom].
  */
 export class JournalEntryMediaGalleryController extends TypedController(
   "media--gallery",
@@ -66,26 +73,28 @@ export class JournalEntryMediaGalleryController extends TypedController(
   private slides: Slide[] = [];
   private index = 0;
   private isOpen = false;
-  // Whether we pushed a history entry that has not been popped yet.
-  private hasHistoryEntry = false;
   // Whether `history.back()` was requested and its popstate is pending.
   private backPending = false;
+  // Identifies the history entry of the page that opened the viewer.
+  private homeToken = "";
+  private previousOnPopState: typeof window.onpopstate = null;
   private previousHtmlOverflow = "";
   private abort: AbortController | undefined;
 
   private chromeHidden = false;
   private zoom: Transform = IDENTITY;
   private zoomFrame: number | undefined;
+  private resizeObserver: ResizeObserver | undefined;
 
   // Touch gesture state.
   private pinchStart:
     | { transform: Transform; distance: number; mid: Point }
     | undefined;
-  private panStart: { touch: Point; transform: Transform } | undefined;
+  private panStart: Point | undefined;
   private tapStart: { point: Point; time: number } | undefined;
   private lastTap: { point: Point; time: number } | undefined;
   private singleTapTimer: number | undefined;
-  private mouseDown: { point: Point; transform: Transform } | undefined;
+  private mouseDown: Point | undefined;
 
   connect(): void {
     this.abort = new AbortController();
@@ -93,105 +102,32 @@ export class JournalEntryMediaGalleryController extends TypedController(
     const scroller = this.getTarget("scroller");
     const dialog = this.getTarget("dialog");
 
-    // Touch listeners must be non-passive to be able to block native pinch.
-    scroller.addEventListener(
-      "touchstart",
-      (e) => {
-        this.onTouchStart(e);
-      },
-      {
-        passive: false,
-        signal,
-      },
-    );
-    scroller.addEventListener(
-      "touchmove",
-      (e) => {
-        this.onTouchMove(e);
-      },
-      {
-        passive: false,
-        signal,
-      },
-    );
-    scroller.addEventListener(
-      "touchend",
-      (e) => {
-        this.onTouchEnd(e);
-      },
-      {
-        passive: false,
-        signal,
-      },
-    );
-    scroller.addEventListener(
-      "touchcancel",
-      () => {
-        this.resetTouch();
-      },
-      {
-        signal,
-      },
-    );
-    scroller.addEventListener(
-      "dblclick",
-      (e) => {
-        this.onDoubleClick(e);
-      },
-      {
-        signal,
-      },
-    );
-    scroller.addEventListener(
-      "click",
-      (e) => {
-        this.onClick(e);
-      },
-      { signal },
-    );
-    scroller.addEventListener(
-      "mousedown",
-      (e) => {
-        this.onMouseDown(e);
-      },
-      {
-        signal,
-      },
-    );
-    window.addEventListener(
-      "mousemove",
-      (e) => {
-        this.onMouseMove(e);
-      },
-      {
-        signal,
-      },
-    );
-    window.addEventListener("mouseup", () => (this.mouseDown = undefined), {
-      signal,
-    });
+    // Touch listeners must be non-passive to be able to cancel native
+    // scrolling, pinch and clicks.
+    const active = { passive: false, signal };
+    scroller.addEventListener("touchstart", this.onTouchStart, active);
+    scroller.addEventListener("touchmove", this.onTouchMove, active);
+    scroller.addEventListener("touchend", this.onTouchEnd, active);
+    scroller.addEventListener("touchcancel", this.resetTouch, { signal });
+    scroller.addEventListener("dblclick", this.onDoubleClick, { signal });
+    scroller.addEventListener("click", this.onClick, { signal });
+    scroller.addEventListener("mousedown", this.onMouseDown, { signal });
+    window.addEventListener("mousemove", this.onMouseMove, { signal });
+    window.addEventListener("mouseup", this.onMouseUp, { signal });
     // Stops iOS Safari from zooming the page on pinch.
-    dialog.addEventListener(
-      "gesturestart",
-      (e) => {
-        e.preventDefault();
-      },
-      {
-        signal,
-      },
-    );
-    window.addEventListener(
-      "resize",
-      () => {
-        this.onResize();
-      },
-      { signal },
-    );
+    dialog.addEventListener("gesturestart", preventDefault, { signal });
+    // Observes the scroller rather than the window, since its size can
+    // change on its own (e.g. the dynamic viewport height on mobile), and
+    // since the callback runs before the stale scroll position is reported.
+    this.resizeObserver = new ResizeObserver(this.onResize);
+    this.resizeObserver.observe(scroller);
   }
 
   disconnect(): void {
     this.abort?.abort();
     this.abort = undefined;
+    this.resizeObserver?.disconnect();
+    this.resizeObserver = undefined;
     if (this.isOpen) {
       // The element is going away, so there is no point in popping history.
       this.teardown();
@@ -199,11 +135,17 @@ export class JournalEntryMediaGalleryController extends TypedController(
   }
 
   /** Opens the viewer on the clicked item. */
-  open(event: Event): void {
+  open(event: MouseEvent): void {
+    // Lets modified clicks open the original in a new tab.
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+      return;
+    }
     const anchor = event.currentTarget as HTMLAnchorElement;
     const index = this.itemTargets.indexOf(anchor);
-    if (index === -1 || this.isOpen) return;
+    if (index === -1) return;
     event.preventDefault();
+    // E.g. between Esc closing the dialog and its popstate.
+    if (this.isOpen) return;
 
     this.buildSlides();
     this.isOpen = true;
@@ -215,27 +157,27 @@ export class JournalEntryMediaGalleryController extends TypedController(
     document.documentElement.style.overflow = "hidden";
 
     // Pushed so that the back button closes the viewer. See [gallery-popstate].
+    this.homeToken = `${Date.now()}-${Math.random()}`;
+    history.replaceState(
+      { ...(history.state as object | null), galleryHome: this.homeToken },
+      "",
+    );
     history.pushState({ gallery: true }, "", location.href);
-    this.hasHistoryEntry = true;
     this.backPending = false;
-    window.addEventListener("popstate", this.onPopState, {
-      capture: true,
-      signal: this.abort?.signal,
-    });
+    this.previousOnPopState = window.onpopstate;
+    // eslint-disable-next-line unicorn/prefer-add-event-listener -- Replaces htmx's handler, see [gallery-popstate].
+    window.onpopstate = this.onPopState;
 
     this.getTarget("dialog").showModal();
     this.scrollToIndex(index, "instant");
     this.syncIndex();
   }
 
-  /** Requests closing the viewer, through history. */
+  /**
+   * Requests closing the viewer through history, from the close button or
+   * when the dialog closed on its own (e.g. Esc).
+   */
   close(): void {
-    this.requestBack();
-  }
-
-  /** Handles the native dialog cancel (Esc), going through history. */
-  cancel(event: Event): void {
-    event.preventDefault();
     this.requestBack();
   }
 
@@ -249,9 +191,13 @@ export class JournalEntryMediaGalleryController extends TypedController(
 
   /** Handles arrow key navigation. */
   key(event: KeyboardEvent): void {
+    // Leaves arrow keys to the native video controls, for seeking.
+    if (event.target instanceof HTMLVideoElement) return;
     if (event.key === "ArrowLeft") {
+      event.preventDefault();
       this.go(-1);
     } else if (event.key === "ArrowRight") {
+      event.preventDefault();
       this.go(1);
     }
   }
@@ -262,42 +208,49 @@ export class JournalEntryMediaGalleryController extends TypedController(
     this.syncIndex();
   }
 
-  // [gallery-popstate] htmx listens to `popstate` on `window` and restores
-  // its history cache when the state we pop back to has `htmx: true`, which is
-  // the case for the page that opened the viewer.
-  // Our listener is registered in the capture phase, and stops the event.
+  // [gallery-popstate] htmx handles `popstate` with `window.onpopstate`, and
+  // restores its history cache when the popped state has `htmx: true`.
+  // It would do so when popping back to the page that opened the viewer,
+  // after snapshotting the page with the viewer open.
+  // A capture listener does not reliably run before it, so the viewer
+  // replaces `window.onpopstate` while open, and only hands over events that
+  // go elsewhere than the page's own entry (e.g. from the history menu).
   private onPopState = (event: PopStateEvent): void => {
-    if (!this.isOpen) return;
-    event.stopImmediatePropagation();
-    this.hasHistoryEntry = false;
+    const state = event.state as { galleryHome?: string } | null;
+    const home = state?.galleryHome === this.homeToken;
+    const previous = this.previousOnPopState;
     this.backPending = false;
-    this.teardown();
+    // Restores `window.onpopstate`, and closes the dialog before htmx can
+    // snapshot the page.
+    if (this.isOpen) this.teardown();
+    if (!home) previous?.call(window, event);
   };
 
   private requestBack(): void {
     if (!this.isOpen || this.backPending) return;
-    if (this.hasHistoryEntry) {
-      this.backPending = true;
-      history.back();
-    } else {
-      this.teardown();
-    }
+    this.backPending = true;
+    history.back();
   }
 
   /** Closes the dialog and releases everything that open acquired. */
   private teardown(): void {
-    window.removeEventListener("popstate", this.onPopState, { capture: true });
+    if (window.onpopstate === this.onPopState) {
+      // eslint-disable-next-line unicorn/prefer-add-event-listener -- See [gallery-popstate].
+      window.onpopstate = this.previousOnPopState;
+    }
+    this.previousOnPopState = null;
     this.cancelSingleTap();
     this.resetTouch();
-    if (this.zoomFrame !== undefined) {
-      cancelAnimationFrame(this.zoomFrame);
-      this.zoomFrame = undefined;
-    }
+    this.cancelZoomFrame();
     for (const slide of this.slides) {
       if (slide.media instanceof HTMLVideoElement) slide.media.pause();
     }
     this.isOpen = false;
-    this.getTarget("dialog").classList.remove("is-zoomed", "chrome-hidden");
+    this.getTarget("dialog").classList.remove(
+      "is-zoomed",
+      "is-pinching",
+      "chrome-hidden",
+    );
     this.getTarget("dialog").close();
     this.getTarget("scroller").replaceChildren();
     this.slides = [];
@@ -335,10 +288,16 @@ export class JournalEntryMediaGalleryController extends TypedController(
       this.slides.length - 1,
       Math.max(0, Math.round(scroller.scrollLeft / width)),
     );
-    const changed = index !== this.index;
-    if (changed) {
-      this.resetZoom(false);
+    if (index !== this.index) {
+      this.resetZoom();
       this.index = index;
+      this.lastTap = undefined;
+      // Taps on videos are left to the native controls, so the chrome could
+      // not be brought back.
+      if (this.slides[index]?.media instanceof HTMLVideoElement) {
+        this.chromeHidden = false;
+        this.applyChromeClasses();
+      }
     }
     for (const [i, slide] of this.slides.entries()) {
       if (i !== index && slide.media instanceof HTMLVideoElement) {
@@ -346,9 +305,8 @@ export class JournalEntryMediaGalleryController extends TypedController(
       }
     }
     // Only slides near the current one load their original.
-    for (let i = index - 1; i <= index + 1; i++) {
-      const slide = this.slides.at(i);
-      if (slide) loadOriginal(slide);
+    for (const slide of this.slides.slice(Math.max(0, index - 1), index + 2)) {
+      loadOriginal(slide);
     }
     this.getTarget("counter").textContent =
       `${index + 1} / ${this.slides.length}`;
@@ -356,11 +314,11 @@ export class JournalEntryMediaGalleryController extends TypedController(
     this.getTarget("next").disabled = index === this.slides.length - 1;
   }
 
-  private onResize(): void {
-    if (!this.isOpen) return;
-    this.resetZoom(false);
+  private onResize = (): void => {
+    if (!this.isOpen || this.getTarget("scroller").clientWidth === 0) return;
+    this.resetZoom();
     this.scrollToIndex(this.index, "instant");
-  }
+  };
 
   // Chrome.
 
@@ -378,20 +336,20 @@ export class JournalEntryMediaGalleryController extends TypedController(
 
   // Zoom.
 
-  /** Returns the current slide if it is an image, otherwise undefined. */
+  /** Returns the image of the current slide, if it is one. */
   private currentImage(): HTMLImageElement | undefined {
     const media = this.slides.at(this.index)?.media;
     return media instanceof HTMLImageElement ? media : undefined;
   }
 
-  private viewSize(): { width: number; height: number } {
-    const scroller = this.getTarget("scroller");
-    return { width: scroller.clientWidth, height: scroller.clientHeight };
-  }
-
-  /** Converts client coordinates to the coordinates of the zoomed element. */
+  /**
+   * Converts client coordinates to the coordinates of the zoomed element,
+   * which are those of its (untransformed) slide.
+   */
   private toLocal(clientX: number, clientY: number): Point {
-    const rect = this.getTarget("scroller").getBoundingClientRect();
+    const slide = this.slides.at(this.index);
+    if (!slide) return { x: clientX, y: clientY };
+    const rect = slide.element.getBoundingClientRect();
     return { x: clientX - rect.left, y: clientY - rect.top };
   }
 
@@ -399,54 +357,58 @@ export class JournalEntryMediaGalleryController extends TypedController(
     return this.zoom.scale > 1;
   }
 
-  /** Sets the zoom, clamped, writing it to the DOM on the next frame. */
-  private setZoom(t: Transform, animate = false): void {
+  /** Sets the zoom of the current image, clamped, and writes it to the DOM. */
+  private setZoom(t: Transform, write: ZoomWrite = "frame"): void {
     const slide = this.slides.at(this.index);
     const image = this.currentImage();
     if (!slide || !image) return;
-    const view = this.viewSize();
-    const fit = fitSize(
-      { width: slide.item.width, height: slide.item.height },
-      view,
-    );
+    const view = {
+      width: slide.element.clientWidth,
+      height: slide.element.clientHeight,
+    };
+    // The thumbnail and the original have the same aspect ratio, and the
+    // natural size is more reliable than the stored one.
+    const natural =
+      image.naturalWidth > 0
+        ? { width: image.naturalWidth, height: image.naturalHeight }
+        : { width: slide.item.width, height: slide.item.height };
+    const fit = fitSize(natural, view);
     this.zoom = clampTransform({ ...t, scale: clampScale(t.scale) }, view, fit);
     this.getTarget("dialog").classList.toggle("is-zoomed", this.isZoomed());
-    if (animate) {
-      if (this.zoomFrame !== undefined) cancelAnimationFrame(this.zoomFrame);
-      this.zoomFrame = undefined;
-      image.classList.add("gallery-animate");
-      writeTransform(image, this.zoom);
-    } else {
+    if (write === "frame") {
+      // Coalesces the writes of a gesture to one per frame.
       this.zoomFrame ??= requestAnimationFrame(() => {
         this.zoomFrame = undefined;
-        image.classList.remove("gallery-animate");
-        writeTransform(image, this.zoom);
+        writeTransform(image, this.zoom, false);
       });
+    } else {
+      this.cancelZoomFrame();
+      writeTransform(image, this.zoom, write === "animate");
     }
   }
 
-  /** Resets zoom of the current slide, before `index` is changed. */
-  private resetZoom(animate: boolean): void {
-    if (!this.isZoomed()) return;
-    this.setZoom(IDENTITY, animate);
-    // Not animated resets must be written right away, as the slide changes.
-    if (!animate && this.zoomFrame !== undefined) {
+  private cancelZoomFrame(): void {
+    if (this.zoomFrame !== undefined) {
       cancelAnimationFrame(this.zoomFrame);
       this.zoomFrame = undefined;
-      const image = this.currentImage();
-      if (image) writeTransform(image, this.zoom);
     }
+  }
+
+  /** Resets the zoom of the current slide right away, before it changes. */
+  private resetZoom(): void {
+    if (!this.isZoomed()) return;
+    this.setZoom(IDENTITY, "now");
   }
 
   private toggleZoomAt(point: Point): void {
     if (this.isZoomed()) {
-      this.setZoom(IDENTITY, true);
+      this.setZoom(IDENTITY, "animate");
     } else {
-      this.setZoom(zoomAt(this.zoom, DOUBLE_TAP_SCALE, point), true);
+      this.setZoom(zoomAt(this.zoom, DOUBLE_TAP_SCALE, point), "animate");
     }
   }
 
-  /** Whether the event targets the image of the current slide. */
+  /** Returns whether the event targets the image of the current slide. */
   private hitsImage(event: Event): boolean {
     const image = this.currentImage();
     return image !== undefined && event.target === image;
@@ -454,7 +416,7 @@ export class JournalEntryMediaGalleryController extends TypedController(
 
   // Touch handling.
 
-  private onTouchStart(event: TouchEvent): void {
+  private onTouchStart = (event: TouchEvent): void => {
     if (!this.hitsImage(event) && !this.pinchStart) return;
     const touches = event.touches;
     if (touches.length === 2) {
@@ -471,7 +433,12 @@ export class JournalEntryMediaGalleryController extends TypedController(
       this.tapStart = undefined;
       this.cancelSingleTap();
       this.lastTap = undefined;
-      event.preventDefault();
+      // The first finger may have started scrolling the slides already, in
+      // which case touch events can no longer cancel it.
+      // Stops the scrolling and puts the current slide back in place.
+      this.getTarget("dialog").classList.add("is-pinching");
+      this.scrollToIndex(this.index, "instant");
+      if (event.cancelable) event.preventDefault();
       return;
     }
     if (touches.length === 1) {
@@ -480,12 +447,12 @@ export class JournalEntryMediaGalleryController extends TypedController(
       const point = this.toLocal(t.clientX, t.clientY);
       this.tapStart = { point, time: event.timeStamp };
       if (this.isZoomed()) {
-        this.panStart = { touch: point, transform: this.zoom };
+        this.panStart = point;
       }
     }
-  }
+  };
 
-  private onTouchMove(event: TouchEvent): void {
+  private onTouchMove = (event: TouchEvent): void => {
     const touches = event.touches;
     if (this.pinchStart && touches.length >= 2) {
       const [a, b] = [touches.item(0), touches.item(1)];
@@ -511,21 +478,23 @@ export class JournalEntryMediaGalleryController extends TypedController(
       this.tapStart = undefined;
     }
     if (this.panStart && touches.length === 1) {
-      this.setZoom({
-        scale: this.panStart.transform.scale,
-        x: this.panStart.transform.x + point.x - this.panStart.touch.x,
-        y: this.panStart.transform.y + point.y - this.panStart.touch.y,
-      });
-      event.preventDefault();
+      this.setZoom(panBy(this.zoom, this.panStart, point));
+      // Pans incrementally, so that moving back after hitting an edge moves
+      // the image right away.
+      this.panStart = point;
+      if (event.cancelable) event.preventDefault();
     }
-  }
+  };
 
-  private onTouchEnd(event: TouchEvent): void {
+  private onTouchEnd = (event: TouchEvent): void => {
+    if (event.touches.length === 0) {
+      this.getTarget("dialog").classList.remove("is-pinching");
+    }
     if (this.pinchStart) {
       if (event.touches.length < 2) {
         this.pinchStart = undefined;
         if (this.zoom.scale < SNAP_BACK_SCALE) {
-          this.setZoom(IDENTITY, true);
+          this.setZoom(IDENTITY, "animate");
         }
         // Prevents the remaining finger from panning or tapping.
         this.panStart = undefined;
@@ -538,7 +507,7 @@ export class JournalEntryMediaGalleryController extends TypedController(
     const tap = this.tapStart;
     this.tapStart = undefined;
     if (!tap || event.touches.length > 0) return;
-    if (event.timeStamp - tap.time > 500) return;
+    if (event.timeStamp - tap.time > TAP_MAX_MS) return;
     // Suppresses the synthesized mouse events and click.
     if (event.cancelable) event.preventDefault();
 
@@ -546,7 +515,7 @@ export class JournalEntryMediaGalleryController extends TypedController(
     if (
       last &&
       event.timeStamp - last.time < DOUBLE_TAP_MS &&
-      distance(last.point, tap.point) < 40
+      distance(last.point, tap.point) < DOUBLE_TAP_SLOP
     ) {
       this.lastTap = undefined;
       this.cancelSingleTap();
@@ -555,14 +524,15 @@ export class JournalEntryMediaGalleryController extends TypedController(
     }
     this.lastTap = { point: tap.point, time: event.timeStamp };
     this.scheduleSingleTap();
-  }
+  };
 
-  private resetTouch(): void {
+  private resetTouch = (): void => {
+    this.getTarget("dialog").classList.remove("is-pinching");
     this.pinchStart = undefined;
     this.panStart = undefined;
     this.tapStart = undefined;
     this.mouseDown = undefined;
-  }
+  };
 
   private scheduleSingleTap(): void {
     this.cancelSingleTap();
@@ -586,41 +556,53 @@ export class JournalEntryMediaGalleryController extends TypedController(
 
   // Mouse handling.
 
-  private onClick(event: MouseEvent): void {
+  private onClick = (event: MouseEvent): void => {
     if (!this.hitsImage(event)) return;
     // Second click of a double-click is handled by `onDoubleClick`.
     if (event.detail > 1) return;
     this.scheduleSingleTap();
-  }
+  };
 
-  private onDoubleClick(event: MouseEvent): void {
+  private onDoubleClick = (event: MouseEvent): void => {
     if (!this.hitsImage(event)) return;
     this.cancelSingleTap();
     this.toggleZoomAt(this.toLocal(event.clientX, event.clientY));
-  }
+  };
 
-  private onMouseDown(event: MouseEvent): void {
+  private onMouseDown = (event: MouseEvent): void => {
     if (!this.hitsImage(event) || !this.isZoomed()) return;
     event.preventDefault();
-    this.mouseDown = {
-      point: this.toLocal(event.clientX, event.clientY),
-      transform: this.zoom,
-    };
-  }
+    this.mouseDown = this.toLocal(event.clientX, event.clientY);
+  };
 
-  private onMouseMove(event: MouseEvent): void {
+  private onMouseMove = (event: MouseEvent): void => {
     const start = this.mouseDown;
     if (!start) return;
     const point = this.toLocal(event.clientX, event.clientY);
-    this.setZoom({
-      scale: start.transform.scale,
-      x: start.transform.x + point.x - start.point.x,
-      y: start.transform.y + point.y - start.point.y,
-    });
-  }
+    this.setZoom(panBy(this.zoom, start, point));
+    this.mouseDown = point;
+  };
+
+  private onMouseUp = (): void => {
+    this.mouseDown = undefined;
+  };
 }
 
-function writeTransform(image: HTMLElement, t: Transform): void {
+/** Returns `t` translated by the movement from `from` to `to`. */
+function panBy(t: Transform, from: Point, to: Point): Transform {
+  return { scale: t.scale, x: t.x + to.x - from.x, y: t.y + to.y - from.y };
+}
+
+function preventDefault(event: Event): void {
+  event.preventDefault();
+}
+
+function writeTransform(
+  image: HTMLElement,
+  t: Transform,
+  animate: boolean,
+): void {
+  image.classList.toggle("gallery-animate", animate);
   image.style.transform =
     t.scale === 1 && t.x === 0 && t.y === 0
       ? ""
@@ -630,14 +612,14 @@ function writeTransform(image: HTMLElement, t: Transform): void {
 /** Reads an item anchor, see [gallery-item-data]. */
 function readItem(anchor: HTMLAnchorElement): GalleryItem {
   const d = anchor.dataset;
-  const type = d.mediaType === "image" ? "image" : "video";
+  const thumbnail = anchor.querySelector("img");
   return {
-    type,
-    urlOriginal: d.urlOriginal ?? "",
-    urlThumbnail: d.urlThumbnail ?? "",
+    type: d.mediaType === "image" ? "image" : "video",
+    urlOriginal: anchor.href,
+    urlThumbnail: thumbnail?.src ?? "",
     width: Number(d.width),
     height: Number(d.height),
-    caption: d.caption ?? "",
+    caption: thumbnail?.alt ?? "",
   };
 }
 
@@ -674,7 +656,7 @@ function createSlide(item: GalleryItem): Slide {
   return { item, element, media, loaded: false };
 }
 
-/** Starts loading the original of a slide, once. */
+/** Starts loading the original of a slide, once per opening of the viewer. */
 function loadOriginal(slide: Slide): void {
   if (slide.loaded) return;
   slide.loaded = true;
@@ -692,7 +674,6 @@ function loadOriginal(slide: Slide): void {
       media.src = item.urlOriginal;
     })
     .catch(() => {
-      // Keep showing the thumbnail.
-      slide.loaded = false;
+      // Keeps showing the thumbnail, rather than retrying on every scroll.
     });
 }

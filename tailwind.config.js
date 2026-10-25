@@ -11,7 +11,9 @@ const daisyui = {
 /** @type {import('tailwindcss').Config} */
 export default {
   darkMode: ["selector", `[data-theme="${darkMode}"]`],
-  content: ["templates/**/*.html", "src/**/*.rs"],
+  // Includes the TypeScript sources for classes added at runtime, e.g. the
+  // gallery slides.
+  content: ["templates/**/*.html", "src/**/*.rs", "assets/js/**/*.ts"],
   theme: { extend: {} },
   plugins: [daisyuiPlugin],
   daisyui,
