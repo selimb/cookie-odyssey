@@ -157,7 +157,7 @@ export class JournalEntryMediaFormController extends TypedController(
 }
 
 // SYNC MediaType
-type MediaType = "image" | "video";
+export type MediaType = "image" | "video";
 
 // SYNC JournalEntryMediaCommitItem
 type JournalEntryMediaCommitItem = {

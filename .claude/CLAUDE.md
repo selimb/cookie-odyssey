@@ -19,9 +19,10 @@ Optimized for low bandwidth (mobile LTE) and cheap hosting (small VPS).
 - Lint Typescript: `just lint-js` or `just lint-js-fix` to auto-fix
 - Lint HTML: `just lint-html`
 - Test Rust: `cargo test`
+- Test Typescript: `just test-js`
 
 There is no test suite for the app as a whole, so verify behavior manually.
-Pure functions get unit tests in a `#[cfg(test)]` module next to them.
+Pure functions get unit tests: in a `#[cfg(test)]` module next to them in Rust, and in a `*.test.ts` file next to them in TypeScript (`bun:test`).
 
 ## Project layout
 

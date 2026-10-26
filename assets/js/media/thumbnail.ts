@@ -20,6 +20,7 @@ async function generateThumbnail(
   const canvas = document.createElement("canvas");
 
   try {
+    // [thumbnail-aspect-ratio] Keeps the aspect ratio of the original.
     const aspectRatio = width / height;
     const thumbnailWidth = THUMBNAIL_WIDTH;
     const thumbnailHeight = Math.round(thumbnailWidth / aspectRatio);
