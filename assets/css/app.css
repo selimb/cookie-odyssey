@@ -167,21 +167,19 @@
   }
 
   .gallery-chrome {
-    transition: opacity 150ms;
+    /* Transitioning `visibility` delays hiding until the fade ends. */
+    transition:
+      opacity 150ms,
+      visibility 150ms;
   }
 
+  /* Uses `visibility` rather than `pointer-events`, so that hidden buttons */
+  /* can neither be clicked nor reached with Tab. */
   .gallery-dialog.chrome-hidden .gallery-chrome,
   .gallery-dialog.is-zoomed .gallery-chrome,
   .gallery-dialog.is-viewport-zoomed .gallery-chrome {
     opacity: 0;
-    pointer-events: none;
-  }
-
-  /* Overrides `pointer-events-auto` on the buttons inside hidden chrome. */
-  .gallery-dialog.chrome-hidden .gallery-chrome *,
-  .gallery-dialog.is-zoomed .gallery-chrome *,
-  .gallery-dialog.is-viewport-zoomed .gallery-chrome * {
-    pointer-events: none;
+    visibility: hidden;
   }
 
   .gallery-dialog.is-zoomed .gallery-scroller,
