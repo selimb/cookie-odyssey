@@ -20,7 +20,7 @@ pub struct EmailMessage {
     pub to: EmailRecipient,
     pub subject: String,
     pub text: String,
-    /// When `None`, the message is sent as plain text only.
+    /// The HTML alternative to `text`, or `None` to send plain text only.
     pub html: Option<String>,
 }
 

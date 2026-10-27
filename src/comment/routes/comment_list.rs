@@ -54,11 +54,7 @@ pub async fn hx_journal_comment_add_post(
 
     // See [comment-email].
     state.comment_email_worker.enqueue(CommentEmailJob {
-        scope: CommentScope {
-            journal_id: scope.journal_id,
-            date: scope.date,
-            getaway_id: scope.getaway_id,
-        },
+        scope: scope.clone(),
         user_id,
         text,
     });

@@ -32,8 +32,8 @@ struct WorkerState {
     server_name: String,
 }
 
-/// [comment-email] Sends one Comment Email per Admin for each job, one job at
-/// a time.
+/// [comment-email] Queue and consumer of Comment Emails, one per Admin for
+/// each job, one job at a time.
 /// Jobs are only held in memory, so a Comment Email is lost if sending it
 /// fails or the process stops first.
 #[derive(Debug)]
