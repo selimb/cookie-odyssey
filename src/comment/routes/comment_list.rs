@@ -11,8 +11,11 @@ use entities::{prelude::*, *};
 
 use crate::{
     auth::utils::unwrap_user_from_session,
-    comment::queries::{
-        add_comment_to_journal, query_comments_for_journal, AddCommentToJournal, CommentScope,
+    comment::{
+        email_worker::CommentEmailJob,
+        queries::{
+            add_comment_to_journal, query_comments_for_journal, AddCommentToJournal, CommentScope,
+        },
     },
     utils::serde_utils::string_trim,
     AppState, AuthSession, Route, RouteError, RouteResult, Templ, Toast,
@@ -43,11 +46,22 @@ pub async fn hx_journal_comment_add_post(
     let user_id = unwrap_user_from_session(&session).0.id;
     let params = AddCommentToJournal {
         scope: &scope,
-        text,
+        text: text.clone(),
         user_id,
     };
 
     add_comment_to_journal(params, &state.db).await?;
+
+    // See [comment-email].
+    state.comment_email_worker.enqueue(CommentEmailJob {
+        scope: CommentScope {
+            journal_id: scope.journal_id,
+            date: scope.date,
+            getaway_id: scope.getaway_id,
+        },
+        user_id,
+        text,
+    });
 
     let html = CommentList {
         scope,

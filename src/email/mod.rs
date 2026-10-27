@@ -20,7 +20,8 @@ pub struct EmailMessage {
     pub to: EmailRecipient,
     pub subject: String,
     pub text: String,
-    pub html: String,
+    /// When `None`, the message is sent as plain text only.
+    pub html: Option<String>,
 }
 
 /// Sends emails over SMTP.
@@ -74,12 +75,13 @@ impl EmailClient {
                 .parse()
                 .context("Invalid recipient address")?,
         );
-        let email = Message::builder()
+        let builder = Message::builder()
             .from(self.from.clone())
             .reply_to(self.reply_to.clone())
             .to(to)
-            .subject(msg.subject)
-            .multipart(
+            .subject(msg.subject);
+        let email = match msg.html {
+            Some(html) => builder.multipart(
                 MultiPart::alternative()
                     .singlepart(
                         SinglePart::builder()
@@ -89,10 +91,12 @@ impl EmailClient {
                     .singlepart(
                         SinglePart::builder()
                             .header(ContentType::TEXT_HTML)
-                            .body(msg.html),
+                            .body(html),
                     ),
-            )
-            .context("Failed to build email")?;
+            ),
+            None => builder.body(msg.text),
+        }
+        .context("Failed to build email")?;
         self.transport
             .send(email)
             .await

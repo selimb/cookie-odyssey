@@ -105,6 +105,11 @@ The Admin action that delivers every Pending Notification to all Recipients at o
 Cannot be undone.
 _Avoid_: Send, publish, broadcast, announce
 
+**Comment Email**:
+An email sent to Admins right after a User leaves a Comment, one per Comment.
+Not a Notification: it has no Pending state, no Flush, no bell entry and no read state.
+_Avoid_: Comment alert, comment notification
+
 **Slug**:
 A URL-safe string that uniquely identifies a Journal, used as its path parameter in page routes.
 _Avoid_: ID, handle, identifier, permalink

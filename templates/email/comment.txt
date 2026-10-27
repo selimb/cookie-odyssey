@@ -1,0 +1,5 @@
+{{ commenter_name }} left a comment on {{ target }}:
+
+{{ text }}
+
+{{ href }}

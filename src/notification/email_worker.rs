@@ -201,6 +201,6 @@ fn render_email(
         },
         subject,
         text,
-        html,
+        html: Some(html),
     })
 }

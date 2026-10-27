@@ -2,7 +2,8 @@ use axum::extract::{FromRef, FromRequestParts};
 use std::{convert::Infallible, sync::Arc};
 
 use crate::{
-    email::EmailClient, notification::email_worker::NotificationEmailWorker, storage::FileStore,
+    comment::email_worker::CommentEmailWorker, email::EmailClient,
+    notification::email_worker::NotificationEmailWorker, storage::FileStore,
     template_engine::TemplateEngine, video_transcoding::daemon::VideoTranscoder,
 };
 
@@ -14,6 +15,7 @@ pub struct AppState {
     pub storage: Arc<FileStore>,
     pub video_transcoder: Arc<VideoTranscoder>,
     pub email: Arc<EmailClient>,
+    pub comment_email_worker: Arc<CommentEmailWorker>,
     pub notification_email_worker: Arc<NotificationEmailWorker>,
     pub dev: bool,
 }
