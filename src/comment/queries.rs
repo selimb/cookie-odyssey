@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 /// - Getaway: only `getaway_id` is set.
 ///
 /// The database does not allow both, see [comment-scope-check].
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Clone, Deserialize, Serialize, Debug)]
 pub struct CommentScope {
     pub journal_id: i32,
     pub date: Option<chrono::NaiveDate>,

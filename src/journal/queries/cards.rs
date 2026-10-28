@@ -11,7 +11,10 @@ use sea_orm::{
 use serde::Serialize;
 
 use crate::{
-    journal::routes::{JournalDayGetPath, JournalGetawayGetPath},
+    journal::{
+        helpers::get_journal_day_number_for_date,
+        routes::{JournalDayGetPath, JournalGetawayGetPath},
+    },
     AuthSession, Route,
 };
 use entities::{prelude::*, *};
@@ -201,7 +204,11 @@ impl CardView {
                     date: card.start,
                 }))
                 .as_path();
-                (href, day_number(journal, card.start), None)
+                (
+                    href,
+                    get_journal_day_number_for_date(journal, card.start),
+                    None,
+                )
             }
             CardKind::Getaway { id, name } => {
                 let href = Route::JournalGetawayGet(Some(&JournalGetawayGetPath {
@@ -222,10 +229,4 @@ impl CardView {
             entries: card.entries.clone(),
         }
     }
-}
-
-/// Returns the one-based number of calendar days since the Journal's start
-/// date, or `None` in a Scrapbook, whose Days are not numbered.
-pub fn day_number(journal: &journal::Model, date: chrono::NaiveDate) -> Option<i64> {
-    (!journal.scrapbook).then(|| (date - journal.start_date).num_days() + 1)
 }

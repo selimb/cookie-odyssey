@@ -8,6 +8,7 @@ use tower_http::{catch_panic::CatchPanicLayer, services::ServeDir};
 use crate::{
     assets::AssetManifest,
     auth::sessions::init_session,
+    comment::email_worker::CommentEmailWorker,
     email::EmailClient,
     notification::email_worker::NotificationEmailWorker,
     state::AppState,
@@ -76,6 +77,15 @@ pub async fn init_state(
     }
 
     let email = Arc::new(EmailClient::new(&conf.email)?);
+    let comment_email_worker = CommentEmailWorker::new(
+        db.clone(),
+        template_engine.clone(),
+        email.clone(),
+        conf.server_name.clone(),
+    );
+    if start {
+        comment_email_worker.start();
+    }
     let notification_email_worker = NotificationEmailWorker::new(
         db.clone(),
         template_engine.clone(),
@@ -93,6 +103,7 @@ pub async fn init_state(
         storage,
         video_transcoder: Arc::new(video_transcoder),
         email,
+        comment_email_worker: Arc::new(comment_email_worker),
         notification_email_worker: Arc::new(notification_email_worker),
         dev: conf.env == AppEnv::Dev,
     };

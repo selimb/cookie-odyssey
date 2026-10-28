@@ -6,9 +6,9 @@ use crate::{
     auth::utils::unwrap_user_from_session,
     comment::{queries::CommentScope, routes::CommentList},
     journal::{
+        helpers::get_journal_day_number_for_date,
         queries::{
-            day_number, query_entry_views, query_journal_by_slug, query_neighbours, CardKey,
-            EntryScope,
+            query_entry_views, query_journal_by_slug, query_neighbours, CardKey, EntryScope,
         },
         routes::{JournalEntryNewPath, JournalEntryNewQuery},
     },
@@ -71,7 +71,7 @@ pub async fn page_journal_day_get(
 
     // See [date-as-datetime].
     let datetime = chrono::NaiveDateTime::new(date, Default::default());
-    let day_number = day_number(&journal, date);
+    let day_number = get_journal_day_number_for_date(&journal, date);
     let href_journal_detail = Route::JournalDetailGet { slug: Some(&slug) }.as_path();
     let href_journal_entry_new = Route::JournalEntryNewGet(Some((
         &JournalEntryNewPath { slug: slug.clone() },
