@@ -94,7 +94,11 @@ impl EmailClient {
                             .body(html),
                     ),
             ),
-            None => builder.body(msg.text),
+            None => builder.singlepart(
+                SinglePart::builder()
+                    .header(ContentType::TEXT_PLAIN)
+                    .body(msg.text),
+            ),
         }
         .context("Failed to build email")?;
         self.transport
