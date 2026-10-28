@@ -1,4 +1,5 @@
-//! Background worker that emails Admins about new Comments.
+//! Background worker that emails on new Comments.
+//! Only Admins receive these emails.
 use std::sync::{Arc, Mutex};
 
 use anyhow::Context;
@@ -10,11 +11,14 @@ use tracing::error;
 use crate::{
     comment::queries::CommentScope,
     email::{EmailClient, EmailMessage, EmailRecipient},
-    journal::routes::{JournalDayGetPath, JournalGetawayGetPath},
+    journal::{
+        helpers::get_journal_day_number_for_date,
+        routes::{JournalDayGetPath, JournalGetawayGetPath},
+    },
     template_engine::TemplateEngine,
     Route,
 };
-use entities::{journal, journal_getaway, prelude::*, user};
+use entities::{prelude::*, user};
 
 /// A Comment that was just added.
 #[derive(Debug)]
@@ -32,8 +36,7 @@ struct WorkerState {
     server_name: String,
 }
 
-/// [comment-email] Queue and consumer of Comment Emails, one per Admin for
-/// each job, one job at a time.
+/// Queue and consumer of Comment Emails.
 /// Jobs are only held in memory, so a Comment Email is lost if sending it
 /// fails or the process stops first.
 #[derive(Debug)]
@@ -50,6 +53,7 @@ impl CommentEmailWorker {
         email: Arc<EmailClient>,
         server_name: String,
     ) -> Self {
+        // Unbounded should be fine for this use-case.
         let (tx, rx) = mpsc::unbounded_channel();
         Self {
             tx,
@@ -82,8 +86,6 @@ impl CommentEmailWorker {
         });
     }
 
-    /// Queues a Comment Email for every Admin, without waiting for it to be
-    /// sent.
     pub fn enqueue(&self, job: CommentEmailJob) {
         if self.tx.send(job).is_err() {
             error!("Comment email worker is not running");
@@ -120,12 +122,12 @@ async fn email_admins(state: &WorkerState, job: CommentEmailJob) -> anyhow::Resu
 
     let commenter_name = format!("{} {}", commenter.first_name, commenter.last_name);
     let target = format!(
-        "{}{}",
+        "{} {}",
         journal.name,
-        target_suffix(&journal, job.scope.date, getaway.as_ref())
+        format_target(&journal, job.scope.date, getaway.as_ref())
     );
     let subject = format!("{commenter_name} commented on {target}");
-    let href = comment_url(&state.server_name, &journal, &job.scope);
+    let href = comment_url(&state.server_name, journal.slug, &job.scope);
     let text = state
         .templates
         .get_template("email/comment.txt")?
@@ -136,7 +138,6 @@ async fn email_admins(state: &WorkerState, job: CommentEmailJob) -> anyhow::Resu
             href,
         })?;
 
-    // Each Admin gets their own email, so that addresses are not shared.
     for admin in admins {
         let msg = EmailMessage {
             to: EmailRecipient {
@@ -160,10 +161,10 @@ async fn email_admins(state: &WorkerState, job: CommentEmailJob) -> anyhow::Resu
 /// Returns what follows the Journal name to say what the Comment is on:
 /// nothing for a Journal, the Getaway name or the Day.
 /// A Day is its number, or its date in a Scrapbook.
-fn target_suffix(
-    journal: &journal::Model,
+fn format_target(
+    journal: &entities::journal::Model,
     date: Option<chrono::NaiveDate>,
-    getaway: Option<&journal_getaway::Model>,
+    getaway: Option<&entities::journal_getaway::Model>,
 ) -> String {
     if let Some(getaway) = getaway {
         return format!(" ({})", getaway.name);
@@ -171,30 +172,70 @@ fn target_suffix(
     let Some(date) = date else {
         return String::new();
     };
-    match crate::journal::day_number(journal, date) {
+    match get_journal_day_number_for_date(journal, date) {
         Some(n) => format!(" (Day {n})"),
         None => format!(" ({})", date.format("%a, %b %-d, %Y")),
     }
 }
 
-fn comment_url(server_name: &str, journal: &journal::Model, scope: &CommentScope) -> String {
-    let slug = journal.slug.clone();
+fn comment_url(server_name: &str, journal_slug: String, scope: &CommentScope) -> String {
     let route = match (scope.date, scope.getaway_id) {
-        (Some(date), _) => Route::JournalDayGet(Some(&JournalDayGetPath { slug, date })),
-        (None, Some(getaway_id)) => {
-            Route::JournalGetawayGet(Some(&JournalGetawayGetPath { slug, getaway_id }))
-        }
-        (None, None) => Route::JournalDetailGet { slug: Some(&slug) },
+        (Some(date), _) => Route::JournalDayGet(Some(&JournalDayGetPath {
+            slug: journal_slug,
+            date,
+        })),
+        (None, Some(getaway_id)) => Route::JournalGetawayGet(Some(&JournalGetawayGetPath {
+            slug: journal_slug,
+            getaway_id,
+        })),
+        (None, None) => Route::JournalDetailGet {
+            slug: Some(&journal_slug),
+        },
     };
     route.as_url(server_name)
 }
 
 #[cfg(test)]
-mod tests {
+mod test_comment_url {
     use super::*;
 
-    fn journal(scrapbook: bool) -> journal::Model {
-        journal::Model {
+    fn mk_date(d: u32) -> chrono::NaiveDate {
+        chrono::NaiveDate::from_ymd_opt(2026, 3, d).unwrap()
+    }
+
+    #[test]
+    fn test_url_per_scope() {
+        let scope = |date, getaway_id| CommentScope {
+            journal_id: 1,
+            date,
+            getaway_id,
+        };
+
+        assert_eq!(
+            comment_url("https://x", "japan".to_string(), &scope(None, None)),
+            "https://x/journal/japan"
+        );
+        assert_eq!(
+            comment_url(
+                "https://x",
+                "japan".to_string(),
+                &scope(Some(mk_date(3)), None)
+            ),
+            "https://x/journal/japan/entry/2026-03-03"
+        );
+        assert_eq!(
+            comment_url("https://x", "japan".to_string(), &scope(None, Some(7))),
+            "https://x/journal/japan/getaway/7"
+        );
+    }
+}
+
+#[cfg(test)]
+mod test_format_target {
+    use super::*;
+
+    fn mk_journal(scrapbook: bool) -> entities::journal::Model {
+        entities::journal::Model {
             id: 1,
             name: "Japan".into(),
             slug: "japan".into(),
@@ -205,35 +246,35 @@ mod tests {
         }
     }
 
-    fn getaway() -> journal_getaway::Model {
-        journal_getaway::Model {
+    fn mk_getaway() -> entities::journal_getaway::Model {
+        entities::journal_getaway::Model {
             id: 7,
             journal_id: 1,
             name: "Kyoto".into(),
         }
     }
 
-    fn date(d: u32) -> chrono::NaiveDate {
+    fn mk_date(d: u32) -> chrono::NaiveDate {
         chrono::NaiveDate::from_ymd_opt(2026, 3, d).unwrap()
     }
 
     #[test]
-    fn suffix_journal() {
-        assert_eq!(target_suffix(&journal(false), None, None), "");
+    fn test_journal() {
+        assert_eq!(format_target(&mk_journal(false), None, None), "");
     }
 
     #[test]
-    fn suffix_day_is_numbered() {
+    fn test_day_numbered() {
         assert_eq!(
-            target_suffix(&journal(false), Some(date(3)), None),
+            format_target(&mk_journal(false), Some(mk_date(3)), None),
             " (Day 3)"
         );
     }
 
     #[test]
-    fn suffix_day_in_scrapbook_is_dated() {
+    fn test_day_scrapbook() {
         assert_eq!(
-            target_suffix(&journal(true), Some(date(3)), None),
+            format_target(&mk_journal(true), Some(mk_date(3)), None),
             " (Tue, Mar 3, 2026)"
         );
     }
@@ -241,30 +282,8 @@ mod tests {
     #[test]
     fn suffix_getaway() {
         assert_eq!(
-            target_suffix(&journal(true), None, Some(&getaway())),
+            format_target(&mk_journal(true), None, Some(&mk_getaway())),
             " (Kyoto)"
-        );
-    }
-
-    #[test]
-    fn url_per_scope() {
-        let j = journal(false);
-        let scope = |date, getaway_id| CommentScope {
-            journal_id: 1,
-            date,
-            getaway_id,
-        };
-        assert_eq!(
-            comment_url("https://x", &j, &scope(None, None)),
-            "https://x/journal/japan"
-        );
-        assert_eq!(
-            comment_url("https://x", &j, &scope(Some(date(3)), None)),
-            "https://x/journal/japan/entry/2026-03-03"
-        );
-        assert_eq!(
-            comment_url("https://x", &j, &scope(None, Some(7))),
-            "https://x/journal/japan/getaway/7"
         );
     }
 }
